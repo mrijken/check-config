@@ -1,0 +1,29 @@
+[nitpick]
+additional_styles = ["./flake8.toml"]
+
+[["test/absent.toml".file_absent]]
+
+[["test/present.toml".file_present]]
+
+[["test/present.toml".key_present]]
+# top level toml
+present = "value" # ✅
+absent = "value"  # ❌
+
+[["test/present.toml".key_present]]
+also_present = "value" # ✅
+
+[["test/present.toml".key_present.table]]
+# present table with name table and following key/values
+key1 = "value1"
+key2 = "value2"
+
+[["test/present.toml".key_absent.absent_key]]
+
+[["test/present.toml".key_absent.absent.nested_absent.absent]]
+
+[["test/.gitignore"]]
+line_present = "present"
+
+[["test/.gitignore"]]
+line_absent = "absent"
