@@ -1,0 +1,15 @@
+[package]
+name = "nitpick-rs"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+toml = "0.7.6"
+serde = "1.0"
+serde_yaml = "0.9"
+configparser = "3.0.2"
+toml_edit = "0.19.14"
+similar = "2.2.1"
+serde-toml-merge = "0.3.1"
