@@ -1,29 +1,33 @@
 [nitpick]
+path_key = "__path__"                 #efault
+status_key = "__status__"             #default
+top_key = "__top__"                   #default
 additional_styles = ["./flake8.toml"]
 
-[["test/absent.toml".file_absent]]
+[[__file__]]
+__path__ = "test/absent.toml"
+__check__ = "file_absent"
 
-[["test/present.toml".file_present]]
+[[__file__]]
+__path__ = "test/present.toml"
+__check__ = "file_present"
 
-[["test/present.toml".key_present]]
-# top level toml
-present = "value" # ✅
-absent = "value"  # ❌
+[[__file__]]
+__path__ = "test/present.toml"
+__check__ = "lines_present"
+__lines__ = "present"
 
-[["test/present.toml".key_present]]
-also_present = "value" # ✅
+[[__file__]]
+__path__ = "test/present.toml"
+__check__ = "lines_absent"
+__lines__ = "absent"
 
-[["test/present.toml".key_present.table]]
-# present table with name table and following key/values
-key1 = "value1"
-key2 = "value2"
+[[__top__]]
+__path__ = "test/present1.toml"
+__check__ = "key_present"
+key = "value"
 
-[["test/present.toml".key_absent.absent_key]]
-
-[["test/present.toml".key_absent.absent.nested_absent.absent]]
-
-[["test/.gitignore"]]
-line_present = "present"
-
-[["test/.gitignore"]]
-line_absent = "absent"
+[[dependencies]]
+__path__ = "test/Cargo.toml"
+__check__ = "key_present"
+bar = "1.0"
