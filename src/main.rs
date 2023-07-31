@@ -11,6 +11,7 @@ use similar::TextDiff;
 use toml::Value;
 
 fn main() -> Result<(), String> {
+    env_logger::init();
     let styles = read_style(&PathBuf::from(r"styles/python.toml"));
     dbg!(&styles);
 
@@ -92,6 +93,7 @@ impl MetaKeys {
 fn read_style(source_path: &PathBuf) -> Vec<Box<dyn Check>> {
     let s = fs::read_to_string(source_path).unwrap();
     let t: toml::Table = toml::from_str(s.as_str()).unwrap();
+    dbg!(&t);
 
     let mut styles = vec![];
 
@@ -110,6 +112,7 @@ fn read_style(source_path: &PathBuf) -> Vec<Box<dyn Check>> {
                     ))
                 }
             }
+            continue;
         }
         match value {
             Value::Table(table) => {
@@ -124,7 +127,7 @@ fn read_style(source_path: &PathBuf) -> Vec<Box<dyn Check>> {
                 for element in array {
                     if let Some(table) = element.as_table() {
                         styles.extend(table2check(
-                            &table,
+                            table,
                             &meta_keys,
                             source_path.clone(),
                             vec![key.clone()],
@@ -187,7 +190,7 @@ fn table2check(
                     source_path,
                     config_path,
                     key,
-                    value: toml::Table(*table), // without meta keys
+                    value: toml::Value::Table(table.clone()), // without meta keys
                 })),
                 "key_absent" => Some(Box::new(KeyAbsent {
                     source_path: source_path.clone(),

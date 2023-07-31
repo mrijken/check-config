@@ -1,33 +1,29 @@
 [nitpick]
-path_key = "__path__"                 #efault
-status_key = "__status__"             #default
-top_key = "__top__"                   #default
 additional_styles = ["./flake8.toml"]
 
-[[__file__]]
-__path__ = "test/absent.toml"
-__check__ = "file_absent"
+["test/absent.toml".file_absent]
 
-[[__file__]]
-__path__ = "test/present.toml"
-__check__ = "file_present"
+["test/present.toml".file_present]
 
-[[__file__]]
-__path__ = "test/present.toml"
-__check__ = "lines_present"
+["test/present.toml".lines_present]
 __lines__ = "present"
 
-[[__file__]]
-__path__ = "test/present.toml"
-__check__ = "lines_absent"
+["test/present.toml".lines_absent]
 __lines__ = "absent"
 
-[[__top__]]
-__path__ = "test/present1.toml"
-__check__ = "key_present"
+["test/present1.toml".entry_present]
 key = "value"
 
-[[dependencies]]
-__path__ = "test/Cargo.toml"
-__check__ = "key_present"
+[["test/present1.toml".entry_present.array]]
+key1 = "value"
+
+[["test/present1.toml".entry_present.array]]
+key2 = "value2"
+
+["test/Cargo.toml".entry_present.dependencies]
 bar = "1.0"
+
+["test/Cargo.toml".entry_absent.dependencies.foo]
+
+["test/Cargo.toml".entry_absent.dependencies]
+test = "remove"
