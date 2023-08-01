@@ -1,10 +1,10 @@
 use toml_edit::Document;
 
-pub(crate) fn set(contents: &str, table_to_set: toml::Value) -> Result<String, String> {
+pub(crate) fn set(contents: &str, table_to_set: &toml::Table) -> Result<String, String> {
     let mut doc = contents.parse::<Document>().unwrap();
     let doc_table = doc.as_table_mut();
 
-    _set_key_value(doc_table, table_to_set.as_table().unwrap());
+    _set_key_value(doc_table, table_to_set);
 
     Ok(doc.to_string())
 }
@@ -23,7 +23,14 @@ fn _convert_value_to_item(value: &toml::Value) -> toml_edit::Value {
             }
             toml_edit::Value::Array(a)
         }
-        _ => panic!("Unexpected value type {}", value),
+        toml::Value::Table(v) => {
+            let mut a = toml_edit::InlineTable::new();
+            for (k, v_item) in v {
+                a.insert(k, _convert_value_to_item(v_item));
+            }
+
+            toml_edit::Value::InlineTable(a)
+        }
     }
 }
 
@@ -44,12 +51,12 @@ fn _set_key_value(doc: &mut toml_edit::Table, table_to_set: &toml::Table) {
     }
 }
 
-pub(crate) fn unset(contents: &str, table_to_unset: toml::Value) -> Result<String, String> {
+pub(crate) fn unset(contents: &str, table_to_unset: &toml::Table) -> Result<String, String> {
     // remove all the keys in the table where the key is the end node
     let mut doc = contents.parse::<Document>().unwrap();
     let doc_table = doc.as_table_mut();
 
-    _remove_key(doc_table, table_to_unset.as_table().unwrap());
+    _remove_key(doc_table, table_to_unset);
 
     Ok(doc.to_string())
 }
@@ -93,6 +100,7 @@ foo = "1.0"
 "#;
 
         let contents_to_unset = toml::from_str::<toml::Value>(contents_to_unset).unwrap();
+        let contents_to_unset = contents_to_unset.as_table().unwrap();
 
         let new_contents = super::unset(contents, contents_to_unset).unwrap();
 
@@ -120,6 +128,7 @@ name = "bar"
 "#;
 
         let contents_to_set = toml::from_str::<toml::Value>(contents_to_set).unwrap();
+        let contents_to_set = contents_to_set.as_table().unwrap();
 
         let new_contents = super::set(contents, contents_to_set).unwrap();
 
@@ -146,14 +155,15 @@ version = "1.0"
 features = ["foo"]
 "#;
 
-        let table_contents = r#"[dependencies.bar]
+        let contents_to_set = r#"[dependencies.bar]
 version = "2.0"
 features = ["bar"]
 "#;
 
-        let table = toml::from_str::<toml::Value>(table_contents).unwrap();
+        let contents_to_set = toml::from_str::<toml::Value>(contents_to_set).unwrap();
+        let contents_to_set = contents_to_set.as_table().unwrap();
 
-        let new_contents = super::set(contents, table).unwrap();
+        let new_contents = super::set(contents, contents_to_set).unwrap();
 
         assert_eq!(
             new_contents,

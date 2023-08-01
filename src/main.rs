@@ -1,4 +1,3 @@
-// mod checkers;
 use core::fmt::Debug as DebugTrait;
 use std::{
     env,
@@ -10,127 +9,157 @@ mod checkers;
 use similar::TextDiff;
 use toml::Value;
 
-fn main() -> Result<(), String> {
-    env_logger::init();
-    let styles = read_style(&PathBuf::from(r"styles/python.toml"));
-    dbg!(&styles);
+use clap::{Parser, Subcommand};
 
-    for style in styles {
-        match style.check() {
+/// Config Checker will check and optional fix your config files based on checkers defined in a toml file.
+/// It can check ini, toml, yaml, json and plain text files.
+#[derive(Parser)]
+#[command(author, version, about, long_about = None)]
+struct Cli {
+    /// Path to the root checkers file in toml format
+    #[arg(short, long, default_value = "checkers.toml")]
+    checkers_path: String,
+
+    #[command(subcommand)]
+    command: Commands,
+}
+
+#[derive(Subcommand)]
+enum Commands {
+    /// Try to fix the files so the checkers will not fail anymore.
+    /// Will return with exit code 1 when failed
+    Fix,
+    /// Check the style without checking.
+    /// Will return with exit code 1 when failed
+    Check,
+}
+
+fn main() -> Result<(), String> {
+    simple_logger::init().unwrap();
+    log::info!("Starting config-checker");
+
+    let cli = Cli::parse();
+
+    let perform_fix = match &cli.command {
+        Commands::Fix => {
+            log::info!("With check and fix");
+            true
+        }
+        Commands::Check => {
+            log::info!("Only check");
+            false
+        }
+    };
+
+    let checkers_path = &PathBuf::from(&cli.checkers_path);
+
+    log::info!("Using checkers from {}", &checkers_path.to_string_lossy());
+
+    let checks = read_checks_from_path(checkers_path)?;
+
+    let mut is_all_ok = true;
+
+    for check in checks {
+        match check.check() {
             Ok(ist_and_soll) => match ist_and_soll.action {
                 Action::None => {
-                    println!(
+                    log::info!(
                         "✅ {} - {} - {}",
-                        style.source_path().to_string_lossy(),
-                        style.config_path().to_string_lossy(),
-                        style.style_type(),
+                        check.checkers_path().to_string_lossy(),
+                        check.config_path().to_string_lossy(),
+                        check.style_type(),
                     );
                 }
                 Action::RemoveFile => {
-                    println!(
+                    log::error!(
                         "❌ {} - {} - {} - file is present",
-                        style.source_path().to_string_lossy(),
-                        style.config_path().to_string_lossy(),
-                        style.style_type(),
+                        check.checkers_path().to_string_lossy(),
+                        check.config_path().to_string_lossy(),
+                        check.style_type(),
                     );
+                    is_all_ok = perform_fix;
                 }
                 Action::SetContents => {
-                    println!(
+                    log::error!(
                         "❌ {} - {} - {} - diff",
-                        style.source_path().to_string_lossy(),
-                        style.config_path().to_string_lossy(),
-                        style.style_type(),
+                        check.checkers_path().to_string_lossy(),
+                        check.config_path().to_string_lossy(),
+                        check.style_type(),
                     );
-                    println!(
+                    log::info!(
                         "{}",
                         TextDiff::from_lines(&ist_and_soll.ist, &ist_and_soll.soll).unified_diff()
-                    )
+                    );
+                    is_all_ok = perform_fix;
                 }
             },
-            Err(e) => println!("Error: {}", e),
-        }
-
-        // style.fix()?;
-    }
-
-    Ok(())
-}
-
-struct MetaKeys {
-    path_key: String,
-    file_key: String,
-    check_type_key: String,
-}
-
-impl MetaKeys {
-    fn new() -> Self {
-        Self {
-            path_key: "__path__".to_string(),
-            file_key: "__file__".to_string(),
-            check_type_key: "__check__".to_string(),
-        }
-    }
-    fn from_nitpick_table(table: &toml::Value) -> Self {
-        match table.as_table() {
-            None => panic!("not a table"),
-            Some(table) => {
-                let mut meta_keys = Self::new();
-                if let Some(new_path_key) = table.get("path_key") {
-                    meta_keys.path_key = new_path_key.as_str().unwrap().to_string();
-                }
-                if let Some(new_file_key) = table.get("file_key") {
-                    meta_keys.file_key = new_file_key.as_str().unwrap().to_string();
-                }
-                if let Some(new_status_key) = table.get("status_key") {
-                    meta_keys.check_type_key = new_status_key.as_str().unwrap().to_string();
-                }
-                meta_keys
+            Err(e) => {
+                log::error!(
+                    "Error: {} {} {} {}",
+                    e,
+                    check.checkers_path().to_string_lossy(),
+                    check.config_path().to_string_lossy(),
+                    check.style_type(),
+                );
+                is_all_ok = false;
             }
         }
+
+        if perform_fix && check.fix().is_err() {
+            is_all_ok = false;
+        }
+    }
+
+    if is_all_ok {
+        Ok(())
+    } else {
+        Err("One or more errors occured".to_string())
     }
 }
 
-fn read_style(source_path: &PathBuf) -> Vec<Box<dyn Check>> {
-    let s = fs::read_to_string(source_path).unwrap();
-    let t: toml::Table = toml::from_str(s.as_str()).unwrap();
-    dbg!(&t);
+fn read_checks_from_path(checkers_path: &PathBuf) -> Result<Vec<Box<dyn Check>>, String> {
+    if !checkers_path.exists() {
+        return Err(format!(
+            "{} does not exist",
+            checkers_path.to_string_lossy()
+        ));
+    }
 
-    let mut styles = vec![];
+    let checks_toml = fs::read_to_string(checkers_path).unwrap();
+    let checks_toml: toml::Table = toml::from_str(checks_toml.as_str()).unwrap();
 
-    let mut meta_keys = MetaKeys::new();
+    let mut checks: Vec<Box<dyn Check>> = vec![];
 
-    for (key, value) in t {
-        if key == "nitpick" {
-            meta_keys = MetaKeys::from_nitpick_table(&value);
+    for (config_path, value) in checks_toml {
+        if config_path == "nitpick" {
             if let Some(Value::Array(includes)) = value.get("additional_styles") {
                 for include_path in includes {
-                    styles.extend(read_style(
-                        &source_path
+                    checks.extend(read_checks_from_path(
+                        &checkers_path
                             .parent()
                             .unwrap()
                             .join(include_path.as_str().unwrap()),
-                    ))
+                    )?)
                 }
             }
             continue;
         }
+        let config_path = env::current_dir().unwrap().join(config_path);
         match value {
-            Value::Table(table) => {
-                styles.extend(table2check(
-                    &table,
-                    &meta_keys,
-                    source_path.clone(),
-                    vec![key],
+            Value::Table(config_table) => {
+                checks.extend(get_checks_from_config_table(
+                    checkers_path.clone(),
+                    config_path,
+                    &config_table,
                 ));
             }
             Value::Array(array) => {
                 for element in array {
-                    if let Some(table) = element.as_table() {
-                        styles.extend(table2check(
-                            table,
-                            &meta_keys,
-                            source_path.clone(),
-                            vec![key.clone()],
+                    if let Some(config_table) = element.as_table() {
+                        checks.extend(get_checks_from_config_table(
+                            checkers_path.clone(),
+                            config_path.clone(),
+                            config_table,
                         ));
                     }
                 }
@@ -138,84 +167,98 @@ fn read_style(source_path: &PathBuf) -> Vec<Box<dyn Check>> {
             _ => {}
         }
     }
-    styles
+    Ok(checks)
 }
 
-fn table2check(
-    table: &toml::Table,
-    meta_keys: &MetaKeys,
-    source_path: PathBuf,
-    key: Vec<String>,
+fn get_checks_from_config_table(
+    checkers_path: PathBuf,
+    config_path: PathBuf,
+    config_table: &toml::Table,
 ) -> Vec<Box<dyn Check>> {
-    let mut styles = vec![];
-    dbg!(&table, &key, &source_path, &meta_keys.path_key);
-    let source_path = source_path.clone();
-    let mut key = key.clone();
-    let config_path = env::current_dir()
-        .unwrap()
-        .join(table.get(&meta_keys.path_key).unwrap().as_str().unwrap());
+    dbg!(&config_table, &checkers_path);
 
-    match table.get(&meta_keys.check_type_key).unwrap().as_str() {
-        Some(check_type) => {
-            let check: Option<Box<dyn Check>> = match check_type {
-                "file_absent" => Some(Box::new(FileAbsent {
-                    source_path,
-                    config_path,
-                })),
-                "file_present" => Some(Box::new(FilePresent {
-                    source_path,
-                    config_path,
-                })),
-                "lines_absent" => Some(Box::new(BlockAbsent {
-                    source_path,
-                    config_path,
-                    block: table
-                        .get("__lines__")
-                        .unwrap()
-                        .as_str()
-                        .unwrap()
-                        .to_string(),
-                })),
-                "lines_present" => Some(Box::new(BlockPresent {
-                    source_path,
-                    config_path,
-                    block: table
-                        .get("__lines__")
-                        .unwrap()
-                        .as_str()
-                        .unwrap()
-                        .to_string(),
-                })),
-                "key_present" => Some(Box::new(KeyPresent {
-                    source_path,
-                    config_path,
-                    key,
-                    value: toml::Value::Table(table.clone()), // without meta keys
-                })),
-                "key_absent" => Some(Box::new(KeyAbsent {
-                    source_path: source_path.clone(),
-                    config_path,
-                    key,
-                })),
-                _ => panic!("unknown check {}", check_type),
-            };
-            if let Some(check) = check {
-                styles.push(check);
+    let mut checks = vec![];
+
+    for (check_type, check_table) in config_table {
+        match check_table {
+            Value::Table(check_table) => {
+                checks.push(get_check_from_check_table(
+                    checkers_path.clone(),
+                    config_path.clone(),
+                    check_type,
+                    check_table,
+                ));
             }
-        }
-        None => {
-            for (k, v) in table {
-                if let Some(v) = v.as_table() {
-                    let mut key = key.clone();
-                    key.push(k.clone());
-                    styles.extend(table2check(&v, meta_keys, source_path.clone(), key))
+            Value::Array(array) => {
+                for table in array {
+                    let check_table = table.as_table().unwrap();
+                    checks.push(get_check_from_check_table(
+                        checkers_path.clone(),
+                        config_path.clone(),
+                        check_type,
+                        check_table,
+                    ));
                 }
             }
-        }
+            _ => {
+                panic!("Unexpected value type");
+            }
+        };
     }
-    styles
+    checks
 }
 
+fn get_check_from_check_table(
+    checkers_path: PathBuf,
+    config_path: PathBuf,
+    check_type: &str,
+    check_table: &toml::Table,
+) -> Box<dyn Check> {
+    let checkers_path = checkers_path.clone();
+    let config_path = config_path.clone();
+    let check: Box<dyn Check> = match check_type {
+        "file_absent" => Box::new(FileAbsent {
+            checkers_path,
+            config_path,
+        }),
+        "file_present" => Box::new(FilePresent {
+            checkers_path,
+            config_path,
+        }),
+        "lines_absent" => Box::new(LinesAbsent {
+            checkers_path,
+            config_path,
+            block: check_table
+                .get("__lines__")
+                .unwrap()
+                .as_str()
+                .unwrap()
+                .to_string(),
+        }),
+        "lines_present" => Box::new(LinesPresent {
+            checkers_path,
+            config_path,
+            lines: check_table
+                .get("__lines__")
+                .unwrap()
+                .as_str()
+                .unwrap()
+                .to_string(),
+        }),
+        "entry_present" => Box::new(EntryPresent {
+            checkers_path,
+            config_path,
+            value: check_table.clone(),
+        }),
+        "entry_absent" => Box::new(EntryAbsent {
+            checkers_path: checkers_path.clone(),
+            config_path,
+            value: check_table.clone(),
+        }),
+        _ => panic!("unknown check {} {}", check_type, check_table),
+    };
+    check
+}
 enum Action {
     RemoveFile,
     SetContents,
@@ -227,16 +270,10 @@ struct IstAndSoll {
     action: Action,
 }
 
-// impl<'ist, 'soll, 'diff> IstAndSoll {
-//     fn get_diff(&mut self) -> TextDiff<'ist, 'soll, 'diff, str> {
-//         self.soll = TextDiff::from_lines(&self.ist, &self.soll).unified_diff()
-//     }
-// }
-
 trait Check: DebugTrait {
     fn style_type(&self) -> String;
     fn get_ist_and_soll(&self) -> Result<IstAndSoll, String>;
-    fn source_path(&self) -> &PathBuf;
+    fn checkers_path(&self) -> &PathBuf;
     fn config_path(&self) -> &PathBuf;
 
     fn check(&self) -> Result<IstAndSoll, String> {
@@ -260,21 +297,21 @@ trait Check: DebugTrait {
 }
 
 #[derive(Debug)]
-struct BlockPresent {
-    // path to the file where the style is defined
-    source_path: PathBuf,
-    // path the file which needs to be checked
+struct LinesPresent {
+    // path to the file where the checkers are defined
+    checkers_path: PathBuf,
+    // path to the file which needs to be checked
     config_path: PathBuf,
-    block: String,
+    lines: String,
 }
 
-impl Check for BlockPresent {
+impl Check for LinesPresent {
     fn style_type(&self) -> String {
-        "block_present".to_string()
+        "lines_present".to_string()
     }
 
-    fn source_path(&self) -> &PathBuf {
-        &self.source_path
+    fn checkers_path(&self) -> &PathBuf {
+        &self.checkers_path
     }
 
     fn config_path(&self) -> &PathBuf {
@@ -285,13 +322,13 @@ impl Check for BlockPresent {
         if !self.config_path().exists() {
             return Ok(IstAndSoll {
                 ist: "".to_string(),
-                soll: self.block.clone(),
+                soll: self.lines.clone(),
                 action: Action::SetContents,
             });
         }
         match fs::read_to_string(self.config_path()) {
             Ok(contents) => {
-                if contents.contains(&self.block) {
+                if contents.contains(&self.lines) {
                     Ok(IstAndSoll {
                         ist: contents.clone(),
                         soll: contents.clone(),
@@ -302,7 +339,7 @@ impl Check for BlockPresent {
                     if !new_contents.ends_with('\n') {
                         new_contents += "\n";
                     }
-                    new_contents += &self.block.clone();
+                    new_contents += &self.lines.clone();
                     Ok(IstAndSoll {
                         ist: contents.clone(),
                         soll: new_contents,
@@ -316,20 +353,20 @@ impl Check for BlockPresent {
 }
 
 #[derive(Debug)]
-struct BlockAbsent {
-    // path to the file where the style is defined
-    source_path: PathBuf,
-    // path the file which needs to be checked
+struct LinesAbsent {
+    // path to the file where the checkers are defined
+    checkers_path: PathBuf,
+    // path to the file which needs to be checked
     config_path: PathBuf,
     block: String,
 }
-impl Check for BlockAbsent {
+impl Check for LinesAbsent {
     fn style_type(&self) -> String {
-        "block_absent".to_string()
+        "lines_absent".to_string()
     }
 
-    fn source_path(&self) -> &PathBuf {
-        &self.source_path
+    fn checkers_path(&self) -> &PathBuf {
+        &self.checkers_path
     }
 
     fn config_path(&self) -> &PathBuf {
@@ -373,9 +410,9 @@ impl Check for BlockAbsent {
 
 #[derive(Debug)]
 struct FileAbsent {
-    // path to the file where the style is defined
-    source_path: PathBuf,
-    // path the file which needs to be checked
+    // path to the file where the checkers are defined
+    checkers_path: PathBuf,
+    // path to the file which needs to be checked
     config_path: PathBuf,
 }
 
@@ -384,8 +421,8 @@ impl Check for FileAbsent {
         "file_absent".to_string()
     }
 
-    fn source_path(&self) -> &PathBuf {
-        &self.source_path
+    fn checkers_path(&self) -> &PathBuf {
+        &self.checkers_path
     }
 
     fn config_path(&self) -> &PathBuf {
@@ -414,9 +451,9 @@ impl Check for FileAbsent {
 
 #[derive(Debug)]
 struct FilePresent {
-    // path to the file where the style is defined
-    source_path: PathBuf,
-    // path the file which needs to be checked
+    // path to the file where the checkers are defined
+    checkers_path: PathBuf,
+    // path to the file which needs to be checked
     config_path: PathBuf,
 }
 
@@ -425,8 +462,8 @@ impl Check for FilePresent {
         "file_present".to_string()
     }
 
-    fn source_path(&self) -> &PathBuf {
-        &self.source_path
+    fn checkers_path(&self) -> &PathBuf {
+        &self.checkers_path
     }
 
     fn config_path(&self) -> &PathBuf {
@@ -461,26 +498,19 @@ impl Check for FilePresent {
 }
 
 #[derive(Debug)]
-pub struct KeyPresent {
-    // path to the file where the style is defined
-    source_path: PathBuf,
-    // path the file which needs to be checked
+pub struct EntryPresent {
+    // path to the file where the checkers are defined
+    checkers_path: PathBuf,
+    // path to the file which needs to be checked
     config_path: PathBuf,
-    key: Vec<String>,
-    value: toml::Value,
+    value: toml::Table,
 }
 
-impl KeyPresent {
-    fn new(
-        source_path: PathBuf,
-        config_path: PathBuf,
-        key: Vec<String>,
-        value: toml::Value,
-    ) -> Self {
+impl EntryPresent {
+    fn new(checkers_path: PathBuf, config_path: PathBuf, value: toml::Table) -> Self {
         Self {
-            source_path,
+            checkers_path,
             config_path,
-            key,
             value,
         }
     }
@@ -488,13 +518,13 @@ impl KeyPresent {
 
 use toml_edit::{value, Document, Item};
 
-impl Check for KeyPresent {
+impl Check for EntryPresent {
     fn style_type(&self) -> String {
-        "key_present".to_string()
+        "entry_present".to_string()
     }
 
-    fn source_path(&self) -> &PathBuf {
-        &self.source_path
+    fn checkers_path(&self) -> &PathBuf {
+        &self.checkers_path
     }
 
     fn config_path(&self) -> &PathBuf {
@@ -502,14 +532,17 @@ impl Check for KeyPresent {
     }
 
     fn get_ist_and_soll(&self) -> Result<IstAndSoll, String> {
-        let contents = fs::read_to_string(self.config_path());
-        if let Err(s) = contents {
-            return Err(s.to_string());
-        }
-        let contents = contents.unwrap();
+        let contents = if !self.config_path().exists() {
+            "".to_string()
+        } else {
+            let contents = fs::read_to_string(self.config_path());
+            if let Err(s) = contents {
+                return Err(s.to_string());
+            }
+            contents.unwrap()
+        };
 
-        // let new_contents = checkers::toml::merge(&contents, self.table.clone()).unwrap();
-        let new_contents = contents.clone();
+        let new_contents = checkers::toml::set(&contents, &self.value).unwrap();
 
         let action = if contents == new_contents {
             Action::None
@@ -529,35 +562,35 @@ impl Check for KeyPresent {
 }
 
 #[derive(Debug)]
-pub struct KeyAbsent {
-    // path to the file where the style is defined
-    source_path: PathBuf,
-    // path the file which needs to be checked
+pub struct EntryAbsent {
+    // path to the file where the checkers are defined
+    checkers_path: PathBuf,
+    // path to the file which needs to be checked
     config_path: PathBuf,
-    key: Vec<String>,
+    value: toml::Table,
 }
 
-impl KeyAbsent {
-    fn new(source_path: PathBuf, config_path: PathBuf, key: Vec<String>) -> Self {
+impl EntryAbsent {
+    fn new(checkers_path: PathBuf, config_path: PathBuf, value: toml::Table) -> Self {
         Self {
-            source_path,
+            checkers_path,
             config_path,
-            key,
+            value,
         }
     }
 
-    fn key(&self) -> Vec<String> {
-        self.key.clone()
+    fn value(&self) -> toml::Table {
+        self.value.clone()
     }
 }
 
-impl Check for KeyAbsent {
+impl Check for EntryAbsent {
     fn style_type(&self) -> String {
-        "key_absent".to_string()
+        "entry_absent".to_string()
     }
 
-    fn source_path(&self) -> &PathBuf {
-        &self.source_path
+    fn checkers_path(&self) -> &PathBuf {
+        &self.checkers_path
     }
 
     fn config_path(&self) -> &PathBuf {
@@ -565,13 +598,20 @@ impl Check for KeyAbsent {
     }
 
     fn get_ist_and_soll(&self) -> Result<IstAndSoll, String> {
+        if !self.config_path().exists() {
+            return Ok(IstAndSoll {
+                ist: "".to_string(),
+                soll: "".to_string(),
+                action: Action::None,
+            });
+        }
+
         let contents = fs::read_to_string(self.config_path());
         if let Err(s) = contents {
             return Err(s.to_string());
         }
         let contents = contents.unwrap();
-        // let new_contents = checkers::toml::remove_key(&contents, self.table.clone()).unwrap();
-        let new_contents = contents.clone();
+        let new_contents = checkers::toml::unset(&contents, &self.value).unwrap();
         let action = if contents == new_contents {
             Action::None
         } else {
