@@ -1,6 +1,25 @@
+use super::FileType;
 use toml_edit::Document;
 
-pub(crate) fn set(contents: &str, table_to_set: &toml::Table) -> Result<String, String> {
+pub(crate) struct Toml {}
+
+impl Toml {
+    pub fn new() -> Toml {
+        Toml {}
+    }
+}
+
+impl FileType for Toml {
+    fn set(&self, contents: &str, table_to_set: &toml::Table) -> Result<String, String> {
+        set(contents, table_to_set)
+    }
+
+    fn unset(&self, contents: &str, table_to_unset: &toml::Table) -> Result<String, String> {
+        unset(contents, table_to_unset)
+    }
+}
+
+fn set(contents: &str, table_to_set: &toml::Table) -> Result<String, String> {
     let mut doc = contents.parse::<Document>().unwrap();
     let doc_table = doc.as_table_mut();
 
@@ -51,7 +70,7 @@ fn _set_key_value(doc: &mut toml_edit::Table, table_to_set: &toml::Table) {
     }
 }
 
-pub(crate) fn unset(contents: &str, table_to_unset: &toml::Table) -> Result<String, String> {
+fn unset(contents: &str, table_to_unset: &toml::Table) -> Result<String, String> {
     // remove all the keys in the table where the key is the end node
     let mut doc = contents.parse::<Document>().unwrap();
     let doc_table = doc.as_table_mut();
@@ -66,7 +85,6 @@ fn _remove_key(doc: &mut toml_edit::Table, table_to_unset: &toml::Table) {
         if let toml::Value::Table(child_table_to_unset) = value_to_unset {
             if child_table_to_unset.is_empty() {
                 doc.remove(key_to_unset);
-                log::info!("Key {} is removed from toml", key_to_unset,);
             } else if let Some(child_doc) = doc.get_mut(key_to_unset) {
                 if let Some(child_doc_table) = child_doc.as_table_mut() {
                     _remove_key(child_doc_table, child_table_to_unset);

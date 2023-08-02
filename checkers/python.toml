@@ -1,5 +1,5 @@
-[nitpick]
-additional_styles = ["./flake8.toml"]
+[check-config]
+additional_checks = ["./flake8.toml"]
 
 ["test/absent.toml".file_absent]
 

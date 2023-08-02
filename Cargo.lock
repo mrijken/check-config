@@ -64,6 +64,22 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "50d30906286121d95be3d479533b458f87493b30a4b5f79a607db8f5d11aa91f"
 
 [[package]]
+name = "check-config"
+version = "0.1.0"
+dependencies = [
+ "clap",
+ "configparser",
+ "log",
+ "serde",
+ "serde-toml-merge",
+ "serde_yaml",
+ "similar",
+ "simple_logger",
+ "toml",
+ "toml_edit",
+]
+
+[[package]]
 name = "clap"
 version = "4.3.19"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -234,22 +250,6 @@ name = "memchr"
 version = "2.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2dffe52ecf27772e601905b7522cb4ef790d2cc203488bbd0e2fe85fcb74566d"
-
-[[package]]
-name = "nitpick-rs"
-version = "0.1.0"
-dependencies = [
- "clap",
- "configparser",
- "log",
- "serde",
- "serde-toml-merge",
- "serde_yaml",
- "similar",
- "simple_logger",
- "toml",
- "toml_edit",
-]
 
 [[package]]
 name = "num_threads"
