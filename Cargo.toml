@@ -16,3 +16,4 @@ serde-toml-merge = "0.3.1"
 log = "0.4.19"
 simple_logger = "4.2.0"
 clap = { version = "4.3.19", features = ["derive"] }
+regex = "1.9.1"

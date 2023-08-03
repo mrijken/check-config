@@ -1,6 +1,8 @@
-use super::FileType;
-use toml_edit::Document;
+use std::fmt::format;
 
+use super::FileType;
+use regex::Regex;
+use toml_edit::Document;
 pub(crate) struct Toml {}
 
 impl Toml {
@@ -17,6 +19,54 @@ impl FileType for Toml {
     fn unset(&self, contents: &str, table_to_unset: &toml::Table) -> Result<String, String> {
         unset(contents, table_to_unset)
     }
+
+    fn validate_regex(&self, contents: &str, table_with_regex: &toml::Table) -> Result<(), String> {
+        validate_regex(contents, table_with_regex)
+    }
+}
+
+fn validate_regex(contents: &str, table_with_regex: &toml::Table) -> Result<(), String> {
+    let mut doc = contents.parse::<Document>().unwrap();
+    let doc_table = doc.as_table_mut();
+    _validate_key_regex(doc_table, table_with_regex)
+}
+
+fn _validate_key_regex(
+    doc: &mut toml_edit::Table,
+    table_with_regex: &toml::Table,
+) -> Result<(), String> {
+    for (k, v) in table_with_regex {
+        match v {
+            toml::Value::String(raw_regex) => match doc.get(k) {
+                Some(toml_edit::Item::Value(toml_edit::Value::String(string_to_match))) => {
+                    let regex = match Regex::new(raw_regex) {
+                        Ok(regex) => regex,
+                        Err(s) => return Err(s.to_string()),
+                    };
+                    if regex.is_match(string_to_match.value()) {
+                        return Ok(());
+                    } else {
+                        return Err(format!(
+                            "Regex does not match. key: {}, regex: {}, value: {}",
+                            k,
+                            raw_regex,
+                            string_to_match.value()
+                        ));
+                    }
+                }
+                _ => return Err("key does not exists".to_string()),
+            },
+            toml::Value::Table(t) => match doc.get_mut(k) {
+                Some(toml_edit::Item::Table(child_doc)) => {
+                    return _validate_key_regex(child_doc, t)
+                }
+                _ => return Err("key does not exists".to_string()),
+            },
+
+            _ => {}
+        }
+    }
+    Err("".to_string())
 }
 
 fn set(contents: &str, table_to_set: &toml::Table) -> Result<String, String> {
@@ -196,6 +246,47 @@ toml ="1.0"
 version = "2.0"
 features = ["bar"]
 "#
+        );
+    }
+
+    #[test]
+    fn test_regex() {
+        let contents = r#"[package]
+name = "foo"
+version = "1.0"
+
+[dependencies]
+toml ="1.0"
+
+[dependencies.bar]
+version = "1.0"
+features = ["foo"]
+"#;
+
+        let contents_with_matched_regex = r#"[dependencies.bar]
+version = "[0-9]\\.[0-9]"
+"#;
+
+        let contents_with_matched_regex =
+            toml::from_str::<toml::Value>(contents_with_matched_regex).unwrap();
+        let contents_with_matched_regex = contents_with_matched_regex.as_table().unwrap();
+
+        assert_eq!(
+            super::validate_regex(contents, contents_with_matched_regex),
+            Ok(())
+        );
+
+        let contents_with_unmatched_regex = r#"[dependencies.bar]
+version = "[0-9][0-9]"
+"#;
+
+        let contents_with_unmatched_regex =
+            toml::from_str::<toml::Value>(contents_with_unmatched_regex).unwrap();
+        let contents_with_unmatched_regex = contents_with_unmatched_regex.as_table().unwrap();
+
+        assert_eq!(
+            super::validate_regex(contents, contents_with_unmatched_regex),
+            Err("Regex does not match".to_string())
         );
     }
 }

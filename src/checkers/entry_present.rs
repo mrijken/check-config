@@ -4,17 +4,17 @@ use std::{fs, path::PathBuf};
 #[derive(Debug)]
 pub(crate) struct EntryPresent {
     // path to the file where the checkers are defined
-    checkers_path: PathBuf,
+    file_with_checks: PathBuf,
     // path to the file which needs to be checked
-    config_path: PathBuf,
+    file_to_check: PathBuf,
     value: toml::Table,
 }
 
 impl EntryPresent {
-    pub fn new(checkers_path: PathBuf, config_path: PathBuf, value: toml::Table) -> Self {
+    pub fn new(file_with_checks: PathBuf, file_to_check: PathBuf, value: toml::Table) -> Self {
         Self {
-            checkers_path,
-            config_path,
+            file_with_checks,
+            file_to_check,
             value,
         }
     }
@@ -25,19 +25,19 @@ impl Check for EntryPresent {
         "entry_present".to_string()
     }
 
-    fn checkers_path(&self) -> &PathBuf {
-        &self.checkers_path
+    fn file_with_checks(&self) -> &PathBuf {
+        &self.file_with_checks
     }
 
-    fn config_path(&self) -> &PathBuf {
-        &self.config_path
+    fn file_to_check(&self) -> &PathBuf {
+        &self.file_to_check
     }
 
     fn get_ist_and_soll(&self) -> Result<IstAndSoll, String> {
-        let contents = if !self.config_path().exists() {
+        let contents = if !self.file_to_check().exists() {
             "".to_string()
         } else {
-            let contents = fs::read_to_string(self.config_path());
+            let contents = fs::read_to_string(self.file_to_check());
             if let Err(s) = contents {
                 return Err(s.to_string());
             }

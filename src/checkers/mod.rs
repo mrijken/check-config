@@ -7,17 +7,18 @@ use self::base::Check;
 pub(crate) mod base;
 pub(crate) mod entry_absent;
 pub(crate) mod entry_present;
+pub(crate) mod entry_regex_match;
 pub(crate) mod file_absent;
 pub(crate) mod file_present;
 pub(crate) mod lines_absent;
 pub(crate) mod lines_present;
 
 fn get_checks_from_config_table(
-    checkers_path: PathBuf,
-    config_path: PathBuf,
+    file_with_checks: PathBuf,
+    file_to_check: PathBuf,
     config_table: &toml::Table,
 ) -> Vec<Box<dyn Check>> {
-    dbg!(&config_table, &checkers_path);
+    dbg!(&config_table, &file_with_checks);
 
     let mut checks = vec![];
 
@@ -25,8 +26,8 @@ fn get_checks_from_config_table(
         match check_table {
             Value::Table(check_table) => {
                 checks.push(get_check_from_check_table(
-                    checkers_path.clone(),
-                    config_path.clone(),
+                    file_with_checks.clone(),
+                    file_to_check.clone(),
                     check_type,
                     check_table,
                 ));
@@ -35,8 +36,8 @@ fn get_checks_from_config_table(
                 for table in array {
                     let check_table = table.as_table().unwrap();
                     checks.push(get_check_from_check_table(
-                        checkers_path.clone(),
-                        config_path.clone(),
+                        file_with_checks.clone(),
+                        file_to_check.clone(),
                         check_type,
                         check_table,
                     ));
@@ -51,19 +52,25 @@ fn get_checks_from_config_table(
 }
 
 fn get_check_from_check_table(
-    checkers_path: PathBuf,
-    config_path: PathBuf,
+    file_with_checks: PathBuf,
+    file_to_check: PathBuf,
     check_type: &str,
     check_table: &toml::Table,
 ) -> Box<dyn Check> {
-    let checkers_path = checkers_path.clone();
-    let config_path = config_path.clone();
+    let file_with_checks = file_with_checks.clone();
+    let file_to_check = file_to_check.clone();
     let check: Box<dyn Check> = match check_type {
-        "file_absent" => Box::new(file_absent::FileAbsent::new(checkers_path, config_path)),
-        "file_present" => Box::new(file_present::FilePresent::new(checkers_path, config_path)),
+        "file_absent" => Box::new(file_absent::FileAbsent::new(
+            file_with_checks,
+            file_to_check,
+        )),
+        "file_present" => Box::new(file_present::FilePresent::new(
+            file_with_checks,
+            file_to_check,
+        )),
         "lines_absent" => Box::new(lines_absent::LinesAbsent::new(
-            checkers_path,
-            config_path,
+            file_with_checks,
+            file_to_check,
             check_table
                 .get("__lines__")
                 .unwrap()
@@ -72,8 +79,8 @@ fn get_check_from_check_table(
                 .to_string(),
         )),
         "lines_present" => Box::new(lines_present::LinesPresent::new(
-            checkers_path,
-            config_path,
+            file_with_checks,
+            file_to_check,
             check_table
                 .get("__lines__")
                 .unwrap()
@@ -82,13 +89,18 @@ fn get_check_from_check_table(
                 .to_string(),
         )),
         "entry_present" => Box::new(entry_present::EntryPresent::new(
-            checkers_path,
-            config_path,
+            file_with_checks,
+            file_to_check,
             check_table.clone(),
         )),
         "entry_absent" => Box::new(entry_absent::EntryAbsent::new(
-            checkers_path.clone(),
-            config_path,
+            file_with_checks.clone(),
+            file_to_check,
+            check_table.clone(),
+        )),
+        "entry_regex_match" => Box::new(entry_regex_match::EntryRegexMatch::new(
+            file_with_checks,
+            file_to_check,
             check_table.clone(),
         )),
         _ => panic!("unknown check {} {}", check_type, check_table),
@@ -96,41 +108,37 @@ fn get_check_from_check_table(
     check
 }
 
-pub(crate) fn read_checks_from_path(
-    checkers_path: &PathBuf,
-) -> Result<Vec<Box<dyn Check>>, String> {
-    if !checkers_path.exists() {
-        return Err(format!(
-            "{} does not exist",
-            checkers_path.to_string_lossy()
-        ));
-    }
-
-    let checks_toml = fs::read_to_string(checkers_path).unwrap();
-    let checks_toml: toml::Table = toml::from_str(checks_toml.as_str()).unwrap();
-
+pub(crate) fn read_checks_from_path(file_with_checks: &PathBuf) -> Vec<Box<dyn Check>> {
     let mut checks: Vec<Box<dyn Check>> = vec![];
 
-    for (config_path, value) in checks_toml {
-        if config_path == "check-config" {
+    if !file_with_checks.exists() {
+        log::error!("{} does not exist", file_with_checks.to_string_lossy());
+        return checks;
+    }
+
+    let checks_toml = fs::read_to_string(file_with_checks).unwrap();
+    let checks_toml: toml::Table = toml::from_str(checks_toml.as_str()).unwrap();
+
+    for (file_to_check, value) in checks_toml {
+        if file_to_check == "check-config" {
             if let Some(Value::Array(includes)) = value.get("additional_checks") {
                 for include_path in includes {
                     checks.extend(read_checks_from_path(
-                        &checkers_path
+                        &file_with_checks
                             .parent()
                             .unwrap()
                             .join(include_path.as_str().unwrap()),
-                    )?)
+                    ))
                 }
             }
             continue;
         }
-        let config_path = env::current_dir().unwrap().join(config_path);
+        let file_to_check = env::current_dir().unwrap().join(file_to_check);
         match value {
             Value::Table(config_table) => {
                 checks.extend(get_checks_from_config_table(
-                    checkers_path.clone(),
-                    config_path,
+                    file_with_checks.clone(),
+                    file_to_check,
                     &config_table,
                 ));
             }
@@ -138,8 +146,8 @@ pub(crate) fn read_checks_from_path(
                 for element in array {
                     if let Some(config_table) = element.as_table() {
                         checks.extend(get_checks_from_config_table(
-                            checkers_path.clone(),
-                            config_path.clone(),
+                            file_with_checks.clone(),
+                            file_to_check.clone(),
                             config_table,
                         ));
                     }
@@ -148,5 +156,5 @@ pub(crate) fn read_checks_from_path(
             _ => {}
         }
     }
-    Ok(checks)
+    checks
 }

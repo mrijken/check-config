@@ -1,9 +1,7 @@
 use std::path::PathBuf;
 
-mod file_types;
-use similar::TextDiff;
 mod checkers;
-use checkers::base::Action;
+mod file_types;
 
 use clap::Parser;
 
@@ -23,79 +21,27 @@ struct Cli {
     fix: bool,
 }
 
-fn main() -> Result<(), String> {
+fn main() {
     simple_logger::init().unwrap();
-    log::info!("Starting config-checker");
+    log::info!("Starting check-config");
 
     let cli = Cli::parse();
 
-    let checkers_path = &PathBuf::from(&cli.path);
+    let file_with_checks = &PathBuf::from(&cli.path);
 
-    log::info!("Using checkers from {}", &checkers_path.to_string_lossy());
+    log::info!(
+        "Using checkers from {}",
+        &file_with_checks.to_string_lossy()
+    );
     log::info!("Fix: {}", &cli.fix);
 
-    let checks = read_checks_from_path(checkers_path)?;
-
-    let mut is_all_ok = true;
+    let checks = read_checks_from_path(file_with_checks);
 
     for check in checks {
-        match check.check() {
-            Ok(ist_and_soll) => match ist_and_soll.action() {
-                Action::None => {
-                    log::info!(
-                        "✅ {} - {} - {}",
-                        check.checkers_path().to_string_lossy(),
-                        check.config_path().to_string_lossy(),
-                        check.check_type(),
-                    );
-                }
-                Action::RemoveFile => {
-                    log::error!(
-                        "❌ {} - {} - {} - file is present",
-                        check.checkers_path().to_string_lossy(),
-                        check.config_path().to_string_lossy(),
-                        check.check_type(),
-                    );
-                    is_all_ok = false;
-                }
-                Action::SetContents => {
-                    log::error!(
-                        "❌ {} - {} - {} - diff",
-                        check.checkers_path().to_string_lossy(),
-                        check.config_path().to_string_lossy(),
-                        check.check_type(),
-                    );
-                    log::info!(
-                        "{}",
-                        TextDiff::from_lines(ist_and_soll.ist(), ist_and_soll.soll())
-                            .unified_diff()
-                    );
-                    is_all_ok = false;
-                }
-            },
-            Err(e) => {
-                log::error!(
-                    "Error: {} {} {} {}",
-                    e,
-                    check.checkers_path().to_string_lossy(),
-                    check.config_path().to_string_lossy(),
-                    check.check_type(),
-                );
-                is_all_ok = false;
-            }
+        if cli.fix {
+            check.fix();
+        } else {
+            check.check();
         }
-        if !is_all_ok && cli.fix {
-            log::info!("call fix");
-            if check.fix().is_err() {
-                panic!("Fix failed");
-            }
-            is_all_ok = true;
-        }
-    }
-
-    if is_all_ok {
-        Ok(())
-    } else {
-        Err("One or more errors occured".to_string())
     }
 }
