@@ -2,45 +2,34 @@ use similar::TextDiff;
 
 use crate::file_types::{self, FileType};
 use core::{fmt::Debug as DebugTrait, panic};
-use std::{ffi::OsStr, fs, path::PathBuf};
+use std::{ffi::OsStr, fs, io, path::PathBuf};
+use thiserror::Error;
 
+#[derive(Clone, Debug)]
 pub(crate) enum Action {
     RemoveFile,
-    SetContents,
+    SetContents(String),
     Manual(String),
     None,
 }
-pub(crate) struct IstAndSoll {
-    ist: String,
-    soll: String,
-    action: Action,
-}
 
-impl IstAndSoll {
-    pub fn new(ist: String, soll: String, action: Action) -> Self {
-        Self { ist, soll, action }
-    }
-
-    pub fn ist(&self) -> &str {
-        &self.ist
-    }
-
-    pub fn soll(&self) -> &str {
-        &self.soll
-    }
-
-    pub fn action(&self) -> &Action {
-        &self.action
-    }
+#[derive(Error, Debug)]
+pub enum ActionError {
+    #[error("file not found")]
+    FileNotFound,
 }
 
 pub(crate) trait Check: DebugTrait {
     fn check_type(&self) -> String;
-    fn get_ist_and_soll(&self) -> Result<IstAndSoll, String> {
+    fn get_action(&self) -> Result<Action, String> {
         Err("Function is not implemented".to_string())
     }
     fn file_with_checks(&self) -> &PathBuf;
     fn file_to_check(&self) -> &PathBuf;
+
+    fn get_file_contents(&self) -> io::Result<String> {
+        fs::read_to_string(self.file_to_check())
+    }
 
     fn print_ok(&self) {
         log::info!(
@@ -60,8 +49,8 @@ pub(crate) trait Check: DebugTrait {
             message,
         );
     }
-    fn check(&self) -> Option<IstAndSoll> {
-        let ist_and_soll = match self.get_ist_and_soll() {
+    fn check(&self) -> Option<Action> {
+        let action = match self.get_action() {
             Ok(ist_and_soll) => ist_and_soll,
             Err(e) => {
                 log::error!(
@@ -74,41 +63,44 @@ pub(crate) trait Check: DebugTrait {
                 return None;
             }
         };
-        match ist_and_soll.action() {
+        match action.clone() {
             Action::None => {
                 self.print_ok();
             }
             Action::RemoveFile => {
                 self.print_nok("file is present", "remove file");
             }
-            Action::SetContents => {
+            Action::SetContents(new_contents) => {
                 self.print_nok(
                     "file contents are different",
                     &format!(
                         "{}",
-                        TextDiff::from_lines(ist_and_soll.ist(), ist_and_soll.soll())
-                            .unified_diff()
+                        TextDiff::from_lines(
+                            self.get_file_contents().unwrap().as_str(),
+                            new_contents.as_str()
+                        )
+                        .unified_diff()
                     ),
                 );
             }
             Action::Manual(action) => {
-                self.print_nok("manual action", action);
+                self.print_nok("manual action", action.clone().as_str());
             }
         }
 
-        Some(ist_and_soll)
+        Some(action)
     }
 
     fn fix(&self) {
         log::info!("Fixing file {}", self.file_to_check().to_string_lossy());
-        let ist_and_soll = match self.check() {
-            Some(ist_and_soll) => ist_and_soll,
+        let action = match self.check() {
+            Some(action) => action,
             None => {
                 log::error!("Due to check error, fix can not be done");
                 return;
             }
         };
-        match ist_and_soll.action {
+        match action {
             Action::RemoveFile => match fs::remove_file(self.file_to_check()) {
                 Ok(()) => (),
                 Err(e) => {
@@ -119,16 +111,18 @@ pub(crate) trait Check: DebugTrait {
                     );
                 }
             },
-            Action::SetContents => match fs::write(self.file_to_check(), ist_and_soll.soll) {
-                Ok(()) => (),
-                Err(e) => {
-                    log::error!(
-                        "Cannot write file {} {}",
-                        self.file_to_check().to_string_lossy(),
-                        e
-                    );
+            Action::SetContents(new_contents) => {
+                match fs::write(self.file_to_check(), new_contents) {
+                    Ok(()) => (),
+                    Err(e) => {
+                        log::error!(
+                            "Cannot write file {} {}",
+                            self.file_to_check().to_string_lossy(),
+                            e
+                        );
+                    }
                 }
-            },
+            }
             Action::Manual(_) => (),
             Action::None => (),
         }

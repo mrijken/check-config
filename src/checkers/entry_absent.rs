@@ -1,4 +1,4 @@
-use super::base::{Action, Check, IstAndSoll};
+use super::base::{Action, Check};
 use std::{fs, path::PathBuf};
 
 #[derive(Debug)]
@@ -33,13 +33,9 @@ impl Check for EntryAbsent {
         &self.file_to_check
     }
 
-    fn get_ist_and_soll(&self) -> Result<IstAndSoll, String> {
+    fn get_action(&self) -> Result<Action, String> {
         if !self.file_to_check().exists() {
-            return Ok(IstAndSoll::new(
-                "".to_string(),
-                "".to_string(),
-                Action::None,
-            ));
+            return Ok(Action::None);
         }
 
         let contents = fs::read_to_string(self.file_to_check());
@@ -53,9 +49,9 @@ impl Check for EntryAbsent {
         let action = if contents == new_contents {
             Action::None
         } else {
-            Action::SetContents
+            Action::SetContents(new_contents)
         };
 
-        Ok(IstAndSoll::new(contents, new_contents, action))
+        Ok(action)
     }
 }

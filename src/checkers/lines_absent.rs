@@ -1,4 +1,4 @@
-use super::base::{Action, Check, IstAndSoll};
+use super::base::{Action, Check};
 use std::{fs, path::PathBuf};
 
 #[derive(Debug)]
@@ -33,22 +33,18 @@ impl Check for LinesAbsent {
         &self.file_to_check
     }
 
-    fn get_ist_and_soll(&self) -> Result<IstAndSoll, String> {
+    fn get_action(&self) -> Result<Action, String> {
         if !self.file_to_check().exists() {
-            return Ok(IstAndSoll::new(
-                "".to_string(),
-                "".to_string(),
-                Action::RemoveFile,
-            ));
+            return Ok(Action::RemoveFile);
         }
 
         match fs::read_to_string(self.file_to_check()) {
             Ok(contents) => {
                 if contents.contains(&self.lines) {
                     let new_contents = contents.replace(&self.lines, "");
-                    Ok(IstAndSoll::new(contents, new_contents, Action::SetContents))
+                    Ok(Action::SetContents(new_contents))
                 } else {
-                    Ok(IstAndSoll::new(contents.clone(), contents, Action::None))
+                    Ok(Action::None)
                 }
             }
             Err(_) => Err("error performing check".to_string()),

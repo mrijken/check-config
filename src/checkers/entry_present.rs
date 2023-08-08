@@ -1,4 +1,4 @@
-use super::base::{Action, Check, IstAndSoll};
+use super::base::{Action, Check};
 use std::{fs, path::PathBuf};
 
 #[derive(Debug)]
@@ -33,7 +33,7 @@ impl Check for EntryPresent {
         &self.file_to_check
     }
 
-    fn get_ist_and_soll(&self) -> Result<IstAndSoll, String> {
+    fn get_action(&self) -> Result<Action, String> {
         let contents = if !self.file_to_check().exists() {
             "".to_string()
         } else {
@@ -49,8 +49,8 @@ impl Check for EntryPresent {
         let action = if contents == new_contents {
             Action::None
         } else {
-            Action::SetContents
+            Action::SetContents(new_contents)
         };
-        Ok(IstAndSoll::new(contents, new_contents, action))
+        Ok(action)
     }
 }

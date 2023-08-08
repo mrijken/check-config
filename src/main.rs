@@ -26,7 +26,6 @@ fn main() {
     log::info!("Starting check-config");
 
     let cli = Cli::parse();
-
     let file_with_checks = &PathBuf::from(&cli.path);
 
     log::info!(

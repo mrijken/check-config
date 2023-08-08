@@ -1,4 +1,4 @@
-use super::base::{Action, Check, IstAndSoll};
+use super::base::{Action, Check};
 use std::{fs, path::PathBuf};
 
 #[derive(Debug)]
@@ -33,7 +33,7 @@ impl Check for EntryRegexMatch {
         &self.file_to_check
     }
 
-    fn check(&self) -> Option<IstAndSoll> {
+    fn check(&self) -> Option<Action> {
         let contents = if !self.file_to_check().exists() {
             "".to_string()
         } else {
@@ -62,6 +62,6 @@ impl Check for EntryRegexMatch {
                 Action::Manual(e)
             }
         };
-        Some(IstAndSoll::new("".to_string(), "".to_string(), action))
+        Some(action)
     }
 }

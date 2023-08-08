@@ -286,7 +286,7 @@ version = "[0-9][0-9]"
 
         assert_eq!(
             super::validate_regex(contents, contents_with_unmatched_regex),
-            Err("Regex does not match".to_string())
+            Err("Regex does not match. key: version, regex: [0-9][0-9], value: 1.0".to_string())
         );
     }
 }
