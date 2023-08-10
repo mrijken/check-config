@@ -1,4 +1,4 @@
-use super::base::{Action, Check};
+use super::base::{Action, Check, CheckError};
 use std::{fs, path::PathBuf};
 
 #[derive(Debug)]
@@ -33,25 +33,20 @@ impl Check for EntryAbsent {
         &self.file_to_check
     }
 
-    fn get_action(&self) -> Result<Action, String> {
+    fn get_action(&self) -> Result<Action, CheckError> {
         if !self.file_to_check().exists() {
             return Ok(Action::None);
         }
 
-        let contents = fs::read_to_string(self.file_to_check());
-        if let Err(s) = contents {
-            return Err(s.to_string());
-        }
-        let contents = contents.unwrap();
+        let contents =
+            fs::read_to_string(self.file_to_check()).map_err(CheckError::FileCanNotBeRead)?;
 
-        let new_contents = self.file_type().unset(&contents, &self.value).unwrap();
+        let new_contents = self.file_type()?.unset(&contents, &self.value).unwrap();
 
-        let action = if contents == new_contents {
-            Action::None
+        if contents == new_contents {
+            Ok(Action::None)
         } else {
-            Action::SetContents(new_contents)
-        };
-
-        Ok(action)
+            Ok(Action::SetContents(new_contents))
+        }
     }
 }

@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use super::base::{Action, Check};
+use super::base::{Action, Check, CheckError};
 
 #[derive(Debug)]
 pub(crate) struct FileAbsent {
@@ -32,10 +32,9 @@ impl Check for FileAbsent {
         &self.file_to_check
     }
 
-    fn get_action(&self) -> Result<Action, String> {
+    fn get_action(&self) -> Result<Action, CheckError> {
         match self.file_to_check.exists() {
             true => Ok(Action::RemoveFile),
-
             false => Ok(Action::None),
         }
     }

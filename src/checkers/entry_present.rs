@@ -1,4 +1,4 @@
-use super::base::{Action, Check};
+use super::base::{Action, Check, CheckError};
 use std::{fs, path::PathBuf};
 
 #[derive(Debug)]
@@ -33,24 +33,19 @@ impl Check for EntryPresent {
         &self.file_to_check
     }
 
-    fn get_action(&self) -> Result<Action, String> {
+    fn get_action(&self) -> Result<Action, CheckError> {
         let contents = if !self.file_to_check().exists() {
             "".to_string()
         } else {
-            let contents = fs::read_to_string(self.file_to_check());
-            if let Err(s) = contents {
-                return Err(s.to_string());
-            }
-            contents.unwrap()
+            fs::read_to_string(self.file_to_check()).map_err(CheckError::FileCanNotBeRead)?
         };
 
-        let new_contents = self.file_type().set(&contents, &self.value).unwrap();
+        let new_contents = self.file_type()?.set(&contents, &self.value).unwrap();
 
-        let action = if contents == new_contents {
-            Action::None
+        if contents == new_contents {
+            Ok(Action::None)
         } else {
-            Action::SetContents(new_contents)
-        };
-        Ok(action)
+            Ok(Action::SetContents(new_contents))
+        }
     }
 }

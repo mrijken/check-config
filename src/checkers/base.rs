@@ -14,15 +14,25 @@ pub(crate) enum Action {
 }
 
 #[derive(Error, Debug)]
-pub enum ActionError {
-    #[error("file not found")]
-    FileNotFound,
+pub enum CheckError {
+    #[error("file can not be read")]
+    FileCanNotBeRead(#[from] io::Error),
+    #[error("unknown file type; do not know how to handle")]
+    UnknownFileType(String),
+    #[error("file can not be removed")]
+    FileCanNotBeRemoved,
+    #[error("file can not be written")]
+    FileCanNotBeWritten,
+    #[error("invalid regex")]
+    InvalidRegex(String),
+    #[error("key not found")]
+    KeyNotFound(String),
 }
 
 pub(crate) trait Check: DebugTrait {
     fn check_type(&self) -> String;
-    fn get_action(&self) -> Result<Action, String> {
-        Err("Function is not implemented".to_string())
+    fn get_action(&self) -> Result<Action, CheckError> {
+        panic!("Function is not implemented");
     }
     fn file_with_checks(&self) -> &PathBuf;
     fn file_to_check(&self) -> &PathBuf;
@@ -49,7 +59,7 @@ pub(crate) trait Check: DebugTrait {
             message,
         );
     }
-    fn check(&self) -> Option<Action> {
+    fn check(&self) -> Result<Action, CheckError> {
         let action = match self.get_action() {
             Ok(ist_and_soll) => ist_and_soll,
             Err(e) => {
@@ -60,7 +70,7 @@ pub(crate) trait Check: DebugTrait {
                     self.file_to_check().to_string_lossy(),
                     self.check_type(),
                 );
-                return None;
+                return Err(e);
             }
         };
         match action.clone() {
@@ -88,59 +98,66 @@ pub(crate) trait Check: DebugTrait {
             }
         }
 
-        Some(action)
+        Ok(action)
     }
 
-    fn fix(&self) {
+    fn fix(&self) -> Result<(), CheckError> {
         log::info!("Fixing file {}", self.file_to_check().to_string_lossy());
-        let action = match self.check() {
-            Some(action) => action,
-            None => {
-                log::error!("Due to check error, fix can not be done");
-                return;
-            }
-        };
+        let action = self.check()?;
         match action {
             Action::RemoveFile => match fs::remove_file(self.file_to_check()) {
-                Ok(()) => (),
+                Ok(()) => Ok(()),
                 Err(e) => {
                     log::error!(
                         "Cannot remove file {} {}",
                         self.file_to_check().to_string_lossy(),
                         e
                     );
+                    Err(CheckError::FileCanNotBeRemoved)
                 }
             },
             Action::SetContents(new_contents) => {
                 match fs::write(self.file_to_check(), new_contents) {
-                    Ok(()) => (),
+                    Ok(()) => Ok(()),
                     Err(e) => {
                         log::error!(
                             "Cannot write file {} {}",
                             self.file_to_check().to_string_lossy(),
                             e
                         );
+                        Err(CheckError::FileCanNotBeWritten)
                     }
                 }
             }
-            Action::Manual(_) => (),
-            Action::None => (),
+            Action::Manual(_) => Ok(()),
+            Action::None => Ok(()),
         }
     }
 
     /// Get the file type of the file_to_check
-    fn file_type(&self) -> Box<dyn FileType> {
-        if self.file_to_check().extension() == Some(OsStr::new("toml")) {
-            return Box::new(file_types::toml::Toml::new());
-            // } else if self.file_to_check().extension() == Some(OsStr::new("json")) {
+    fn file_type(&self) -> Result<Box<dyn FileType>, CheckError> {
+        let extension = self.file_to_check().extension();
+        if extension.is_none() {
+            return Err(CheckError::UnknownFileType(
+                "No extension found".to_string(),
+            ));
+        };
+
+        let extension = extension.unwrap();
+
+        if extension == OsStr::new("toml") {
+            return Ok(Box::new(file_types::toml::Toml::new()));
+            // } else if extension == Some(OsStr::new("json")) {
             //     return file_types::json::Json;
-            // } else if self.file_to_check().extension() == Some(OsStr::new("yaml"))
-            //     || self.file_to_check().extension() == Some(OsStr::new("yml"))
+            // } else if extension == Some(OsStr::new("yaml"))
+            //     || extension == Some(OsStr::new("yml"))
             // {
             //     return FileType::Yaml;
-            // } else if self.file_to_check().extension() == Some(OsStr::new("ini")) {
+            // } else if extension == Some(OsStr::new("ini")) {
             //     return FileType::Ini;
         }
-        panic!("Unknown file type");
+        Err(CheckError::UnknownFileType(
+            extension.to_string_lossy().to_string(),
+        ))
     }
 }

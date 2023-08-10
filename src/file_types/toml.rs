@@ -1,6 +1,6 @@
-use std::fmt::format;
+use crate::checkers::base::CheckError;
 
-use super::FileType;
+use super::{FileType, RegexValidateResult};
 use regex::Regex;
 use toml_edit::Document;
 pub(crate) struct Toml {}
@@ -12,20 +12,27 @@ impl Toml {
 }
 
 impl FileType for Toml {
-    fn set(&self, contents: &str, table_to_set: &toml::Table) -> Result<String, String> {
+    fn set(&self, contents: &str, table_to_set: &toml::Table) -> Result<String, CheckError> {
         set(contents, table_to_set)
     }
 
-    fn unset(&self, contents: &str, table_to_unset: &toml::Table) -> Result<String, String> {
+    fn unset(&self, contents: &str, table_to_unset: &toml::Table) -> Result<String, CheckError> {
         unset(contents, table_to_unset)
     }
 
-    fn validate_regex(&self, contents: &str, table_with_regex: &toml::Table) -> Result<(), String> {
+    fn validate_regex(
+        &self,
+        contents: &str,
+        table_with_regex: &toml::Table,
+    ) -> Result<RegexValidateResult, CheckError> {
         validate_regex(contents, table_with_regex)
     }
 }
 
-fn validate_regex(contents: &str, table_with_regex: &toml::Table) -> Result<(), String> {
+fn validate_regex(
+    contents: &str,
+    table_with_regex: &toml::Table,
+) -> Result<RegexValidateResult, CheckError> {
     let mut doc = contents.parse::<Document>().unwrap();
     let doc_table = doc.as_table_mut();
     _validate_key_regex(doc_table, table_with_regex)
@@ -34,42 +41,42 @@ fn validate_regex(contents: &str, table_with_regex: &toml::Table) -> Result<(), 
 fn _validate_key_regex(
     doc: &mut toml_edit::Table,
     table_with_regex: &toml::Table,
-) -> Result<(), String> {
+) -> Result<RegexValidateResult, CheckError> {
     for (k, v) in table_with_regex {
         match v {
             toml::Value::String(raw_regex) => match doc.get(k) {
                 Some(toml_edit::Item::Value(toml_edit::Value::String(string_to_match))) => {
                     let regex = match Regex::new(raw_regex) {
                         Ok(regex) => regex,
-                        Err(s) => return Err(s.to_string()),
+                        Err(s) => return Err(CheckError::InvalidRegex(s.to_string())),
                     };
                     if regex.is_match(string_to_match.value()) {
-                        return Ok(());
+                        return Ok(RegexValidateResult::Valid);
                     } else {
-                        return Err(format!(
+                        return Ok(RegexValidateResult::Invalid(format!(
                             "Regex does not match. key: {}, regex: {}, value: {}",
                             k,
                             raw_regex,
                             string_to_match.value()
-                        ));
+                        )));
                     }
                 }
-                _ => return Err("key does not exists".to_string()),
+                _ => return Err(CheckError::KeyNotFound(k.to_string())),
             },
             toml::Value::Table(t) => match doc.get_mut(k) {
                 Some(toml_edit::Item::Table(child_doc)) => {
                     return _validate_key_regex(child_doc, t)
                 }
-                _ => return Err("key does not exists".to_string()),
+                _ => return Err(CheckError::KeyNotFound(k.to_string())),
             },
 
             _ => {}
         }
     }
-    Err("".to_string())
+    Ok(RegexValidateResult::Valid)
 }
 
-fn set(contents: &str, table_to_set: &toml::Table) -> Result<String, String> {
+fn set(contents: &str, table_to_set: &toml::Table) -> Result<String, CheckError> {
     let mut doc = contents.parse::<Document>().unwrap();
     let doc_table = doc.as_table_mut();
 
@@ -120,7 +127,7 @@ fn _set_key_value(doc: &mut toml_edit::Table, table_to_set: &toml::Table) {
     }
 }
 
-fn unset(contents: &str, table_to_unset: &toml::Table) -> Result<String, String> {
+fn unset(contents: &str, table_to_unset: &toml::Table) -> Result<String, CheckError> {
     // remove all the keys in the table where the key is the end node
     let mut doc = contents.parse::<Document>().unwrap();
     let doc_table = doc.as_table_mut();
@@ -151,6 +158,7 @@ fn _remove_key(doc: &mut toml_edit::Table, table_to_unset: &toml::Table) {
 
 #[cfg(test)]
 mod tests {
+    use crate::{checkers::base::CheckError, file_types::RegexValidateResult};
 
     #[test]
     fn test_unset() {
@@ -272,8 +280,8 @@ version = "[0-9]\\.[0-9]"
         let contents_with_matched_regex = contents_with_matched_regex.as_table().unwrap();
 
         assert_eq!(
-            super::validate_regex(contents, contents_with_matched_regex),
-            Ok(())
+            super::validate_regex(contents, contents_with_matched_regex).unwrap(),
+            RegexValidateResult::Valid
         );
 
         let contents_with_unmatched_regex = r#"[dependencies.bar]
@@ -285,8 +293,10 @@ version = "[0-9][0-9]"
         let contents_with_unmatched_regex = contents_with_unmatched_regex.as_table().unwrap();
 
         assert_eq!(
-            super::validate_regex(contents, contents_with_unmatched_regex),
-            Err("Regex does not match. key: version, regex: [0-9][0-9], value: 1.0".to_string())
+            super::validate_regex(contents, contents_with_unmatched_regex).unwrap(),
+            RegexValidateResult::Invalid(
+                "Regex does not match. key: version, regex: [0-9][0-9], value: 1.0".to_string()
+            )
         );
     }
 }

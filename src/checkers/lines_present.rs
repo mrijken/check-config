@@ -1,4 +1,4 @@
-use super::base::{Action, Check};
+use super::base::{Action, Check, CheckError};
 use std::{fs, path::PathBuf};
 
 #[derive(Debug)]
@@ -33,24 +33,21 @@ impl Check for LinesPresent {
         &self.file_to_check
     }
 
-    fn get_action(&self) -> Result<Action, String> {
+    fn get_action(&self) -> Result<Action, CheckError> {
         if !self.file_to_check().exists() {
             return Ok(Action::SetContents(self.lines.clone()));
         }
-        match fs::read_to_string(self.file_to_check()) {
-            Ok(contents) => {
-                if contents.contains(&self.lines) {
-                    Ok(Action::None)
-                } else {
-                    let mut new_contents = contents.clone();
-                    if !new_contents.ends_with('\n') {
-                        new_contents += "\n";
-                    }
-                    new_contents += &self.lines.clone();
-                    Ok(Action::SetContents(new_contents))
-                }
+        let contents =
+            fs::read_to_string(self.file_to_check()).map_err(CheckError::FileCanNotBeRead)?;
+        if contents.contains(&self.lines) {
+            Ok(Action::None)
+        } else {
+            let mut new_contents = contents.clone();
+            if !new_contents.ends_with('\n') {
+                new_contents += "\n";
             }
-            Err(err) => Err(err.to_string()),
+            new_contents += &self.lines.clone();
+            Ok(Action::SetContents(new_contents))
         }
     }
 }

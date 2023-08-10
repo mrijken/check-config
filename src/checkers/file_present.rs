@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use super::base::{Action, Check};
+use super::base::{Action, Check, CheckError};
 
 #[derive(Debug)]
 pub(crate) struct FilePresent {
@@ -32,7 +32,7 @@ impl Check for FilePresent {
         &self.file_to_check
     }
 
-    fn get_action(&self) -> Result<Action, String> {
+    fn get_action(&self) -> Result<Action, CheckError> {
         match self.file_to_check.exists() {
             false => Ok(Action::SetContents("".to_string())),
             true => Ok(Action::None),

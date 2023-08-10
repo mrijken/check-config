@@ -1,4 +1,6 @@
-use super::base::{Action, Check};
+use crate::file_types::RegexValidateResult;
+
+use super::base::{Action, Check, CheckError};
 use std::{fs, path::PathBuf};
 
 #[derive(Debug)]
@@ -33,7 +35,7 @@ impl Check for EntryRegexMatch {
         &self.file_to_check
     }
 
-    fn check(&self) -> Option<Action> {
+    fn check(&self) -> Result<Action, CheckError> {
         let contents = if !self.file_to_check().exists() {
             "".to_string()
         } else {
@@ -46,22 +48,18 @@ impl Check for EntryRegexMatch {
                     self.file_to_check().to_string_lossy(),
                     self.check_type(),
                 );
-                return None;
+                return Err(CheckError::FileCanNotBeRead(e));
             }
             contents.unwrap()
         };
 
         // Todo: multple actions?
-        let action = match self.file_type().validate_regex(&contents, &self.value) {
-            Ok(_) => {
+        match self.file_type()?.validate_regex(&contents, &self.value)? {
+            RegexValidateResult::Invalid(e) => Ok(Action::Manual(e)),
+            RegexValidateResult::Valid => {
                 self.print_ok();
-                Action::None
+                Ok(Action::None)
             }
-            Err(e) => {
-                self.print_nok("manual fix regex", e.to_string().as_str());
-                Action::Manual(e)
-            }
-        };
-        Some(action)
+        }
     }
 }
