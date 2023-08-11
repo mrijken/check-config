@@ -3,6 +3,7 @@ use std::path::PathBuf;
 mod checkers;
 mod file_types;
 
+use checkers::base::CheckError;
 use clap::Parser;
 
 use crate::checkers::read_checks_from_path;
@@ -21,7 +22,7 @@ struct Cli {
     fix: bool,
 }
 
-fn main() {
+fn main() -> Result<(), CheckError> {
     simple_logger::init().unwrap();
     log::info!("Starting check-config");
 
@@ -38,9 +39,10 @@ fn main() {
 
     for check in checks {
         if cli.fix {
-            check.fix();
+            check.fix()?;
         } else {
-            check.check();
+            check.check()?;
         }
     }
+    Ok(())
 }

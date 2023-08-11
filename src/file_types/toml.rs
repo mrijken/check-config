@@ -158,7 +158,7 @@ fn _remove_key(doc: &mut toml_edit::Table, table_to_unset: &toml::Table) {
 
 #[cfg(test)]
 mod tests {
-    use crate::{checkers::base::CheckError, file_types::RegexValidateResult};
+    use crate::file_types::RegexValidateResult;
 
     #[test]
     fn test_unset() {
