@@ -42,7 +42,7 @@ impl Check for EntryRegexMatch {
                     self.generic_check().file_to_check().to_string_lossy(),
                     self.check_type(),
                 );
-                return Err(CheckError::FileCanNotBeRead(e));
+                return Err(e);
             }
             contents.unwrap()
         };

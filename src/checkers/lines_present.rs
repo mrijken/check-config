@@ -31,10 +31,7 @@ impl Check for LinesPresent {
         if !self.generic_check().file_to_check().exists() {
             return Ok(Action::SetContents(self.lines.clone()));
         }
-        let contents = self
-            .generic_check()
-            .get_file_contents()
-            .map_err(CheckError::FileCanNotBeRead)?;
+        let contents = self.generic_check().get_file_contents()?;
         if contents.contains(&self.lines) {
             Ok(Action::None)
         } else {

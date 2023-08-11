@@ -1,7 +1,7 @@
 use similar::TextDiff;
 
 use core::{fmt::Debug as DebugTrait, panic};
-use std::{fs, io};
+use std::io;
 use thiserror::Error;
 
 use super::GenericCheck;
@@ -28,6 +28,8 @@ pub enum CheckError {
     InvalidRegex(String),
     #[error("key not found")]
     KeyNotFound(String),
+    #[error("invalid file format")]
+    InvalidFileFormat(String),
 }
 
 pub(crate) trait Check: DebugTrait {
@@ -104,29 +106,9 @@ pub(crate) trait Check: DebugTrait {
         );
         let action = self.check()?;
         match action {
-            Action::RemoveFile => match fs::remove_file(self.generic_check().file_to_check()) {
-                Ok(()) => Ok(()),
-                Err(e) => {
-                    log::error!(
-                        "Cannot remove file {} {}",
-                        self.generic_check().file_to_check().to_string_lossy(),
-                        e
-                    );
-                    Err(CheckError::FileCanNotBeRemoved)
-                }
-            },
+            Action::RemoveFile => self.generic_check().remove_file(),
             Action::SetContents(new_contents) => {
-                match fs::write(self.generic_check().file_to_check(), new_contents) {
-                    Ok(()) => Ok(()),
-                    Err(e) => {
-                        log::error!(
-                            "Cannot write file {} {}",
-                            self.generic_check().file_to_check().to_string_lossy(),
-                            e
-                        );
-                        Err(CheckError::FileCanNotBeWritten)
-                    }
-                }
+                self.generic_check().set_file_contents(new_contents)
             }
             Action::Manual(_) => Ok(()),
             Action::None => Ok(()),

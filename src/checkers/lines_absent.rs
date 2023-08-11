@@ -32,10 +32,7 @@ impl Check for LinesAbsent {
             return Ok(Action::RemoveFile);
         }
 
-        let contents = self
-            .generic_check()
-            .get_file_contents()
-            .map_err(CheckError::FileCanNotBeRead)?;
+        let contents = self.generic_check().get_file_contents()?;
         if contents.contains(&self.lines) {
             let new_contents = contents.replace(&self.lines, "");
             Ok(Action::SetContents(new_contents))

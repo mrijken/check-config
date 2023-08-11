@@ -31,9 +31,7 @@ impl Check for KeyValuePresent {
         let contents = if !self.generic_check().file_to_check().exists() {
             "".to_string()
         } else {
-            self.generic_check()
-                .get_file_contents()
-                .map_err(CheckError::FileCanNotBeRead)?
+            self.generic_check().get_file_contents()?
         };
 
         let new_contents = self

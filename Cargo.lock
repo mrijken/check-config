@@ -82,6 +82,7 @@ dependencies = [
  "regex",
  "serde",
  "serde-toml-merge",
+ "serde_json",
  "serde_yaml",
  "similar",
  "simple_logger",
@@ -356,6 +357,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a78072b550e5c20bc4a9d1384be28809cbdb7b25b2b4707ddc6d908b7e6de3bf"
 dependencies = [
  "toml",
+]
+
+[[package]]
+name = "serde_json"
+version = "1.0.104"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "076066c5f1078eac5b722a31827a8832fe108bed65dfa75e233c89f8206e976c"
+dependencies = [
+ "itoa",
+ "ryu",
+ "serde",
 ]
 
 [[package]]

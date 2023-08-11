@@ -1,4 +1,4 @@
-use std::{env, fs, io, path::PathBuf};
+use std::{env, fs, path::PathBuf};
 
 use toml::Value;
 
@@ -14,6 +14,11 @@ pub(crate) mod key_value_present;
 pub(crate) mod key_value_regex_match;
 pub(crate) mod lines_absent;
 pub(crate) mod lines_present;
+
+#[allow(dead_code)]
+fn unused1() {}
+
+fn unused2() {}
 
 fn get_checks_from_config_table(
     file_with_checks: PathBuf,
@@ -60,7 +65,7 @@ pub(crate) struct GenericCheck {
     // path to the file which needs to be checked
     file_to_check: PathBuf,
     // overriden file type
-    file_type: Option<String>,
+    file_type_override: Option<String>,
 }
 
 impl GenericCheck {
@@ -72,33 +77,59 @@ impl GenericCheck {
         &self.file_to_check
     }
 
-    fn get_file_contents(&self) -> io::Result<String> {
-        fs::read_to_string(self.file_to_check())
+    fn get_file_contents(&self) -> Result<String, CheckError> {
+        fs::read_to_string(self.file_to_check()).map_err(CheckError::FileCanNotBeRead)
+    }
+
+    fn set_file_contents(&self, contents: String) -> Result<(), CheckError> {
+        if let Err(e) = fs::write(self.file_to_check(), contents) {
+            log::error!(
+                "Cannot write file {} {}",
+                self.file_to_check().to_string_lossy(),
+                e
+            );
+            Err(CheckError::FileCanNotBeWritten)
+        } else {
+            Ok(())
+        }
+    }
+
+    fn remove_file(&self) -> Result<(), CheckError> {
+        if let Err(e) = fs::remove_file(self.file_to_check()) {
+            log::error!(
+                "Cannot remove file {} {}",
+                self.file_to_check().to_string_lossy(),
+                e
+            );
+            Err(CheckError::FileCanNotBeRemoved)
+        } else {
+            Ok(())
+        }
     }
 
     /// Get the file type of the file_to_check
     fn file_type(&self) -> Result<Box<dyn FileType>, CheckError> {
         let extension = self.file_to_check().extension();
-        if extension.is_none() {
+        if extension.is_none() && self.file_type_override.is_none() {
             return Err(CheckError::UnknownFileType(
                 "No extension found".to_string(),
             ));
         };
 
         let extension = self
-            .file_type
+            .file_type_override
             .clone()
             .unwrap_or(extension.unwrap().to_str().unwrap().to_string());
 
         if extension == "toml" {
             return Ok(Box::new(file_types::toml::Toml::new()));
-            // } else if extension == Some(OsStr::new("json")) {
+            // } else if extension == "json") {
             //     return file_types::json::Json;
-            // } else if extension == Some(OsStr::new("yaml"))
-            //     || extension == Some(OsStr::new("yml"))
+            // } else if extension == "yaml")
+            //     || extension == "yml")
             // {
             //     return FileType::Yaml;
-            // } else if extension == Some(OsStr::new("ini")) {
+            // } else if extension == "ini" {
             //     return FileType::Ini;
         }
         Err(CheckError::UnknownFileType(extension))
@@ -126,7 +157,7 @@ fn get_check_from_check_table(
     let generic_check = GenericCheck {
         file_with_checks: file_with_checks.clone(),
         file_to_check: file_to_check.clone(),
-        file_type: determine_filetype_from_config_table(&mut check_table),
+        file_type_override: determine_filetype_from_config_table(&mut check_table),
     };
     let check: Box<dyn Check> = match check_type {
         "file_absent" => Box::new(file_absent::FileAbsent::new(generic_check)),
