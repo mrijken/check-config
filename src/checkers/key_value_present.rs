@@ -2,7 +2,7 @@ use super::base::{Action, Check, CheckError};
 use std::{fs, path::PathBuf};
 
 #[derive(Debug)]
-pub(crate) struct EntryAbsent {
+pub(crate) struct KeyValuePresent {
     // path to the file where the checkers are defined
     file_with_checks: PathBuf,
     // path to the file which needs to be checked
@@ -10,7 +10,7 @@ pub(crate) struct EntryAbsent {
     value: toml::Table,
 }
 
-impl EntryAbsent {
+impl KeyValuePresent {
     pub fn new(file_with_checks: PathBuf, file_to_check: PathBuf, value: toml::Table) -> Self {
         Self {
             file_with_checks,
@@ -20,9 +20,9 @@ impl EntryAbsent {
     }
 }
 
-impl Check for EntryAbsent {
+impl Check for KeyValuePresent {
     fn check_type(&self) -> String {
-        "entry_absent".to_string()
+        "key_value_present".to_string()
     }
 
     fn file_with_checks(&self) -> &PathBuf {
@@ -34,14 +34,13 @@ impl Check for EntryAbsent {
     }
 
     fn get_action(&self) -> Result<Action, CheckError> {
-        if !self.file_to_check().exists() {
-            return Ok(Action::None);
-        }
+        let contents = if !self.file_to_check().exists() {
+            "".to_string()
+        } else {
+            fs::read_to_string(self.file_to_check()).map_err(CheckError::FileCanNotBeRead)?
+        };
 
-        let contents =
-            fs::read_to_string(self.file_to_check()).map_err(CheckError::FileCanNotBeRead)?;
-
-        let new_contents = self.file_type()?.unset(&contents, &self.value).unwrap();
+        let new_contents = self.file_type()?.set(&contents, &self.value).unwrap();
 
         if contents == new_contents {
             Ok(Action::None)

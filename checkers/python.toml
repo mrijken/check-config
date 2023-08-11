@@ -15,19 +15,19 @@ __lines__ = "absent"
 integer = "[0-9]*"
 double = "[0-9]*\\.[0-9]*"
 
-["test/present1.toml".entry_present]
+["test/present1.toml".key_value_present]
 key = "value"
 
-[["test/present1.toml".entry_present.array]]
+[["test/present1.toml".key_value_present.array]]
 key1 = "value"
 
-[["test/present1.toml".entry_present.array]]
+[["test/present1.toml".key_value_present.array]]
 key2 = "value2"
 
-["test/Cargo.toml".entry_present.dependencies]
+["test/Cargo.toml".key_value_present.dependencies]
 bar = "1.0"
 
-["test/Cargo.toml".entry_absent.dependencies.foo]
+["test/Cargo.toml".key_absent.dependencies.foo]
 
-["test/Cargo.toml".entry_absent.dependencies]
+["test/Cargo.toml".key_absent.dependencies]
 test = "remove"

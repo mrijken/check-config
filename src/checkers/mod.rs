@@ -5,11 +5,11 @@ use toml::Value;
 use self::base::Check;
 
 pub(crate) mod base;
-pub(crate) mod entry_absent;
-pub(crate) mod entry_present;
 pub(crate) mod entry_regex_match;
 pub(crate) mod file_absent;
 pub(crate) mod file_present;
+pub(crate) mod key_absent;
+pub(crate) mod key_value_present;
 pub(crate) mod lines_absent;
 pub(crate) mod lines_present;
 
@@ -88,12 +88,12 @@ fn get_check_from_check_table(
                 .unwrap()
                 .to_string(),
         )),
-        "entry_present" => Box::new(entry_present::EntryPresent::new(
+        "key_value_present" => Box::new(key_value_present::KeyValuePresent::new(
             file_with_checks,
             file_to_check,
             check_table.clone(),
         )),
-        "entry_absent" => Box::new(entry_absent::EntryAbsent::new(
+        "key_absent" => Box::new(key_absent::KeyAbsent::new(
             file_with_checks.clone(),
             file_to_check,
             check_table.clone(),
