@@ -1,20 +1,18 @@
-use super::base::{Action, Check, CheckError};
-use std::{fs, path::PathBuf};
+use super::{
+    base::{Action, Check, CheckError},
+    GenericCheck,
+};
 
 #[derive(Debug)]
 pub(crate) struct KeyValuePresent {
-    // path to the file where the checkers are defined
-    file_with_checks: PathBuf,
-    // path to the file which needs to be checked
-    file_to_check: PathBuf,
+    generic_check: GenericCheck,
     value: toml::Table,
 }
 
 impl KeyValuePresent {
-    pub fn new(file_with_checks: PathBuf, file_to_check: PathBuf, value: toml::Table) -> Self {
+    pub fn new(generic_check: GenericCheck, value: toml::Table) -> Self {
         Self {
-            file_with_checks,
-            file_to_check,
+            generic_check,
             value,
         }
     }
@@ -25,22 +23,24 @@ impl Check for KeyValuePresent {
         "key_value_present".to_string()
     }
 
-    fn file_with_checks(&self) -> &PathBuf {
-        &self.file_with_checks
-    }
-
-    fn file_to_check(&self) -> &PathBuf {
-        &self.file_to_check
+    fn generic_check(&self) -> &GenericCheck {
+        &self.generic_check
     }
 
     fn get_action(&self) -> Result<Action, CheckError> {
-        let contents = if !self.file_to_check().exists() {
+        let contents = if !self.generic_check().file_to_check().exists() {
             "".to_string()
         } else {
-            fs::read_to_string(self.file_to_check()).map_err(CheckError::FileCanNotBeRead)?
+            self.generic_check()
+                .get_file_contents()
+                .map_err(CheckError::FileCanNotBeRead)?
         };
 
-        let new_contents = self.file_type()?.set(&contents, &self.value).unwrap();
+        let new_contents = self
+            .generic_check()
+            .file_type()?
+            .set(&contents, &self.value)
+            .unwrap();
 
         if contents == new_contents {
             Ok(Action::None)

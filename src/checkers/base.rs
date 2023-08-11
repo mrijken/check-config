@@ -1,9 +1,10 @@
 use similar::TextDiff;
 
-use crate::file_types::{self, FileType};
 use core::{fmt::Debug as DebugTrait, panic};
-use std::{ffi::OsStr, fs, io, path::PathBuf};
+use std::{fs, io};
 use thiserror::Error;
+
+use super::GenericCheck;
 
 #[derive(Clone, Debug)]
 pub(crate) enum Action {
@@ -31,29 +32,24 @@ pub enum CheckError {
 
 pub(crate) trait Check: DebugTrait {
     fn check_type(&self) -> String;
+    fn generic_check(&self) -> &GenericCheck;
     fn get_action(&self) -> Result<Action, CheckError> {
         panic!("Function is not implemented");
-    }
-    fn file_with_checks(&self) -> &PathBuf;
-    fn file_to_check(&self) -> &PathBuf;
-
-    fn get_file_contents(&self) -> io::Result<String> {
-        fs::read_to_string(self.file_to_check())
     }
 
     fn print_ok(&self) {
         log::info!(
             "✅ {} - {} - {}",
-            self.file_with_checks().to_string_lossy(),
-            self.file_to_check().to_string_lossy(),
+            self.generic_check().file_with_checks().to_string_lossy(),
+            self.generic_check().file_to_check().to_string_lossy(),
             self.check_type(),
         );
     }
     fn print_nok(&self, message_type: &str, message: &str) {
         log::info!(
             "❌ {} - {} - {} - {}\n{}",
-            self.file_with_checks().to_string_lossy(),
-            self.file_to_check().to_string_lossy(),
+            self.generic_check().file_with_checks().to_string_lossy(),
+            self.generic_check().file_to_check().to_string_lossy(),
             self.check_type(),
             message_type,
             message,
@@ -66,8 +62,8 @@ pub(crate) trait Check: DebugTrait {
                 log::error!(
                     "Error: {} {} {} {}",
                     e,
-                    self.file_with_checks().to_string_lossy(),
-                    self.file_to_check().to_string_lossy(),
+                    self.generic_check().file_with_checks().to_string_lossy(),
+                    self.generic_check().file_to_check().to_string_lossy(),
                     self.check_type(),
                 );
                 return Err(e);
@@ -86,7 +82,7 @@ pub(crate) trait Check: DebugTrait {
                     &format!(
                         "{}",
                         TextDiff::from_lines(
-                            self.get_file_contents().unwrap().as_str(),
+                            self.generic_check().get_file_contents().unwrap().as_str(),
                             new_contents.as_str()
                         )
                         .unified_diff()
@@ -102,27 +98,30 @@ pub(crate) trait Check: DebugTrait {
     }
 
     fn fix(&self) -> Result<(), CheckError> {
-        log::info!("Fixing file {}", self.file_to_check().to_string_lossy());
+        log::info!(
+            "Fixing file {}",
+            self.generic_check().file_to_check().to_string_lossy()
+        );
         let action = self.check()?;
         match action {
-            Action::RemoveFile => match fs::remove_file(self.file_to_check()) {
+            Action::RemoveFile => match fs::remove_file(self.generic_check().file_to_check()) {
                 Ok(()) => Ok(()),
                 Err(e) => {
                     log::error!(
                         "Cannot remove file {} {}",
-                        self.file_to_check().to_string_lossy(),
+                        self.generic_check().file_to_check().to_string_lossy(),
                         e
                     );
                     Err(CheckError::FileCanNotBeRemoved)
                 }
             },
             Action::SetContents(new_contents) => {
-                match fs::write(self.file_to_check(), new_contents) {
+                match fs::write(self.generic_check().file_to_check(), new_contents) {
                     Ok(()) => Ok(()),
                     Err(e) => {
                         log::error!(
                             "Cannot write file {} {}",
-                            self.file_to_check().to_string_lossy(),
+                            self.generic_check().file_to_check().to_string_lossy(),
                             e
                         );
                         Err(CheckError::FileCanNotBeWritten)
@@ -132,32 +131,5 @@ pub(crate) trait Check: DebugTrait {
             Action::Manual(_) => Ok(()),
             Action::None => Ok(()),
         }
-    }
-
-    /// Get the file type of the file_to_check
-    fn file_type(&self) -> Result<Box<dyn FileType>, CheckError> {
-        let extension = self.file_to_check().extension();
-        if extension.is_none() {
-            return Err(CheckError::UnknownFileType(
-                "No extension found".to_string(),
-            ));
-        };
-
-        let extension = extension.unwrap();
-
-        if extension == OsStr::new("toml") {
-            return Ok(Box::new(file_types::toml::Toml::new()));
-            // } else if extension == Some(OsStr::new("json")) {
-            //     return file_types::json::Json;
-            // } else if extension == Some(OsStr::new("yaml"))
-            //     || extension == Some(OsStr::new("yml"))
-            // {
-            //     return FileType::Yaml;
-            // } else if extension == Some(OsStr::new("ini")) {
-            //     return FileType::Ini;
-        }
-        Err(CheckError::UnknownFileType(
-            extension.to_string_lossy().to_string(),
-        ))
     }
 }

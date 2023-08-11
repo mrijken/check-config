@@ -11,7 +11,7 @@ __lines__ = "present"
 ["test/present.toml".lines_absent]
 __lines__ = "absent"
 
-["test/present1.toml".entry_regex_match]
+["test/present1.toml".key_value_regex_match]
 integer = "[0-9]*"
 double = "[0-9]*\\.[0-9]*"
 

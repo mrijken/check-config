@@ -1,15 +1,17 @@
-use std::{env, fs, path::PathBuf};
+use std::{env, fs, io, path::PathBuf};
 
 use toml::Value;
 
-use self::base::Check;
+use crate::file_types::{self, FileType};
+
+use self::base::{Check, CheckError};
 
 pub(crate) mod base;
-pub(crate) mod entry_regex_match;
 pub(crate) mod file_absent;
 pub(crate) mod file_present;
 pub(crate) mod key_absent;
 pub(crate) mod key_value_present;
+pub(crate) mod key_value_regex_match;
 pub(crate) mod lines_absent;
 pub(crate) mod lines_present;
 
@@ -51,26 +53,86 @@ fn get_checks_from_config_table(
     checks
 }
 
+#[derive(Debug)]
+pub(crate) struct GenericCheck {
+    // path to the file where the checkers are defined
+    file_with_checks: PathBuf,
+    // path to the file which needs to be checked
+    file_to_check: PathBuf,
+    // overriden file type
+    file_type: Option<String>,
+}
+
+impl GenericCheck {
+    fn file_with_checks(&self) -> &PathBuf {
+        &self.file_with_checks
+    }
+
+    fn file_to_check(&self) -> &PathBuf {
+        &self.file_to_check
+    }
+
+    fn get_file_contents(&self) -> io::Result<String> {
+        fs::read_to_string(self.file_to_check())
+    }
+
+    /// Get the file type of the file_to_check
+    fn file_type(&self) -> Result<Box<dyn FileType>, CheckError> {
+        let extension = self.file_to_check().extension();
+        if extension.is_none() {
+            return Err(CheckError::UnknownFileType(
+                "No extension found".to_string(),
+            ));
+        };
+
+        let extension = self
+            .file_type
+            .clone()
+            .unwrap_or(extension.unwrap().to_str().unwrap().to_string());
+
+        if extension == "toml" {
+            return Ok(Box::new(file_types::toml::Toml::new()));
+            // } else if extension == Some(OsStr::new("json")) {
+            //     return file_types::json::Json;
+            // } else if extension == Some(OsStr::new("yaml"))
+            //     || extension == Some(OsStr::new("yml"))
+            // {
+            //     return FileType::Yaml;
+            // } else if extension == Some(OsStr::new("ini")) {
+            //     return FileType::Ini;
+        }
+        Err(CheckError::UnknownFileType(extension))
+    }
+}
+
+fn determine_filetype_from_config_table(config_table: &mut toml::Table) -> Option<String> {
+    Some(
+        config_table
+            .remove("__filetype__")?
+            .as_str()
+            .unwrap()
+            .to_string(),
+    )
+}
+
 fn get_check_from_check_table(
     file_with_checks: PathBuf,
     file_to_check: PathBuf,
     check_type: &str,
     check_table: &toml::Table,
 ) -> Box<dyn Check> {
-    let file_with_checks = file_with_checks.clone();
-    let file_to_check = file_to_check.clone();
+    let mut check_table = check_table.clone();
+
+    let generic_check = GenericCheck {
+        file_with_checks: file_with_checks.clone(),
+        file_to_check: file_to_check.clone(),
+        file_type: determine_filetype_from_config_table(&mut check_table),
+    };
     let check: Box<dyn Check> = match check_type {
-        "file_absent" => Box::new(file_absent::FileAbsent::new(
-            file_with_checks,
-            file_to_check,
-        )),
-        "file_present" => Box::new(file_present::FilePresent::new(
-            file_with_checks,
-            file_to_check,
-        )),
+        "file_absent" => Box::new(file_absent::FileAbsent::new(generic_check)),
+        "file_present" => Box::new(file_present::FilePresent::new(generic_check)),
         "lines_absent" => Box::new(lines_absent::LinesAbsent::new(
-            file_with_checks,
-            file_to_check,
+            generic_check,
             check_table
                 .get("__lines__")
                 .unwrap()
@@ -79,8 +141,7 @@ fn get_check_from_check_table(
                 .to_string(),
         )),
         "lines_present" => Box::new(lines_present::LinesPresent::new(
-            file_with_checks,
-            file_to_check,
+            generic_check,
             check_table
                 .get("__lines__")
                 .unwrap()
@@ -89,18 +150,15 @@ fn get_check_from_check_table(
                 .to_string(),
         )),
         "key_value_present" => Box::new(key_value_present::KeyValuePresent::new(
-            file_with_checks,
-            file_to_check,
+            generic_check,
             check_table.clone(),
         )),
         "key_absent" => Box::new(key_absent::KeyAbsent::new(
-            file_with_checks.clone(),
-            file_to_check,
+            generic_check,
             check_table.clone(),
         )),
-        "entry_regex_match" => Box::new(entry_regex_match::EntryRegexMatch::new(
-            file_with_checks,
-            file_to_check,
+        "key_value_regex_match" => Box::new(key_value_regex_match::EntryRegexMatch::new(
+            generic_check,
             check_table.clone(),
         )),
         _ => panic!("unknown check {} {}", check_type, check_table),

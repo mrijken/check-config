@@ -1,21 +1,16 @@
-use std::path::PathBuf;
-
-use super::base::{Action, Check, CheckError};
+use super::{
+    base::{Action, Check, CheckError},
+    GenericCheck,
+};
 
 #[derive(Debug)]
 pub(crate) struct FileAbsent {
-    // path to the file where the checkers are defined
-    file_with_checks: PathBuf,
-    // path to the file which needs to be checked
-    file_to_check: PathBuf,
+    generic_check: GenericCheck,
 }
 
 impl FileAbsent {
-    pub fn new(file_with_checks: PathBuf, file_to_check: PathBuf) -> Self {
-        Self {
-            file_with_checks,
-            file_to_check,
-        }
+    pub fn new(generic_check: GenericCheck) -> Self {
+        Self { generic_check }
     }
 }
 
@@ -24,16 +19,12 @@ impl Check for FileAbsent {
         "file_absent".to_string()
     }
 
-    fn file_with_checks(&self) -> &PathBuf {
-        &self.file_with_checks
-    }
-
-    fn file_to_check(&self) -> &PathBuf {
-        &self.file_to_check
+    fn generic_check(&self) -> &GenericCheck {
+        &self.generic_check
     }
 
     fn get_action(&self) -> Result<Action, CheckError> {
-        match self.file_to_check.exists() {
+        match self.generic_check().file_to_check().exists() {
             true => Ok(Action::RemoveFile),
             false => Ok(Action::None),
         }
