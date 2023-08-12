@@ -123,14 +123,10 @@ impl GenericCheck {
 
         if extension == "toml" {
             return Ok(Box::new(file_types::toml::Toml::new()));
-            // } else if extension == "json") {
-            //     return file_types::json::Json;
-            // } else if extension == "yaml")
-            //     || extension == "yml")
-            // {
-            //     return FileType::Yaml;
-            // } else if extension == "ini" {
-            //     return FileType::Ini;
+        } else if extension == "json" {
+            return Ok(Box::new(file_types::json::Json::new()));
+        } else if extension == "yaml" || extension == "yml" {
+            return Ok(Box::new(file_types::yaml::Yaml::new()));
         }
         Err(CheckError::UnknownFileType(extension))
     }

@@ -9,7 +9,7 @@ use clap::Parser;
 use crate::checkers::read_checks_from_path;
 
 /// Config Checker will check and optional fix your config files based on checkers defined in a toml file.
-/// It can check ini, toml, yaml, json and plain text files.
+/// It can check toml, yaml, json and plain text files.
 #[derive(Parser)]
 #[command(author, version, about, long_about = None)]
 struct Cli {
