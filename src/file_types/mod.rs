@@ -4,7 +4,7 @@ use ::toml::Table;
 
 use crate::checkers::base::CheckError;
 pub mod toml;
-// pub mod yaml;
+pub mod yaml;
 
 #[derive(PartialEq, Debug)]
 pub enum RegexValidateResult {
