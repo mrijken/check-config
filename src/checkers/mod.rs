@@ -51,7 +51,7 @@ fn get_checks_from_config_table(
     checks
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub(crate) struct GenericCheck {
     // path to the file where the checkers are defined
     file_with_checks: PathBuf,

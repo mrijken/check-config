@@ -6,7 +6,7 @@ use thiserror::Error;
 
 use super::GenericCheck;
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub(crate) enum Action {
     RemoveFile,
     SetContents(String),
@@ -84,7 +84,10 @@ pub(crate) trait Check: DebugTrait {
                     &format!(
                         "{}",
                         TextDiff::from_lines(
-                            self.generic_check().get_file_contents().unwrap().as_str(),
+                            self.generic_check()
+                                .get_file_contents()
+                                .unwrap_or("".to_string())
+                                .as_str(),
                             new_contents.as_str()
                         )
                         .unified_diff()

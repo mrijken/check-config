@@ -33,8 +33,6 @@ classifiers = [
 
 [project.urls]
 Repository = "https://github.com/mrijken/check_config"
-# Documentation = "todo"
-# Changelog = "todo"
 
 [tool.maturin]
 bindings = "bin"
