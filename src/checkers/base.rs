@@ -99,19 +99,23 @@ pub(crate) trait Check: DebugTrait {
         Ok(action)
     }
 
-    fn fix(&self) -> Result<(), CheckError> {
+    fn fix(&self) -> Result<Action, CheckError> {
         log::info!(
             "Fixing file {}",
             self.generic_check().file_to_check().to_string_lossy()
         );
         let action = self.check()?;
         match action {
-            Action::RemoveFile => self.generic_check().remove_file(),
-            Action::SetContents(new_contents) => {
-                self.generic_check().set_file_contents(new_contents)
+            Action::RemoveFile => {
+                self.generic_check().remove_file()?;
+                Ok(Action::None)
             }
-            Action::Manual(_) => Ok(()),
-            Action::None => Ok(()),
+            Action::SetContents(new_contents) => {
+                self.generic_check().set_file_contents(new_contents)?;
+                Ok(Action::None)
+            }
+            Action::Manual(m) => Ok(Action::Manual(m)),
+            Action::None => Ok(Action::None),
         }
     }
 }

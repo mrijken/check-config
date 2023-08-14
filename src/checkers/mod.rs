@@ -15,18 +15,11 @@ pub(crate) mod key_value_regex_match;
 pub(crate) mod lines_absent;
 pub(crate) mod lines_present;
 
-#[allow(dead_code)]
-fn unused1() {}
-
-fn unused2() {}
-
 fn get_checks_from_config_table(
     file_with_checks: PathBuf,
     file_to_check: PathBuf,
     config_table: &toml::Table,
 ) -> Vec<Box<dyn Check>> {
-    dbg!(&config_table, &file_with_checks);
-
     let mut checks = vec![];
 
     for (check_type, check_table) in config_table {

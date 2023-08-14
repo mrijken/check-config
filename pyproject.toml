@@ -1,0 +1,44 @@
+[build-system]
+requires = ["maturin>=1.0,<2.0"]
+
+build-backend = "maturin"
+
+[project]
+name = "check_config"
+version = "0.1.0"
+description = "Check configuration files."
+authors = [{ name = "Marc Rijken", email = "marc@rijken.org" }]
+maintainers = [{ name = "Marc Rijken", email = "marc@rijken.org" }]
+readme = "README.md"
+requires-python = ">=3.7"
+license = { file = "LICENSE" }
+keywords = ["automation", "configuration"]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3.7",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Rust",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: Software Development :: Quality Assurance",
+]
+
+[project.urls]
+Repository = "https://github.com/mrijken/check_config"
+# Documentation = "todo"
+# Changelog = "todo"
+
+[tool.maturin]
+bindings = "bin"
+profile = "release"
+manifest-path = "Cargo.toml"
+module-name = "check_config"
+strip = true

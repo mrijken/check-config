@@ -29,13 +29,18 @@ impl FileType for Toml {
     }
 }
 
+fn convert_string(contents: &str) -> Result<toml_edit::Table, CheckError> {
+    let doc = contents.parse::<Document>().unwrap();
+    let doc = doc.as_table();
+    Ok(doc.clone())
+}
+
 fn validate_regex(
     contents: &str,
     table_with_regex: &toml::Table,
 ) -> Result<RegexValidateResult, CheckError> {
-    let mut doc = contents.parse::<Document>().unwrap();
-    let doc_table = doc.as_table_mut();
-    _validate_key_regex(doc_table, table_with_regex)
+    let mut doc = convert_string(contents)?;
+    _validate_key_regex(&mut doc, table_with_regex)
 }
 
 fn _validate_key_regex(
@@ -77,10 +82,9 @@ fn _validate_key_regex(
 }
 
 fn set(contents: &str, table_to_set: &toml::Table) -> Result<String, CheckError> {
-    let mut doc = contents.parse::<Document>().unwrap();
-    let doc_table = doc.as_table_mut();
+    let mut doc = convert_string(contents)?;
 
-    _set_key_value(doc_table, table_to_set);
+    _set_key_value(&mut doc, table_to_set);
 
     Ok(doc.to_string())
 }
@@ -129,10 +133,9 @@ fn _set_key_value(doc: &mut toml_edit::Table, table_to_set: &toml::Table) {
 
 fn unset(contents: &str, table_to_unset: &toml::Table) -> Result<String, CheckError> {
     // remove all the keys in the table where the key is the end node
-    let mut doc = contents.parse::<Document>().unwrap();
-    let doc_table = doc.as_table_mut();
+    let mut doc = convert_string(contents)?;
 
-    _remove_key(doc_table, table_to_unset);
+    _remove_key(&mut doc, table_to_unset);
 
     Ok(doc.to_string())
 }

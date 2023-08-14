@@ -4,18 +4,23 @@ version = "0.1.0"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[[bin]]
+name = "check_config"
 
 [dependencies]
 toml = { version = "0.7.6", features = [] }
 serde = { version = "1.0", features = [] }
 serde_yaml = "0.9.25"
-configparser = "3.0.2"
 toml_edit = "0.19.14"
 similar = "2.2.1"
-serde-toml-merge = "0.3.1"
-log = "0.4.19"
+log = "0.4.20"
 simple_logger = "4.2.0"
 clap = { version = "4.3.19", features = ["derive"] }
 regex = "1.9.1"
 thiserror = "1.0.44"
 serde_json = "1.0.104"
+
+[profile.release]
+panic = "abort"
+lto = "fat"
+codegen-units = 1
