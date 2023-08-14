@@ -29,9 +29,10 @@ impl FileType for Toml {
     }
 }
 
-fn convert_string(contents: &str) -> Result<toml_edit::Table, CheckError> {
-    let doc = contents.parse::<Document>().unwrap();
-    let doc = doc.as_table();
+fn convert_string(contents: &str) -> Result<toml_edit::Document, CheckError> {
+    let doc = contents
+        .parse::<Document>()
+        .map_err(|e| CheckError::InvalidFileFormat(e.to_string()))?;
     Ok(doc.clone())
 }
 
@@ -84,7 +85,7 @@ fn _validate_key_regex(
 fn set(contents: &str, table_to_set: &toml::Table) -> Result<String, CheckError> {
     let mut doc = convert_string(contents)?;
 
-    _set_key_value(&mut doc, table_to_set);
+    _set_key_value(doc.as_table_mut(), table_to_set);
 
     Ok(doc.to_string())
 }
@@ -135,7 +136,7 @@ fn unset(contents: &str, table_to_unset: &toml::Table) -> Result<String, CheckEr
     // remove all the keys in the table where the key is the end node
     let mut doc = convert_string(contents)?;
 
-    _remove_key(&mut doc, table_to_unset);
+    _remove_key(doc.as_table_mut(), table_to_unset);
 
     Ok(doc.to_string())
 }
@@ -156,6 +157,7 @@ fn _remove_key(doc: &mut toml_edit::Table, table_to_unset: &toml::Table) {
                 );
             }
         }
+        dbg!(&doc);
     }
 }
 

@@ -33,7 +33,10 @@ impl FileType for Yaml {
 fn convert_string(contents: &str) -> Result<Mapping, CheckError> {
     let doc: Value =
         serde_yaml::from_str(contents).map_err(|e| CheckError::InvalidFileFormat(e.to_string()))?;
-    Ok(doc.as_mapping().unwrap().clone())
+    Ok(doc
+        .as_mapping()
+        .ok_or(CheckError::InvalidFileFormat("No object".to_string()))?
+        .clone())
 }
 
 fn validate_regex(

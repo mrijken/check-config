@@ -30,13 +30,21 @@ impl FileType for Json {
     }
 }
 
+fn convert_string(contents: &str) -> Result<Map<String, Value>, CheckError> {
+    let doc: Value =
+        serde_json::from_str(contents).map_err(|e| CheckError::InvalidFileFormat(e.to_string()))?;
+    let doc = doc
+        .as_object()
+        .ok_or(CheckError::InvalidFileFormat("No object".to_string()))?;
+    Ok(doc.clone())
+}
+
 fn validate_regex(
     contents: &str,
     table_with_regex: &toml::Table,
 ) -> Result<RegexValidateResult, CheckError> {
-    let mut doc: Value =
-        serde_json::from_str(contents).map_err(|e| CheckError::InvalidFileFormat(e.to_string()))?;
-    _validate_key_regex(&mut doc.as_object_mut().unwrap(), table_with_regex)
+    let mut doc = convert_string(contents)?;
+    _validate_key_regex(&mut doc, table_with_regex)
 }
 
 fn _validate_key_regex(
@@ -74,11 +82,9 @@ fn _validate_key_regex(
 }
 
 fn set(contents: &str, table_to_set: &toml::Table) -> Result<String, CheckError> {
-    let mut doc: Value =
-        serde_json::from_str(contents).map_err(|e| CheckError::InvalidFileFormat(e.to_string()))?;
+    let mut doc = convert_string(contents)?;
 
-    // todo convert unwrap
-    _set_key_value(&mut doc.as_object_mut().unwrap(), table_to_set);
+    _set_key_value(&mut doc, table_to_set);
 
     Ok(serde_json::to_string_pretty(&doc).unwrap())
 }
@@ -127,10 +133,9 @@ fn _set_key_value(doc: &mut Map<String, Value>, table_to_set: &toml::Table) {
 
 fn unset(contents: &str, table_to_unset: &toml::Table) -> Result<String, CheckError> {
     // remove all the keys in the table where the key is the end node
-    let mut doc: Value =
-        serde_json::from_str(contents).map_err(|e| CheckError::InvalidFileFormat(e.to_string()))?;
+    let mut doc = convert_string(contents)?;
 
-    _remove_key(&mut doc.as_object_mut().unwrap(), table_to_unset);
+    _remove_key(&mut doc, table_to_unset);
 
     Ok(serde_json::to_string_pretty(&doc).unwrap())
 }
