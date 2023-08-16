@@ -1,14 +1,27 @@
 # Check Config
 
-It can can be cumbersome when you have multiple projects and environments with configuration files which need to be
-upgraded and keep in sync regulary. Check-config will help you.
+It can be cumbersome when you have multiple projects and environments with configuration files which need to be
+upgraded and keep in sync regulary. Check-config will help you with i.e. making sure that the configuration
+file (`pyroject.toml`, `packages.json`, ...) have the (upgraded) settings.
 
 ## Installation
 
-The preferred installation is via pip(x):
+The preferred installation is via pip(x), indifferent whether you are Windows, Linux or Mac:
 
 ```shell
-pip(x) install check_config
+pip install check_config
+```
+
+or
+
+```shell
+pipx install check_config
+```
+
+Alternatively you can use:
+
+```shell
+cargo install check_config
 ```
 
 ## Usage
@@ -33,7 +46,7 @@ check_config --fix
 
 ## Checkers
 
-CheckConfig uses `checkers` which define the desired state of the configuration files. There are several
+Check Config uses `checkers` which define the desired state of the configuration files. There are several
 checker types (and more to come):
 
 | name | description | fixable |
@@ -48,7 +61,7 @@ checker types (and more to come):
 
 ### Checker.toml
 
-The `checkers.toml` consist of zero or one `check-config` tables:
+The `checkers.toml` consist of zero or one `check-config` tables with configuration for check-config itself:
 
 ```toml
 [check-config]
@@ -62,7 +75,7 @@ And one or more checkers
 key = value
 ```
 
-The syntax is slightly different per check type/
+The syntax is slightly different per check type. See the next sections for help about the checker definitions.
 
 ### File Absent
 
@@ -82,11 +95,121 @@ The next example will check that `test/present_file` will be present. It will
 not check the contents.
 
 ```toml
-["test/present_file".file_absent]
+["test/present_file".file_present]
 ```
 
-## Key Absent
+### Key Absent
+
+`key_absent` will check if the key is not present in the file.
+
+The next example will check that `test/present_file` has no key named `key`.
 
 ```toml
-["test/present1.toml".key]
+["test/present.toml".key_absent.key]
 ```
+
+The key can be nested. In the next case it is sufficient that `key` is not present.
+`super_key` may be present or absent.
+
+```toml
+["test/present.toml".key_absent.super_key.key]
+```
+
+This checker type can handle different kind of [mapping file types](#mapping-file-types)
+
+### Key Value Present
+
+`key_value_present` will check that the keys specified are present with the specified values.
+Keys may be nested. Intermediate keys has to have mappings as values. When intermediate values
+are not present, they will be added.
+
+```toml
+["test/present.toml".key_value_present]
+key1 = 1
+key2 = "value"
+```
+
+```toml
+["test/present.toml".key_value_present.super_key]
+key1 = 1
+key2 = "value"
+```
+
+This checker type can handle different kind of [mapping file types](#mapping-file-types)
+
+### Key Value Regex Match
+
+`key_value_regex_match` will check that the keys specified are present and the value matches the specified regex.
+Of course, the regex can only match string values.
+Keys may be nested. Intermediate keys has to have mappings as values. When intermediate values
+are not present, they will be added.
+
+```toml
+["test/present.toml".key_value_regex_match]
+key = 'v.*'
+```
+
+```toml
+["test/present.toml".key_value_regex_match.super_key]
+key = '[0-9]*'
+```
+
+Note: specify the regex as a raw string (single quotes) to be prevent escaping.
+
+This checker type can handle different kind of [mapping file types](#mapping-file-types)
+
+### Lines Absent
+
+`lines_absent` will check that the file does not contain the lines as specified.
+
+```toml
+["test/present.txt".lines_absent]
+__lines__ = """\
+multi
+line"""
+```
+
+```toml
+["test/present.txt".lines_absent]
+__lines__ = """single line"""
+```
+
+### Lines Present
+
+`lines_present` will check that the file does not contain the lines as specified.
+
+```toml
+["test/present.txt".lines_present]
+__lines__ = """\
+multi
+line"""
+```
+
+```toml
+["test/present.txt".lines_present]
+__lines__ = """single line"""
+```
+
+### Mapping File Types
+
+The checker types with a key (key_absent, key_value_present, key_value_regex_match) can we used on several file types
+which contains mappings:
+
+| type | extension |
+|------|-----------|
+| toml | toml      |
+| yaml | yaml, yml |
+| json | json      |
+
+The filetype will be determined by the extension. You can override this by specifying the filetype:
+
+```toml
+["test/present.toml".key_value_present]
+__filetype__ = "json"
+key1 = 1
+key2 = "value"
+```
+
+## Suggestions? Questions?
+
+Let us known!

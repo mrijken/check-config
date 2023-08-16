@@ -236,3 +236,76 @@ pub(crate) fn read_checks_from_path(file_with_checks: &PathBuf) -> Vec<Box<dyn C
     }
     checks
 }
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use std::fs::File;
+    use std::io::Write;
+    use tempfile::tempdir;
+
+    #[test]
+    fn test_read_checks_from_path() {
+        let dir = tempdir().unwrap();
+        let path_with_checkers = dir.path().join("checkers.toml");
+        let mut file_with_checkers = File::create(&path_with_checkers).unwrap();
+
+        writeln!(
+            file_with_checkers,
+            r#"
+[check-config]
+additional_checks = []  # optional list of toml files with additional checks
+
+["test/absent_file".file_absent]
+
+["test/present_file".file_present]
+
+["test/present.toml".key_absent.key]
+
+["test/present.toml".key_value_present]
+key1 = 1
+key2 = "value"
+
+["test/present.toml".key_value_regex_match]
+key = 'v.*'
+
+["test/present.txt".lines_absent]
+__lines__ = """\
+multi
+line"""
+
+["test/present.txt".lines_present]
+__lines__ = """\
+multi
+line"""
+
+        "#
+        )
+        .unwrap();
+
+        let checks = read_checks_from_path(&path_with_checkers);
+
+        assert_eq!(checks.len(), 7);
+    }
+
+    #[test]
+    #[should_panic]
+    fn test_read_invalid_checks_from_path() {
+        let dir = tempdir().unwrap();
+        let path_with_checkers = dir.path().join("checkers.toml");
+        let mut file_with_checkers = File::create(&path_with_checkers).unwrap();
+
+        writeln!(
+            file_with_checkers,
+            r#"
+["test/absent_file".fileXabsent]
+
+        "#
+        )
+        .unwrap();
+
+        let checks = read_checks_from_path(&path_with_checkers);
+
+        assert_eq!(checks.len(), 0);
+    }
+}

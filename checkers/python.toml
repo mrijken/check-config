@@ -9,7 +9,9 @@ additional_checks = ["./flake8.toml"]
 __lines__ = "present"
 
 ["test/present.toml".lines_absent]
-__lines__ = "absent"
+__lines__ = """\
+    multi
+    line"""
 
 ["test/present1.toml".key_value_regex_match]
 integer = "[0-9]*"

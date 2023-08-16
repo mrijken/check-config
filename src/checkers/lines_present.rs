@@ -38,6 +38,7 @@ impl Check for LinesPresent {
         }
         let contents = self.generic_check().get_file_contents()?;
         if contents.contains(&self.lines) {
+            // TODO: check that the content start at the beginning of line
             Ok(Action::None)
         } else {
             let mut new_contents = contents.clone();
