@@ -32,7 +32,7 @@ classifiers = [
 ]
 
 [project.urls]
-Repository = "https://github.com/mrijken/check_config"
+Repository = "https://github.com/mrijken/check-config"
 
 [tool.maturin]
 bindings = "bin"
