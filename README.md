@@ -72,7 +72,7 @@ And one or more checkers
 
 ```toml
 ["<file_path>".<checker_name>.<checker_keys>]
-key = value
+key = "value"
 ```
 
 The syntax is slightly different per check type. See the next sections for help about the checker definitions.
