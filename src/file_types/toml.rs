@@ -157,7 +157,6 @@ fn _remove_key(doc: &mut toml_edit::Table, table_to_unset: &toml::Table) {
                 );
             }
         }
-        dbg!(&doc);
     }
 }
 

@@ -45,9 +45,7 @@ impl Check for LinesPresent {
             if !new_contents.ends_with('\n') && !new_contents.is_empty() {
                 new_contents += "\n";
             }
-            dbg!(&new_contents, &self.lines);
             new_contents += &self.lines.clone();
-            dbg!(&new_contents);
             Ok(Action::SetContents(new_contents))
         }
     }
