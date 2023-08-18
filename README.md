@@ -77,6 +77,16 @@ key = "value"
 
 The syntax is slightly different per check type. See the next sections for help about the checker definitions.
 
+You can use arrays of toml tables when when a check has to be done more than once, ie:
+
+```toml
+[[".gitignore".lines_present]]
+__lines__ = "__pycache__"
+
+[[".gitignore".lines_present]]
+__lines__ = ".cache"
+```
+
 ### File Absent
 
 `file_absent` will check if the file is absent.
