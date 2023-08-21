@@ -14,6 +14,13 @@ pub enum RegexValidateResult {
 pub(crate) trait FileType {
     fn set(&self, contents: &str, table_to_set: &Table) -> Result<String, CheckError>;
     fn unset(&self, contents: &str, table_to_unset: &Table) -> Result<String, CheckError>;
+    fn remove_entries(
+        &self,
+        contents: &str,
+        entries_to_remove: &Table,
+    ) -> Result<String, CheckError>;
+
+    fn add_entries(&self, contents: &str, entries_to_add: &Table) -> Result<String, CheckError>;
     fn validate_regex(
         &self,
         contents: &str,

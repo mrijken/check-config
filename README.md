@@ -56,6 +56,8 @@ checker types (and more to come):
 | [key_absent](#key-absent) | a specified key must be absent in a toml / yaml / json file  | yes |
 | [key_value_present](#key-value-present) | a specified key with a specified value must be present in a toml / yaml / json file  | yes |
 | [key_value_regex_match](#key-value-regex-match) | the value of a specified key must be match the specified regex in a toml / yaml / json file  | no |
+| [entry_absent](#entry-absent) | a specified entry must be absent in the array of a toml / yaml / json file  | yes |
+| [entry_present](#entry-present) | a specified entry  must be present in the of a toml / yaml / json file  | yes |
 | [lines_absent](#lines-absent) | the specified lines must be absent | yes |
 | [lines_present](#lines-present) | the specified lines must be present | yes |
 
@@ -146,6 +148,17 @@ key2 = "value"
 ```
 
 This checker type can handle different kind of [mapping file types](#mapping-file-types)
+
+### Entry Absent
+
+```toml
+["test/present.toml".entries_absent.key]
+__items__ = [""]
+```
+
+
+### Entry Present
+
 
 ### Key Value Regex Match
 

@@ -7,6 +7,8 @@ use crate::file_types::{self, FileType};
 use self::base::{Check, CheckError};
 
 pub(crate) mod base;
+pub(crate) mod entry_absent;
+pub(crate) mod entry_present;
 pub(crate) mod file_absent;
 pub(crate) mod file_present;
 pub(crate) mod key_absent;
@@ -149,6 +151,14 @@ fn get_check_from_check_table(
         file_type_override: determine_filetype_from_config_table(&mut check_table),
     };
     let check: Box<dyn Check> = match check_type {
+        "entry_absent" => Box::new(entry_absent::EntryAbsent::new(
+            generic_check,
+            check_table.clone(),
+        )),
+        "entry_present" => Box::new(entry_present::EntryPresent::new(
+            generic_check,
+            check_table.clone(),
+        )),
         "file_absent" => Box::new(file_absent::FileAbsent::new(generic_check)),
         "file_present" => Box::new(file_present::FilePresent::new(generic_check)),
         "lines_absent" => Box::new(lines_absent::LinesAbsent::new(
@@ -279,13 +289,18 @@ __lines__ = """\
 multi
 line"""
 
+["test/present.toml".entry_present.key]
+__items__ = [1,2,3]
+
+["test/present.toml".entry_absent.key]
+__items__ = [1,2,3]
         "#
         )
         .unwrap();
 
         let checks = read_checks_from_path(&path_with_checkers);
 
-        assert_eq!(checks.len(), 7);
+        assert_eq!(checks.len(), 9);
     }
 
     #[test]
