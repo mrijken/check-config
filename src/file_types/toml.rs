@@ -118,7 +118,10 @@ fn _add_entries(doc: &mut toml_edit::Table, entries_to_add: &toml::Table) {
                     panic!("Expecting array");
                 }
             } else {
-                doc[k] = toml_edit::Item::Value(toml_edit::Value::Array(toml_edit::Array::new()));
+                doc.insert(
+                    k,
+                    toml_edit::Item::Value(toml_edit::Value::Array(toml_edit::Array::new())),
+                );
             }
 
             let doc_array = doc.get_mut(k).unwrap().as_array_mut().unwrap();
@@ -132,7 +135,7 @@ fn _add_entries(doc: &mut toml_edit::Table, entries_to_add: &toml::Table) {
             continue;
         }
         if !doc.contains_key(k) {
-            doc[k] = toml_edit::Item::Table(toml_edit::Table::new());
+            doc.insert(k, toml_edit::Item::Table(toml_edit::Table::new()));
         }
         let child_doc = doc.get_mut(k).unwrap();
         if !child_doc.is_table() {
@@ -264,11 +267,11 @@ fn _convert_value_to_item(value: &toml::Value) -> toml_edit::Value {
 fn _set_key_value(doc: &mut toml_edit::Table, table_to_set: &toml::Table) {
     for (k, v) in table_to_set {
         if !v.is_table() {
-            doc[k] = toml_edit::Item::Value(_convert_value_to_item(v));
+            doc.insert(k, toml_edit::Item::Value(_convert_value_to_item(v)));
             continue;
         }
         if !doc.contains_key(k) {
-            doc[k] = toml_edit::Item::Table(toml_edit::Table::new());
+            doc.insert(k, toml_edit::Item::Table(toml_edit::Table::new()));
         }
         let child_doc = doc.get_mut(k).unwrap();
         if !child_doc.is_table() {

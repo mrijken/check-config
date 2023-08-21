@@ -1,5 +1,9 @@
 # CHANGES
 
+## 0.3.1
+
+- Fix: empty json and yaml files where not processed correctly
+
 ## 0.3.0
 
 - Support files from Python packages.

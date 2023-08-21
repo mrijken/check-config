@@ -141,6 +141,9 @@ fn yaml_edit_array_index(array: &Sequence, item: &Value) -> Option<usize> {
 }
 
 fn convert_string(contents: &str) -> Result<Mapping, CheckError> {
+    if contents.trim().is_empty() {
+        return Ok(Mapping::new());
+    }
     let doc: Value =
         serde_yaml::from_str(contents).map_err(|e| CheckError::InvalidFileFormat(e.to_string()))?;
     Ok(doc

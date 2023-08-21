@@ -147,6 +147,9 @@ fn json_edit_array_index(array: &[Value], item: &Value) -> Option<usize> {
 }
 
 fn convert_string(contents: &str) -> Result<Map<String, Value>, CheckError> {
+    if contents.trim().is_empty() {
+        return Ok(Map::new());
+    }
     let doc: Value =
         serde_json::from_str(contents).map_err(|e| CheckError::InvalidFileFormat(e.to_string()))?;
     let doc = doc
@@ -233,11 +236,11 @@ fn _convert_value_to_item(value: &toml::Value) -> Value {
 fn _set_key_value(doc: &mut Map<String, Value>, table_to_set: &toml::Table) {
     for (k, v) in table_to_set {
         if !v.is_table() {
-            doc[k] = _convert_value_to_item(v);
+            doc.insert(k.clone(), _convert_value_to_item(v));
             continue;
         }
         if !doc.contains_key(k) {
-            doc[k] = Value::Object(Map::new());
+            doc.insert(k.clone(), Value::Object(Map::new()));
         }
         let child_doc = doc.get_mut(k).unwrap();
         if !child_doc.is_object() {
