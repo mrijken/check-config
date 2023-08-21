@@ -137,7 +137,7 @@ fn _remove_entries(
     }
 }
 
-fn json_edit_array_index(array: &Vec<Value>, item: &Value) -> Option<usize> {
+fn json_edit_array_index(array: &[Value], item: &Value) -> Option<usize> {
     for (idx, array_item) in array.iter().enumerate() {
         if array_item == item {
             return Some(idx);

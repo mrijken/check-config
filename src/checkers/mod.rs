@@ -2,7 +2,10 @@ use std::{env, fs, path::PathBuf};
 
 use toml::Value;
 
-use crate::file_types::{self, FileType};
+use crate::{
+    file_types::{self, FileType},
+    uri::uri_to_path,
+};
 
 use self::base::{Check, CheckError};
 
@@ -209,14 +212,14 @@ pub(crate) fn read_checks_from_path(file_with_checks: &PathBuf) -> Vec<Box<dyn C
 
     for (file_to_check, value) in checks_toml {
         if file_to_check == "check-config" {
-            if let Some(Value::Array(includes)) = value.get("additional_checks") {
-                for include_path in includes {
-                    checks.extend(read_checks_from_path(
-                        &file_with_checks
-                            .parent()
-                            .unwrap()
-                            .join(include_path.as_str().unwrap()),
-                    ))
+            if let Some(Value::Array(include_uris)) = value.get("additional_checks") {
+                for include_uri in include_uris {
+                    let include_path = uri_to_path(
+                        file_with_checks.parent().unwrap(),
+                        include_uri.as_str().unwrap(),
+                    );
+                    dbg!(&include_path);
+                    checks.extend(read_checks_from_path(&include_path));
                 }
             }
             continue;

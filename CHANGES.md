@@ -1,5 +1,9 @@
 # CHANGES
 
+## 0.3.0
+
+- Support files from Python packages.
+
 ## 0.2.0
 
 - Add entry_absent and entry_present

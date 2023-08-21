@@ -1,6 +1,6 @@
 [package]
 name = "check-config"
-version = "0.2.0"
+version = "0.3.0"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
@@ -20,6 +20,7 @@ regex = "1.9.1"
 thiserror = "1.0.44"
 serde_json = "1.0.104"
 tempfile = "3.7.1"
+dirs = "5.0.1"
 
 [profile.release]
 panic = "abort"

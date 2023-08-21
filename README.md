@@ -67,7 +67,12 @@ The `checkers.toml` consist of zero or one `check-config` tables with configurat
 
 ```toml
 [check-config]
-additional_checks = []  # optional list of toml files with additional checks
+additional_checks = [  # optional list of toml files with additional checks
+    "/home/me/.checkers/check.toml",  # absolute path
+    "~/.checkers/check.toml",  # relative to home dir of current user
+    "check.toml", # relative (to the parent toml) path
+    "py://my_package:checkers/python.toml", # path to file in python package
+]
 ```
 
 And one or more checkers
@@ -88,6 +93,8 @@ __lines__ = "__pycache__"
 [[".gitignore".lines_present]]
 __lines__ = ".cache"
 ```
+
+When using a path to a Python package to include checkers, the activated Python (virtual) environment will be used.
 
 ### File Absent
 

@@ -1,5 +1,5 @@
 [check-config]
-additional_checks = ["./flake8.toml"]
+additional_checks = ["./flake8.toml", "py://dvb.devtools:nitpick/python.toml"]
 
 ["test/absent.toml".file_absent]
 
