@@ -151,14 +151,21 @@ This checker type can handle different kind of [mapping file types](#mapping-fil
 
 ### Entry Absent
 
-```toml
-["test/present.toml".entries_absent.key]
-__items__ = [""]
-```
+`entry_absent` will check that specified `__items__` are not present on the specified path.
 
+```toml
+["test/present.toml".entry_absent.key]
+__items__ = [1, 2]
+```
 
 ### Entry Present
 
+`entry_present` will check that specified `__items__` are not present on the specified path.
+
+```toml
+["test/present.toml".entry_present.key]
+__items__ = [1, 2]
+```
 
 ### Key Value Regex Match
 
