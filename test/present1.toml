@@ -1,7 +1,0 @@
-#present = "value"
-array = [{ key1 = "value" }, { key2 = "value2" }]
-key = "value"
-#key = "value"
-integer = "12"
-# will fail
-double = "12.12"
