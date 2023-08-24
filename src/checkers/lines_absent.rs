@@ -37,7 +37,7 @@ impl Check for LinesAbsent {
             return Ok(Action::None);
         }
 
-        let contents = self.generic_check().get_file_contents()?;
+        let contents = self.generic_check().get_file_contents(None)?;
         if contents.contains(&self.lines) {
             // TODO: check that the content start at the beginning of line
             let new_contents = contents.replace(&self.lines, "");

@@ -28,11 +28,9 @@ impl Check for KeyValuePresent {
     }
 
     fn get_action(&self) -> Result<Action, CheckError> {
-        let contents = if !self.generic_check().file_to_check().exists() {
-            "".to_string()
-        } else {
-            self.generic_check().get_file_contents()?
-        };
+        let contents = self
+            .generic_check()
+            .get_file_contents(Some("".to_string()))?;
 
         let new_contents = self
             .generic_check()

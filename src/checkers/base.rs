@@ -10,7 +10,7 @@ use super::GenericCheck;
 pub(crate) enum Action {
     RemoveFile,
     SetContents(String),
-    Manual(String),
+    MatchRegex { key: String, regex: String },
     None,
 }
 
@@ -24,12 +24,10 @@ pub enum CheckError {
     FileCanNotBeRemoved,
     #[error("file can not be written")]
     FileCanNotBeWritten,
-    #[error("invalid regex")]
-    InvalidRegex(String),
-    #[error("key not found")]
-    KeyNotFound(String),
     #[error("invalid file format")]
     InvalidFileFormat(String),
+    #[error("invalid regex format")]
+    InvalidRegex(String),
 }
 
 pub(crate) trait Check: DebugTrait {
@@ -39,23 +37,32 @@ pub(crate) trait Check: DebugTrait {
         panic!("Function is not implemented");
     }
 
-    fn print_ok(&self) {
-        log::info!(
-            "✅ {} - {} - {}",
+    fn print(&self, is_ok: bool, key: Option<&str>, action_message: Option<&str>) {
+        let key = match key {
+            Some(k) => format!(" - {}", k),
+            None => "".to_string(),
+        };
+        let ok = match is_ok {
+            true => "✅",
+            false => "❌",
+        };
+        let action_message = match action_message {
+            Some(msg) => format!(" - {}", msg),
+            None => "".to_string(),
+        };
+        let msg = format!(
+            "{} {} - {} - {}{}{}",
+            ok,
             self.generic_check().file_with_checks().to_string_lossy(),
             self.generic_check().file_to_check().to_string_lossy(),
             self.check_type(),
+            key,
+            action_message
         );
-    }
-    fn print_nok(&self, message_type: &str, message: &str) {
-        log::info!(
-            "❌ {} - {} - {} - {}\n{}",
-            self.generic_check().file_with_checks().to_string_lossy(),
-            self.generic_check().file_to_check().to_string_lossy(),
-            self.check_type(),
-            message_type,
-            message,
-        );
+        match is_ok {
+            true => println!("{}", msg),
+            false => println!("{}", msg),
+        }
     }
     fn check(&self) -> Result<Action, CheckError> {
         let action = match self.get_action() {
@@ -73,29 +80,34 @@ pub(crate) trait Check: DebugTrait {
         };
         match action.clone() {
             Action::None => {
-                self.print_ok();
+                self.print(true, None, None);
             }
             Action::RemoveFile => {
-                self.print_nok("file is present", "remove file");
+                self.print(false, None, Some("remove file"));
             }
             Action::SetContents(new_contents) => {
-                self.print_nok(
-                    "file contents are different",
-                    &format!(
-                        "{}",
+                self.print(
+                    false,
+                    None,
+                    Some(&format!(
+                        "Set file contents to: {}",
                         TextDiff::from_lines(
                             self.generic_check()
-                                .get_file_contents()
+                                .get_file_contents(Some("".to_string()))
                                 .unwrap_or("".to_string())
                                 .as_str(),
                             new_contents.as_str()
                         )
                         .unified_diff()
-                    ),
+                    )),
                 );
             }
-            Action::Manual(action) => {
-                self.print_nok("manual action", action.clone().as_str());
+            Action::MatchRegex { key, regex } => {
+                self.print(
+                    false,
+                    Some(&key),
+                    Some(&format!("Make sure value matches regex {}", regex)),
+                );
             }
         }
 
@@ -117,8 +129,7 @@ pub(crate) trait Check: DebugTrait {
                 self.generic_check().set_file_contents(new_contents)?;
                 Ok(Action::None)
             }
-            Action::Manual(m) => Ok(Action::Manual(m)),
-            Action::None => Ok(Action::None),
+            action => Ok(action),
         }
     }
 }

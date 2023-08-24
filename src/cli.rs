@@ -39,6 +39,9 @@ struct Cli {
     /// Try to fix the config
     #[arg(long, default_value = "false")]
     fix: bool,
+
+    #[clap(flatten)]
+    verbose: clap_verbosity_flag::Verbosity,
 }
 
 pub fn cli() -> ExitCode {
@@ -61,15 +64,19 @@ pub fn cli() -> ExitCode {
     for check in checks {
         if cli.fix {
             match check.fix() {
-                Err(_) => return ExitCode::from(2),
+                Err(_) => {
+                    return ExitCode::from(2);
+                }
                 Ok(Action::None) => {}
                 _ => action_count += 1,
             };
         } else {
             match check.check() {
-                Err(_) => return ExitCode::from(2),
+                Err(_) => {
+                    return ExitCode::from(2);
+                }
                 Ok(Action::None) => {}
-                _ => action_count += 1,
+                Ok(_) => action_count += 1,
             }
         };
     }

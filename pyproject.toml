@@ -5,7 +5,7 @@ build-backend = "maturin"
 
 [project]
 name = "check_config"
-version = "0.3.1"
+version = "0.3.2"
 description = "Check configuration files."
 authors = [{ name = "Marc Rijken", email = "marc@rijken.org" }]
 maintainers = [{ name = "Marc Rijken", email = "marc@rijken.org" }]
@@ -40,3 +40,18 @@ profile = "release"
 manifest-path = "Cargo.toml"
 module-name = "check_config"
 strip = true
+
+[tool.ruff]
+target-version = "py312"
+line-length = 120
+select = ["ALL"]
+ignore = [
+    "D",      # pydocstyle
+    "ANN102", # Missing type annotation for {name} in classmethod
+    "ANN101", # Missing type annotation for `self` in method
+    "EM102",  # Exception must not use an f-string literal, assign to variable first
+    "TCH",    # Use Type Checking Block
+    "TRY003", # Avoid specifying long messages outside the exception class
+    "EM",     # Error messages must not use string literal, must not use f-string
+    "FBT",    # Do not use positional / default boolean arguments
+]

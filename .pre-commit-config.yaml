@@ -1,0 +1,9 @@
+repos:
+  hooks:
+  - always_run: true
+    entry: poetry run check_changelog
+    id: changelog
+    language: system
+    name: changelog
+    pass_filenames: false
+    repo: local

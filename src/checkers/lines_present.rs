@@ -33,10 +33,10 @@ impl Check for LinesPresent {
     }
 
     fn get_action(&self) -> Result<Action, CheckError> {
-        if !self.generic_check().file_to_check().exists() {
-            return Ok(Action::SetContents(self.lines.clone()));
-        }
-        let contents = self.generic_check().get_file_contents()?;
+        let contents = self
+            .generic_check()
+            .get_file_contents(Some("".to_string()))?;
+
         if contents.contains(&self.lines) {
             // TODO: check that the content start at the beginning of line
             Ok(Action::None)

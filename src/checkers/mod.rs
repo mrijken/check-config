@@ -75,8 +75,17 @@ impl GenericCheck {
         &self.file_to_check
     }
 
-    fn get_file_contents(&self) -> Result<String, CheckError> {
-        fs::read_to_string(self.file_to_check()).map_err(CheckError::FileCanNotBeRead)
+    fn get_file_contents(&self, default_content: Option<String>) -> Result<String, CheckError> {
+        match fs::read_to_string(self.file_to_check()) {
+            Ok(contents) => Ok(contents),
+            Err(e) => {
+                if let Some(default_content) = default_content {
+                    Ok(default_content)
+                } else {
+                    Err(CheckError::FileCanNotBeRead(e))
+                }
+            }
+        }
     }
 
     fn set_file_contents(&self, contents: String) -> Result<(), CheckError> {
@@ -218,7 +227,6 @@ pub(crate) fn read_checks_from_path(file_with_checks: &PathBuf) -> Vec<Box<dyn C
                         file_with_checks.parent().unwrap(),
                         include_uri.as_str().unwrap(),
                     );
-                    dbg!(&include_path);
                     checks.extend(read_checks_from_path(&include_path));
                 }
             }

@@ -8,7 +8,11 @@ pub mod yaml;
 #[derive(PartialEq, Debug)]
 pub enum RegexValidateResult {
     Valid,
-    Invalid(String),
+    Invalid {
+        key: String,
+        regex: String,
+        found: String,
+    },
 }
 
 pub(crate) trait FileType {

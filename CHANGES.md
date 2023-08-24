@@ -1,5 +1,9 @@
 # CHANGES
 
+## 0.3.2
+
+- Fix: improve error handling
+
 ## 0.3.1
 
 - Fix: empty json and yaml files where not processed correctly

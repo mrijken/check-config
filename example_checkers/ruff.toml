@@ -1,0 +1,32 @@
+# ["pyproject.toml".key_value_present.tool.ruff]
+# line-length = 120
+# select = ["ALL"]
+# ignore = [
+#     "D",      # pydocstyle
+#     "ANN102", # Missing type annotation for {name} in classmethod
+#     "ANN101", # Missing type annotation for `self` in method
+#     "EM102",  # Exception must not use an f-string literal, assign to variable first
+#     "TCH",    # Use Type Checking Block
+#     "TRY003", # Avoid specifying long messages outside the exception class
+#     "EM",     # Error messages must not use string literal, must not use f-string
+#     "FBT",    # Do not use positional / default boolean arguments
+# ]
+
+["pyproject.toml".key_value_regex_match.tool.ruff]
+xtarget-version = "[a-z]*"
+target-version = "(py310)|(py311)"
+
+# ["pyproject.toml".key_value_present.tool.ruff.per-file-ignores]
+# "tests/**" = [
+#     "S101",    # No usage of assert
+#     "INP",     # No implicit namespace packages
+#     "SLF",     # No private member accessed
+#     "ARG",     # unused arguments
+#     "PLR2004", # No usage of magic contants
+#     "ANN201",  # Missing return type annotation
+# ]
+# "notebooks/**" = ["ALL"]
+
+# ["pyproject.toml".key_value_present.tool.ruff.isort]
+# known-first-party = ["dvb"]
+# force-single-line = true

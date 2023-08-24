@@ -157,18 +157,25 @@ fn convert_string(contents: &str) -> Result<Map<String, Value>, CheckError> {
         .ok_or(CheckError::InvalidFileFormat("No object".to_string()))?;
     Ok(doc.clone())
 }
-
+pub(crate) fn make_key_path(parent: &str, key: &str) -> String {
+    if parent.is_empty() {
+        key.to_string()
+    } else {
+        parent.to_string() + "." + key
+    }
+}
 fn validate_regex(
     contents: &str,
     table_with_regex: &toml::Table,
 ) -> Result<RegexValidateResult, CheckError> {
     let mut doc = convert_string(contents)?;
-    _validate_key_regex(&mut doc, table_with_regex)
+    _validate_key_regex(&mut doc, table_with_regex, "".to_string())
 }
 
 fn _validate_key_regex(
     doc: &mut Map<String, Value>,
     table_with_regex: &toml::Table,
+    key_path: String,
 ) -> Result<RegexValidateResult, CheckError> {
     for (k, v) in table_with_regex {
         match v {
@@ -181,17 +188,32 @@ fn _validate_key_regex(
                     if regex.is_match(string_to_match) {
                         return Ok(RegexValidateResult::Valid);
                     } else {
-                        return Ok(RegexValidateResult::Invalid(format!(
-                            "Regex does not match. key: {}, regex: {}, value: {}",
-                            k, raw_regex, string_to_match
-                        )));
+                        return Ok(RegexValidateResult::Invalid {
+                            key: make_key_path(&key_path, k),
+                            regex: raw_regex.clone(),
+                            found: string_to_match.clone(),
+                        });
                     }
                 }
-                _ => return Err(CheckError::KeyNotFound(k.to_string())),
+                _ => {
+                    return Ok(RegexValidateResult::Invalid {
+                        key: make_key_path(&key_path, k),
+                        regex: raw_regex.clone(),
+                        found: "".to_string(),
+                    })
+                }
             },
             toml::Value::Table(t) => match doc.get_mut(k) {
-                Some(Value::Object(child_doc)) => return _validate_key_regex(child_doc, t),
-                _ => return Err(CheckError::KeyNotFound(k.to_string())),
+                Some(Value::Object(child_doc)) => {
+                    return _validate_key_regex(child_doc, t, make_key_path(&key_path, k))
+                }
+                _ => {
+                    return Ok(RegexValidateResult::Invalid {
+                        key: make_key_path(&key_path, k),
+                        regex: "".to_string(),
+                        found: "".to_string(),
+                    })
+                }
             },
 
             _ => {}
@@ -518,9 +540,11 @@ version = "[0-9][0-9]"
 
         assert_eq!(
             super::validate_regex(contents, contents_with_unmatched_regex).unwrap(),
-            RegexValidateResult::Invalid(
-                "Regex does not match. key: version, regex: [0-9][0-9], value: 1.0".to_string()
-            )
+            RegexValidateResult::Invalid {
+                key: "dependencies.bar.version".to_string(),
+                regex: "[0-9][0-9]".to_string(),
+                found: "1.0".to_string()
+            }
         );
     }
 }

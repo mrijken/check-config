@@ -1,0 +1,10 @@
+["pyproject.toml".key_value_present.tool.black]
+line-length = 120
+exclude = "(/(notebooks|\\.git|\\.venv)/)"
+
+[".pre-commit-config.yaml".entry_present.repos]
+__items__ = [
+    { repo = "local", hooks = [
+        { id = "black", name = "black", language = "system", entry = "poetry run black .", pass_filenames = false, always_run = true },
+    ] },
+]

@@ -247,6 +247,10 @@ key1 = 1
 key2 = "value"
 ```
 
+## Examples
+
+In the [examples](example_checkers) directory you can find some samples.
+
 ## Suggestions? Questions?
 
 Let us known!
