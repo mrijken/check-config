@@ -113,6 +113,7 @@ jobs:
     name: Crates Release
     runs-on: ubuntu-latest
     if: "startsWith(github.ref, 'refs/tags/')"
+    needs: [linux, windows, macos, sdist]
     steps:
       - name: Checkout sources
         uses: actions/checkout@v2
