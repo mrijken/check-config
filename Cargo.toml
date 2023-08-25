@@ -11,6 +11,8 @@ authors = ["Marc Rijken <marc@rijken.org>"]
 readme = "README.md"
 description = "Check configuration files."
 
+exclude = [".github/*", "videos/*"]
+
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [[bin]]
 name = "check_config"
