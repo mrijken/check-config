@@ -2,6 +2,14 @@
 name = "check-config"
 version = "0.3.2"
 edition = "2021"
+license = "MIT"
+homepage = "https://pypi.org/project/check-config/"
+documentation = "https://pypi.org/project/check-config/"
+repository = "https://github.com/marc-rijken/check-config"
+keywords = ["automation", "configuration"]
+authors = ["Marc Rijken <marc@rijken.org>"]
+readme = "README.md"
+description = "Check configuration files."
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [[bin]]
@@ -14,7 +22,6 @@ serde_yaml = "0.9.25"
 toml_edit = "0.19.14"
 similar = "2.2.1"
 log = "0.4.20"
-simple_logger = "4.2.0"
 clap = { version = "4.3.19", features = ["derive"] }
 regex = "1.9.1"
 thiserror = "1.0.44"
@@ -22,6 +29,7 @@ serde_json = "1.0.104"
 tempfile = "3.7.1"
 dirs = "5.0.1"
 clap-verbosity-flag = "2.0.1"
+env_logger = "0.10.0"
 
 [profile.release]
 panic = "abort"

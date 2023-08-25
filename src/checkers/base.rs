@@ -60,21 +60,15 @@ pub(crate) trait Check: DebugTrait {
             action_message
         );
         match is_ok {
-            true => println!("{}", msg),
-            false => println!("{}", msg),
+            true => log::info!("{}", msg),
+            false => log::error!("{}", msg),
         }
     }
     fn check(&self) -> Result<Action, CheckError> {
         let action = match self.get_action() {
             Ok(ist_and_soll) => ist_and_soll,
             Err(e) => {
-                log::error!(
-                    "Error: {} {} {} {}",
-                    e,
-                    self.generic_check().file_with_checks().to_string_lossy(),
-                    self.generic_check().file_to_check().to_string_lossy(),
-                    self.check_type(),
-                );
+                self.print(false, None, Some(&e.to_string()));
                 return Err(e);
             }
         };

@@ -1,3 +1,4 @@
+use std::io::Write;
 use std::path::PathBuf;
 use std::process::ExitCode;
 
@@ -45,11 +46,14 @@ struct Cli {
 }
 
 pub fn cli() -> ExitCode {
-    simple_logger::init().unwrap();
-    log::info!("Starting check-config");
-
     let cli = Cli::parse();
     let file_with_checks = &PathBuf::from(&cli.path);
+
+    env_logger::Builder::new()
+        .filter_level(cli.verbose.log_level_filter())
+        .format(|buf, record| writeln!(buf, "{}: {}", record.level(), record.args()))
+        .init();
+    log::info!("Starting check-config");
 
     log::info!(
         "Using checkers from {}",
@@ -83,6 +87,7 @@ pub fn cli() -> ExitCode {
     if action_count > 0 {
         ExitCode::from(1)
     } else {
+        log::info!("No violations found. ✨ 🍰 ✨");
         ExitCode::from(0)
     }
 }

@@ -64,6 +64,7 @@ fn _add_entries(doc: &mut Mapping, entries_to_add: &toml::map::Map<String, toml:
         if v.contains_key("__items__") {
             if doc.contains_key(k) {
                 if !doc.get(k).unwrap().is_sequence() {
+                    log::error!("Expecting array at key {}", k);
                     panic!("Expecting array");
                 }
             } else {
