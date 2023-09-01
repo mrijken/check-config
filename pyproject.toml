@@ -32,7 +32,8 @@ classifiers = [
 ]
 
 [project.urls]
-Repository = "https://github.com/mrijken/check-config"
+repository = "https://github.com/mrijken/check-config"
+documentation = "https://check-config.readthedocs.io"
 
 [tool.maturin]
 bindings = "bin"
