@@ -2,10 +2,10 @@
 additional_checks = ["black.toml", "mypy.toml", "ruff.toml"]
 
 # Do not use setup.cfg
-[["test/setup.cfg".file_absent]]
+["setup.cfg".file_absent]
 
 # Do not use setup.py
-[["test/setup.py".file_absent]]
+["setup.py".file_absent]
 
 # Do not use requirements.txt
 ["requirements.txt".file_absent]
