@@ -3,7 +3,6 @@ explicit_package_bases = true
 namespace_packages = true
 ignore_missing_imports = true
 
-
 [".pre-commit-config.yaml".entry_present.repos]
 __items__ = [
     { repo = "local", hooks = [
