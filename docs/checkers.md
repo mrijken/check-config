@@ -1,63 +1,4 @@
-# Check Config
-
-It can be cumbersome when you have multiple projects and environments with configuration files which need to be
-upgraded and keep in sync regularly. Check-config will help you with i.e. making sure that the configuration
-file have the (upgraded) settings.
-
-Check-config works with checker files in which you define checks, ie
-
-```checkers.toml
-# make sure .venv is included in the .gitignore
-[".gitignore".lines_present]
-__lines__ = ".venv"
-```
-
-With `check-config` you can check (for example in a build pipeline) whether your files passed the checks.
-
-Most checks can also be automatically fix with `check-config --fix`, so in this case a missing line will
-be added to the `.gitignore`.
-
-## Installation
-
-The preferred installation is via pip(x), indifferent whether you are Windows, Linux or Mac:
-
-```shell
-pip install check_config
-```
-
-or
-
-```shell
-pipx install check_config
-```
-
-Alternatively you can use:
-
-```shell
-cargo install check_config
-```
-
-## Usage
-
-With the next command you can check your configuration files
-
-```shell
-check_config
-```
-
-This will use the checkers as defined in `checkers.toml`, but you can specify another path:
-
-```shell
-check_config -p <path>
-```
-
-Optionally you can not just check your files, but also try to fix them:
-
-```shell
-check_config --fix
-```
-
-## Checkers
+# Checkers
 
 Check Config uses `checkers` which define the desired state of the configuration files. There are several
 checker types (and more to come):
@@ -74,7 +15,7 @@ checker types (and more to come):
 | [lines_absent](#lines-absent) | the specified lines must be absent | yes |
 | [lines_present](#lines-present) | the specified lines must be present | yes |
 
-### Checker.toml
+## Checker.toml
 
 The `checkers.toml` consist of zero or one `check-config` tables with configuration for check-config itself:
 
@@ -109,7 +50,7 @@ __lines__ = ".cache"
 
 When using a path to a Python package to include checkers, the activated Python (virtual) environment will be used.
 
-### File Absent
+## File Absent
 
 `file_absent` will check if the file is absent.
 
@@ -119,7 +60,7 @@ The next example will check that `test/absent_file` will be absent.
 ["test/absent_file".file_absent]
 ```
 
-### File Present
+## File Present
 
 `file_present` will check if the file is present.
 
@@ -130,7 +71,7 @@ not check the contents.
 ["test/present_file".file_present]
 ```
 
-### Key Absent
+## Key Absent
 
 `key_absent` will check if the key is not present in the file.
 
@@ -149,7 +90,7 @@ The key can be nested. In the next case it is sufficient that `key` is not prese
 
 This checker type can handle different kind of [mapping file types](#mapping-file-types)
 
-### Key Value Present
+## Key Value Present
 
 `key_value_present` will check that the keys specified are present with the specified values.
 Keys may be nested. Intermediate keys has to have mappings as values. When intermediate values
@@ -169,7 +110,7 @@ key2 = "value"
 
 This checker type can handle different kind of [mapping file types](#mapping-file-types)
 
-### Entry Absent
+## Entry Absent
 
 `entry_absent` will check that specified `__items__` are not present on the specified path.
 
@@ -178,7 +119,7 @@ This checker type can handle different kind of [mapping file types](#mapping-fil
 __items__ = [1, 2]
 ```
 
-### Entry Present
+## Entry Present
 
 `entry_present` will check that specified `__items__` are not present on the specified path.
 
@@ -187,7 +128,7 @@ __items__ = [1, 2]
 __items__ = [1, 2]
 ```
 
-### Key Value Regex Match
+## Key Value Regex Match
 
 `key_value_regex_match` will check that the keys specified are present and the value matches the specified regex.
 Of course, the regex can only match string values.
@@ -208,7 +149,7 @@ Note: specify the regex as a raw string (single quotes) to be prevent escaping.
 
 This checker type can handle different kind of [mapping file types](#mapping-file-types)
 
-### Lines Absent
+## Lines Absent
 
 `lines_absent` will check that the file does not contain the lines as specified.
 
@@ -224,7 +165,7 @@ line"""
 __lines__ = """single line"""
 ```
 
-### Lines Present
+## Lines Present
 
 `lines_present` will check that the file does not contain the lines as specified.
 
@@ -240,7 +181,7 @@ line"""
 __lines__ = """single line"""
 ```
 
-### Mapping File Types
+## Mapping File Types
 
 The checker types with a key (key_absent, key_value_present, key_value_regex_match) can we used on several file types
 which contains mappings:
@@ -259,11 +200,3 @@ __filetype__ = "json"
 key1 = 1
 key2 = "value"
 ```
-
-## Examples
-
-In the [examples](example_checkers) directory you can find some samples.
-
-## Suggestions? Questions?
-
-Let us known!
