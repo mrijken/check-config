@@ -1,5 +1,9 @@
 # CHANGES
 
+## 0.3.3
+
+- Add documentation
+
 ## 0.3.2
 
 - Fix: improve error handling
