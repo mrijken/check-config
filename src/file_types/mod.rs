@@ -2,6 +2,7 @@ pub mod json;
 use ::toml::Table;
 
 use crate::checkers::base::CheckError;
+mod generic;
 pub mod toml;
 pub mod yaml;
 

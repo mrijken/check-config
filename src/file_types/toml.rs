@@ -1,6 +1,6 @@
 use crate::checkers::base::CheckError;
 
-use super::{json::make_key_path, FileType, RegexValidateResult};
+use super::{generic, json::make_key_path, FileType, RegexValidateResult};
 use regex::Regex;
 use toml_edit::Document;
 pub(crate) struct Toml {}
@@ -25,7 +25,11 @@ impl FileType for Toml {
         contents: &str,
         entries_to_remove: &toml::Table,
     ) -> Result<String, CheckError> {
-        remove_entries(contents, entries_to_remove)
+        let mut doc = convert_string(contents)?;
+
+        generic::remove_entries(doc.as_table_mut(), entries_to_remove);
+
+        Ok(doc.to_string())
     }
 
     fn add_entries(
@@ -33,7 +37,11 @@ impl FileType for Toml {
         contents: &str,
         entries_to_add: &toml::Table,
     ) -> Result<String, CheckError> {
-        add_entries(contents, entries_to_add)
+        let mut doc = convert_string(contents)?;
+
+        generic::add_entries(doc.as_table_mut(), entries_to_add);
+
+        Ok(doc.to_string())
     }
 
     fn validate_regex(
@@ -108,139 +116,6 @@ fn _validate_key_regex(
         }
     }
     Ok(RegexValidateResult::Valid)
-}
-
-fn add_entries(contents: &str, entries_to_add: &toml::Table) -> Result<String, CheckError> {
-    let mut doc = convert_string(contents)?;
-
-    _add_entries(doc.as_table_mut(), entries_to_add);
-
-    Ok(doc.to_string())
-}
-
-fn _add_entries(doc: &mut toml_edit::Table, entries_to_add: &toml::Table) {
-    for (k, v) in entries_to_add {
-        if !v.is_table() {
-            panic!("Unexpected value type");
-        }
-        let v = v.as_table().unwrap();
-        if v.contains_key("__items__") {
-            if doc.contains_key(k) {
-                if !doc.get(k).unwrap().is_array() {
-                    panic!("Expecting array");
-                }
-            } else {
-                doc.insert(
-                    k,
-                    toml_edit::Item::Value(toml_edit::Value::Array(toml_edit::Array::new())),
-                );
-            }
-
-            let doc_array = doc.get_mut(k).unwrap().as_array_mut().unwrap();
-
-            for item in v.get("__items__").unwrap().as_array().unwrap() {
-                let item = _convert_value_to_item(item);
-                if toml_edit_array_index(doc_array, &item).is_none() {
-                    doc_array.push(item);
-                }
-            }
-            continue;
-        }
-        if !doc.contains_key(k) {
-            doc.insert(k, toml_edit::Item::Table(toml_edit::Table::new()));
-        }
-        let child_doc = doc.get_mut(k).unwrap();
-        if !child_doc.is_table() {
-            panic!("Unexpected value type");
-        }
-        _add_entries(child_doc.as_table_mut().unwrap(), v);
-    }
-}
-
-fn remove_entries(contents: &str, entries_to_remove: &toml::Table) -> Result<String, CheckError> {
-    let mut doc = convert_string(contents)?;
-
-    _remove_entries(doc.as_table_mut(), entries_to_remove);
-
-    Ok(doc.to_string())
-}
-
-fn _remove_entries(doc: &mut toml_edit::Table, entries_to_remove: &toml::Table) {
-    for (k, v) in entries_to_remove {
-        if !v.is_table() {
-            panic!("Unexpected value type");
-        }
-        let v = v.as_table().unwrap();
-        if v.contains_key("__items__") {
-            if !doc.contains_key(k) || !doc.get(k).unwrap().is_array() {
-                return;
-            }
-
-            let doc_array = doc.get_mut(k).unwrap().as_array_mut().unwrap();
-
-            for item in v.get("__items__").unwrap().as_array().unwrap() {
-                let item = _convert_value_to_item(item);
-                if let Some(idx) = toml_edit_array_index(doc_array, &item) {
-                    doc_array.remove(idx);
-                }
-            }
-            continue;
-        }
-        let child_doc = doc.get_mut(k).unwrap();
-        if !child_doc.is_table() {
-            panic!("Unexpected value type");
-        }
-        _remove_entries(child_doc.as_table_mut().unwrap(), v);
-    }
-}
-
-fn item_value_equals(item: &toml_edit::Value, value: &toml_edit::Value) -> bool {
-    match (item, value) {
-        (toml_edit::Value::String(item), toml_edit::Value::String(value)) => {
-            item.value() == value.value()
-        }
-        (toml_edit::Value::Integer(item), toml_edit::Value::Integer(value)) => {
-            item.value() == value.value()
-        }
-        (toml_edit::Value::Float(item), toml_edit::Value::Float(value)) => {
-            item.value() == value.value()
-        }
-        (toml_edit::Value::Boolean(item), toml_edit::Value::Boolean(value)) => {
-            item.value() == value.value()
-        }
-        (toml_edit::Value::Array(items), toml_edit::Value::Array(values)) => {
-            if items.len() != values.len() {
-                return false;
-            }
-            for (i, j) in items.iter().zip(values) {
-                if !item_value_equals(i, j) {
-                    return false;
-                }
-            }
-            true
-        }
-        (toml_edit::Value::InlineTable(items), toml_edit::Value::InlineTable(values)) => {
-            if items.len() != values.len() {
-                return false;
-            }
-            for (i, j) in items.iter().zip(values) {
-                if i.0 != j.0 || !item_value_equals(i.1, j.1) {
-                    return false;
-                }
-            }
-            true
-        }
-        _ => false,
-    }
-}
-
-fn toml_edit_array_index(array: &toml_edit::Array, item: &toml_edit::Value) -> Option<usize> {
-    for (idx, array_item) in array.iter().enumerate() {
-        if item_value_equals(array_item, item) {
-            return Some(idx);
-        }
-    }
-    None
 }
 
 fn set(contents: &str, table_to_set: &toml::Table) -> Result<String, CheckError> {
@@ -323,6 +198,7 @@ fn _remove_key(doc: &mut toml_edit::Table, table_to_unset: &toml::Table) {
 
 #[cfg(test)]
 mod tests {
+    use super::*;
     use crate::file_types::RegexValidateResult;
 
     #[test]
@@ -342,7 +218,9 @@ __items__ = [2, 3, 4]
         let entries_to_add = toml::from_str::<toml::Value>(entries_to_add).unwrap();
         let entries_to_add = entries_to_add.as_table().unwrap();
 
-        let new_contents = super::add_entries(contents, entries_to_add).unwrap();
+        let new_contents = super::Toml::new()
+            .add_entries(contents, entries_to_add)
+            .unwrap();
 
         assert_eq!(
             new_contents,
@@ -364,7 +242,9 @@ __items__ = [{key = "3"}, {key = "2"}, {key = "4"}]
         let entries_to_add = toml::from_str::<toml::Value>(entries_to_add).unwrap();
         let entries_to_add = entries_to_add.as_table().unwrap();
 
-        let new_contents = super::add_entries(contents, entries_to_add).unwrap();
+        let new_contents = super::Toml::new()
+            .add_entries(contents, entries_to_add)
+            .unwrap();
 
         assert_eq!(
             new_contents,
@@ -387,7 +267,9 @@ __items__ = [2, 3, 4]
         let entries_to_remove = toml::from_str::<toml::Value>(entries_to_remove).unwrap();
         let entries_to_remove = entries_to_remove.as_table().unwrap();
 
-        let new_contents = super::remove_entries(contents, entries_to_remove).unwrap();
+        let new_contents = super::Toml::new()
+            .remove_entries(contents, entries_to_remove)
+            .unwrap();
 
         assert_eq!(new_contents, "[key]\nlist = [1]\n".to_string());
     }
@@ -406,7 +288,9 @@ __items__ = [{key = "3"}, {key = "2"}, {key = "4"}]
         let entries_to_remove = toml::from_str::<toml::Value>(entries_to_remove).unwrap();
         let entries_to_remove = entries_to_remove.as_table().unwrap();
 
-        let new_contents = super::remove_entries(contents, entries_to_remove).unwrap();
+        let new_contents = super::Toml::new()
+            .remove_entries(contents, entries_to_remove)
+            .unwrap();
 
         assert_eq!(new_contents, "[key]\nlist = [{key = \"1\"}]\n".to_string());
     }

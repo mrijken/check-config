@@ -91,7 +91,7 @@ impl GenericCheck {
     fn set_file_contents(&self, contents: String) -> Result<(), CheckError> {
         if let Err(e) = fs::write(self.file_to_check(), contents) {
             log::error!(
-                "Cannot write file {} {}",
+                "⚠ Cannot write file {} {}",
                 self.file_to_check().to_string_lossy(),
                 e
             );
@@ -104,7 +104,7 @@ impl GenericCheck {
     fn remove_file(&self) -> Result<(), CheckError> {
         if let Err(e) = fs::remove_file(self.file_to_check()) {
             log::error!(
-                "Cannot remove file {} {}",
+                "⚠ Cannot remove file {} {}",
                 self.file_to_check().to_string_lossy(),
                 e
             );
@@ -212,7 +212,7 @@ pub(crate) fn read_checks_from_path(file_with_checks: &PathBuf) -> Vec<Box<dyn C
     let mut checks: Vec<Box<dyn Check>> = vec![];
 
     if !file_with_checks.exists() {
-        log::error!("{} does not exist", file_with_checks.to_string_lossy());
+        log::error!("⚠ {} does not exist", file_with_checks.to_string_lossy());
         return checks;
     }
 

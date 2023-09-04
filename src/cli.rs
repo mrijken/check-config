@@ -51,7 +51,7 @@ pub fn cli() -> ExitCode {
 
     env_logger::Builder::new()
         .filter_level(cli.verbose.log_level_filter())
-        .format(|buf, record| writeln!(buf, "{}: {}", record.level(), record.args()))
+        .format(|buf, record| writeln!(buf, "{}", record.args()))
         .init();
     log::info!("Starting check-config");
 

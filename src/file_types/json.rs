@@ -1,5 +1,6 @@
 use crate::checkers::base::CheckError;
 
+use super::generic;
 use super::{FileType, RegexValidateResult};
 use regex::Regex;
 use serde_json::{Map, Value};
@@ -26,7 +27,9 @@ impl FileType for Json {
         contents: &str,
         entries_to_remove: &toml::Table,
     ) -> Result<String, CheckError> {
-        remove_entries(contents, entries_to_remove)
+        let mut doc = convert_string(contents)?;
+        generic::remove_entries(&mut doc, entries_to_remove);
+        Ok(serde_json::to_string_pretty(&doc).unwrap())
     }
 
     fn add_entries(
@@ -34,7 +37,9 @@ impl FileType for Json {
         contents: &str,
         entries_to_add: &toml::Table,
     ) -> Result<String, CheckError> {
-        add_entries(contents, entries_to_add)
+        let mut doc = convert_string(contents)?;
+        generic::add_entries(&mut doc, entries_to_add);
+        Ok(serde_json::to_string_pretty(&doc).unwrap())
     }
 
     fn validate_regex(
@@ -44,106 +49,6 @@ impl FileType for Json {
     ) -> Result<RegexValidateResult, CheckError> {
         validate_regex(contents, table_with_regex)
     }
-}
-
-fn add_entries(
-    contents: &str,
-    entries_to_add: &toml::map::Map<String, toml::Value>,
-) -> Result<String, CheckError> {
-    let mut doc = convert_string(contents)?;
-    _add_entries(&mut doc, entries_to_add);
-    Ok(serde_json::to_string_pretty(&doc).unwrap())
-}
-
-fn _add_entries(
-    doc: &mut Map<String, Value>,
-    entries_to_add: &toml::map::Map<String, toml::Value>,
-) {
-    for (k, v) in entries_to_add {
-        if !v.is_table() {
-            panic!("Unexpected value type");
-        }
-        let v = v.as_table().unwrap();
-        if v.contains_key("__items__") {
-            if doc.contains_key(k) {
-                if !doc.get(k).unwrap().is_array() {
-                    panic!("Expecting array");
-                }
-            } else {
-                doc.insert(k.clone(), Value::Array(vec![]));
-            }
-
-            let doc_array = doc.get_mut(k).unwrap().as_array_mut().unwrap();
-
-            for item in v.get("__items__").unwrap().as_array().unwrap() {
-                let item = _convert_value_to_item(item);
-                if !doc_array.contains(&item) {
-                    doc_array.push(item);
-                }
-            }
-            continue;
-        }
-
-        if !doc.contains_key(k) {
-            doc.insert(k.clone(), Value::Object(Map::new()));
-        }
-        let child_doc = doc.get_mut(k).unwrap();
-        if !child_doc.is_object() {
-            panic!("Unexpected value type");
-        }
-        _add_entries(child_doc.as_object_mut().unwrap(), v);
-    }
-}
-
-fn remove_entries(
-    contents: &str,
-    entries_to_remove: &toml::map::Map<String, toml::Value>,
-) -> Result<String, CheckError> {
-    let mut doc = convert_string(contents)?;
-    _remove_entries(&mut doc, entries_to_remove);
-    Ok(serde_json::to_string_pretty(&doc).unwrap())
-}
-
-fn _remove_entries(
-    doc: &mut Map<String, Value>,
-    entries_to_remove: &toml::map::Map<String, toml::Value>,
-) {
-    for (k, v) in entries_to_remove {
-        if !v.is_table() {
-            panic!("Unexpected value type");
-        }
-        let v = v.as_table().unwrap();
-        if v.contains_key("__items__") {
-            if !doc.contains_key(k) || !doc.get(k).unwrap().is_array() {
-                return;
-            }
-
-            let doc_array = doc.get_mut(k).unwrap().as_array_mut().unwrap();
-
-            for item in v.get("__items__").unwrap().as_array().unwrap() {
-                let item = _convert_value_to_item(item);
-                if let Some(idx) = json_edit_array_index(doc_array, &item) {
-                    doc_array.remove(idx);
-                }
-            }
-            continue;
-        }
-
-        let child_doc = doc.get_mut(k).unwrap();
-        if !child_doc.is_object() {
-            panic!("Unexpected value type");
-        }
-        _remove_entries(child_doc.as_object_mut().unwrap(), v);
-    }
-}
-
-fn json_edit_array_index(array: &[Value], item: &Value) -> Option<usize> {
-    for (idx, array_item) in array.iter().enumerate() {
-        if array_item == item {
-            return Some(idx);
-        }
-    }
-    None
 }
 
 fn convert_string(contents: &str) -> Result<Map<String, Value>, CheckError> {
@@ -157,6 +62,7 @@ fn convert_string(contents: &str) -> Result<Map<String, Value>, CheckError> {
         .ok_or(CheckError::InvalidFileFormat("No object".to_string()))?;
     Ok(doc.clone())
 }
+
 pub(crate) fn make_key_path(parent: &str, key: &str) -> String {
     if parent.is_empty() {
         key.to_string()
@@ -164,6 +70,7 @@ pub(crate) fn make_key_path(parent: &str, key: &str) -> String {
         parent.to_string() + "." + key
     }
 }
+
 fn validate_regex(
     contents: &str,
     table_with_regex: &toml::Table,
@@ -302,6 +209,7 @@ fn _remove_key(doc: &mut Map<String, Value>, table_to_unset: &toml::Table) {
 
 #[cfg(test)]
 mod tests {
+    use super::*;
     use crate::file_types::RegexValidateResult;
 
     #[test]
@@ -322,7 +230,9 @@ __items__ = [2, 3, 4]
         let entries_to_add = toml::from_str::<toml::Value>(entries_to_add).unwrap();
         let entries_to_add = entries_to_add.as_table().unwrap();
 
-        let new_contents = super::add_entries(contents, entries_to_add).unwrap();
+        let new_contents = super::Json::new()
+            .add_entries(contents, entries_to_add)
+            .unwrap();
 
         assert_eq!(
             new_contents,
@@ -349,7 +259,9 @@ __items__ = [{key = "3"}, {key = "2"}, {key = "4"}]
         let entries_to_add = toml::from_str::<toml::Value>(entries_to_add).unwrap();
         let entries_to_add = entries_to_add.as_table().unwrap();
 
-        let new_contents = super::add_entries(contents, entries_to_add).unwrap();
+        let new_contents = super::Json::new()
+            .add_entries(contents, entries_to_add)
+            .unwrap();
 
         assert_eq!(
             new_contents,
@@ -372,7 +284,9 @@ __items__ = [2, 3, 4]
         let entries_to_remove = toml::from_str::<toml::Value>(entries_to_remove).unwrap();
         let entries_to_remove = entries_to_remove.as_table().unwrap();
 
-        let new_contents = super::remove_entries(contents, entries_to_remove).unwrap();
+        let new_contents = super::Json::new()
+            .remove_entries(contents, entries_to_remove)
+            .unwrap();
 
         assert_eq!(
             new_contents,

@@ -1,6 +1,6 @@
 use crate::checkers::base::CheckError;
 
-use super::{json::make_key_path, FileType, RegexValidateResult};
+use super::{generic, json::make_key_path, FileType, RegexValidateResult};
 use regex::Regex;
 use serde_yaml::{Mapping, Sequence, Value};
 
@@ -26,7 +26,9 @@ impl FileType for Yaml {
         contents: &str,
         entries_to_remove: &toml::Table,
     ) -> Result<String, CheckError> {
-        remove_entries(contents, entries_to_remove)
+        let mut doc = convert_string(contents)?;
+        generic::remove_entries(&mut doc, entries_to_remove);
+        Ok(serde_yaml::to_string(&doc).unwrap())
     }
 
     fn add_entries(
@@ -34,7 +36,9 @@ impl FileType for Yaml {
         contents: &str,
         entries_to_add: &toml::Table,
     ) -> Result<String, CheckError> {
-        add_entries(contents, entries_to_add)
+        let mut doc = convert_string(contents)?;
+        generic::add_entries(&mut doc, entries_to_add);
+        Ok(serde_yaml::to_string(&doc).unwrap())
     }
 
     fn validate_regex(
@@ -44,100 +48,6 @@ impl FileType for Yaml {
     ) -> Result<RegexValidateResult, CheckError> {
         validate_regex(contents, table_with_regex)
     }
-}
-
-fn add_entries(
-    contents: &str,
-    entries_to_add: &toml::map::Map<String, toml::Value>,
-) -> Result<String, CheckError> {
-    let mut doc = convert_string(contents)?;
-    _add_entries(&mut doc, entries_to_add);
-    Ok(serde_yaml::to_string(&doc).unwrap())
-}
-
-fn _add_entries(doc: &mut Mapping, entries_to_add: &toml::map::Map<String, toml::Value>) {
-    for (k, v) in entries_to_add {
-        if !v.is_table() {
-            panic!("Unexpected value type");
-        }
-        let v = v.as_table().unwrap();
-        if v.contains_key("__items__") {
-            if doc.contains_key(k) {
-                if !doc.get(k).unwrap().is_sequence() {
-                    log::error!("Expecting array at key {}", k);
-                    panic!("Expecting array");
-                }
-            } else {
-                doc.insert(Value::String(k.clone()), Value::Sequence(Sequence::new()));
-            }
-
-            let doc_array = doc.get_mut(k).unwrap().as_sequence_mut().unwrap();
-
-            for item in v.get("__items__").unwrap().as_array().unwrap() {
-                let item = _convert_value_to_item(item);
-                if !doc_array.contains(&item) {
-                    doc_array.push(item);
-                }
-            }
-            continue;
-        }
-        if !doc.contains_key(k) {
-            doc.insert(Value::String(k.clone()), Value::Mapping(Mapping::new()));
-        }
-        let child_doc = doc.get_mut(k).unwrap();
-        if !child_doc.is_mapping() {
-            panic!("Unexpected value type");
-        }
-        _add_entries(child_doc.as_mapping_mut().unwrap(), v);
-    }
-}
-
-fn remove_entries(
-    contents: &str,
-    entries_to_remove: &toml::map::Map<String, toml::Value>,
-) -> Result<String, CheckError> {
-    let mut doc = convert_string(contents)?;
-    _remove_entries(&mut doc, entries_to_remove);
-    Ok(serde_yaml::to_string(&doc).unwrap())
-}
-
-fn _remove_entries(doc: &mut Mapping, entries_to_remove: &toml::map::Map<String, toml::Value>) {
-    for (k, v) in entries_to_remove {
-        if !v.is_table() {
-            panic!("Unexpected value type");
-        }
-        let v = v.as_table().unwrap();
-        if v.contains_key("__items__") {
-            if !doc.contains_key(k) || !doc.get(k).unwrap().is_sequence() {
-                return;
-            }
-
-            let doc_array = doc.get_mut(k).unwrap().as_sequence_mut().unwrap();
-
-            for item in v.get("__items__").unwrap().as_array().unwrap() {
-                let item = _convert_value_to_item(item);
-
-                if let Some(idx) = yaml_edit_array_index(doc_array, &item) {
-                    doc_array.remove(idx);
-                }
-            }
-            continue;
-        }
-        let child_doc = doc.get_mut(k).unwrap();
-        if !child_doc.is_mapping() {
-            panic!("Unexpected value type");
-        }
-        _remove_entries(child_doc.as_mapping_mut().unwrap(), v);
-    }
-}
-
-fn yaml_edit_array_index(array: &Sequence, item: &Value) -> Option<usize> {
-    for (idx, array_item) in array.iter().enumerate() {
-        if array_item == item {
-            return Some(idx);
-        }
-    }
-    None
 }
 
 fn convert_string(contents: &str) -> Result<Mapping, CheckError> {
@@ -291,6 +201,7 @@ fn _remove_key(doc: &mut Mapping, table_to_unset: &toml::Table) {
 
 #[cfg(test)]
 mod tests {
+    use super::*;
     use crate::file_types::RegexValidateResult;
 
     #[test]
@@ -312,7 +223,9 @@ __items__ = [2, 3, 4]
         let entries_to_add = toml::from_str::<toml::Value>(entries_to_add).unwrap();
         let entries_to_add = entries_to_add.as_table().unwrap();
 
-        let new_contents = super::add_entries(contents, entries_to_add).unwrap();
+        let new_contents = super::Yaml::new()
+            .add_entries(contents, entries_to_add)
+            .unwrap();
 
         assert_eq!(
             new_contents,
@@ -337,7 +250,9 @@ __items__ = [{key = "3"}, {key = "2"}, {key = "4"}]
         let entries_to_add = toml::from_str::<toml::Value>(entries_to_add).unwrap();
         let entries_to_add = entries_to_add.as_table().unwrap();
 
-        let new_contents = super::add_entries(contents, entries_to_add).unwrap();
+        let new_contents = super::Yaml::new()
+            .add_entries(contents, entries_to_add)
+            .unwrap();
 
         assert_eq!(
             new_contents,
@@ -361,7 +276,9 @@ __items__ = [2, 3, 4]
         let entries_to_remove = toml::from_str::<toml::Value>(entries_to_remove).unwrap();
         let entries_to_remove = entries_to_remove.as_table().unwrap();
 
-        let new_contents = super::remove_entries(contents, entries_to_remove).unwrap();
+        let new_contents = super::Yaml::new()
+            .remove_entries(contents, entries_to_remove)
+            .unwrap();
 
         assert_eq!(new_contents, "key:\n  list:\n  - 1\n".to_string());
     }
