@@ -32,19 +32,19 @@ impl Check for EntryRegexMatch {
     fn get_action(&self) -> Result<Action, CheckError> {
         let contents = self
             .generic_check()
-            .get_file_contents(Some("".to_string()))?;
+            .get_file_contents(super::DefaultContent::EmptyString)?;
 
-        // Todo: multple actions?
+        // Todo: multiple actions?
         match self
             .generic_check()
             .file_type()?
-            .validate_regex(&contents, &self.value)?
+            .validate_key_value_regex(&contents, &self.value)?
         {
             RegexValidateResult::Invalid {
                 key,
                 regex,
                 found: _,
-            } => Ok(Action::MatchRegex { key, regex }),
+            } => Ok(Action::MatchKeyRegex { key, regex }),
             RegexValidateResult::Valid => Ok(Action::None),
         }
     }

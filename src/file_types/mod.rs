@@ -1,7 +1,7 @@
 pub mod json;
 use ::toml::Table;
 
-use crate::checkers::base::CheckError;
+use crate::{checkers::base::CheckError, mapping::generic::Mapping};
 mod generic;
 pub mod toml;
 pub mod yaml;
@@ -17,16 +17,11 @@ pub enum RegexValidateResult {
 }
 
 pub(crate) trait FileType {
+    fn to_mapping(&self, contents: &str) -> Result<Box<dyn Mapping>, CheckError>;
+
     fn set(&self, contents: &str, table_to_set: &Table) -> Result<String, CheckError>;
     fn unset(&self, contents: &str, table_to_unset: &Table) -> Result<String, CheckError>;
-    fn remove_entries(
-        &self,
-        contents: &str,
-        entries_to_remove: &Table,
-    ) -> Result<String, CheckError>;
-
-    fn add_entries(&self, contents: &str, entries_to_add: &Table) -> Result<String, CheckError>;
-    fn validate_regex(
+    fn validate_key_value_regex(
         &self,
         contents: &str,
         table_to_unset: &Table,

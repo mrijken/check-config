@@ -1,6 +1,69 @@
+use std::{fs, path::PathBuf};
+
+use crate::checkers::base::CheckError;
+
 use super::generic::{Array, Mapping, MappingError, Value};
+pub(crate) fn from_path(path: PathBuf) -> Result<Box<dyn Mapping>, CheckError> {
+    let file_contents = fs::read_to_string(path)?;
+    from_string(&file_contents)
+}
+
+pub(crate) fn from_string(
+    doc: &str,
+) -> Result<Box<dyn Mapping>, crate::checkers::base::CheckError> {
+    let doc = doc
+        .parse::<toml_edit::Document>()
+        .map_err(|e| CheckError::InvalidFileFormat(e.to_string()))?;
+    Ok(Box::new(doc.clone()))
+}
+
+impl Mapping for toml_edit::Document {
+    fn to_string(&self) -> Result<String, CheckError> {
+        Ok(std::string::ToString::to_string(&self))
+    }
+
+    fn get_mapping(
+        &mut self,
+        key: &str,
+        create_missing: bool,
+    ) -> Result<&mut dyn Mapping, MappingError> {
+        self.as_table_mut().get_mapping(key, create_missing)
+    }
+
+    fn contains_key(&self, key: &str) -> bool {
+        self.as_table().contains_key(key)
+    }
+
+    fn get_array(
+        &mut self,
+        key: &str,
+        create_missing: bool,
+    ) -> Result<&mut dyn Array, MappingError> {
+        self.as_table_mut().get_array(key, create_missing)
+    }
+
+    fn get_string(&self, key: &str) -> Result<String, MappingError> {
+        self.as_table().get_string(key)
+    }
+
+    fn insert(&mut self, key: &str, value: &toml::Value) {
+        self.as_table_mut().insert(
+            key,
+            toml_edit::Item::Value(toml_edit::Value::from_toml_value(value)),
+        );
+    }
+    fn remove(&mut self, key: &str) {
+        if self.as_table().contains_key(key) {
+            self.as_table_mut().remove(key);
+        }
+    }
+}
 
 impl Mapping for toml_edit::Table {
+    fn to_string(&self) -> Result<String, CheckError> {
+        panic!("not implemented, call to_string on Document instead");
+    }
+
     fn contains_key(&self, key: &str) -> bool {
         self.contains_key(key)
     }
@@ -57,6 +120,17 @@ impl Mapping for toml_edit::Table {
             Ok(value.as_str().unwrap().to_string())
         }
     }
+    fn insert(&mut self, key: &str, value: &toml::Value) {
+        self.insert(
+            key,
+            toml_edit::Item::Value(toml_edit::Value::from_toml_value(value)),
+        );
+    }
+    fn remove(&mut self, key: &str) {
+        if self.contains_key(key) {
+            self.remove(key);
+        }
+    }
 }
 
 impl Array for toml_edit::Array {
@@ -75,8 +149,8 @@ impl Array for toml_edit::Array {
     }
 
     fn contains_item(&self, value: &toml::Value) -> bool {
-        // self.contains(&value)
-        true
+        let value = toml_edit::Value::from_toml_value(value);
+        toml_edit_array_index(self, &value).is_some()
     }
 }
 

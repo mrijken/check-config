@@ -30,7 +30,7 @@ impl Check for KeyValuePresent {
     fn get_action(&self) -> Result<Action, CheckError> {
         let contents = self
             .generic_check()
-            .get_file_contents(Some("".to_string()))?;
+            .get_file_contents(super::DefaultContent::EmptyString)?;
 
         let new_contents = self
             .generic_check()

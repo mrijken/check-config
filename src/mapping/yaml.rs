@@ -1,6 +1,33 @@
+use std::{fs, path::PathBuf};
+
+use crate::checkers::base::CheckError;
+
 use super::generic::{Array, Mapping, MappingError, Value};
 
+pub(crate) fn from_path(path: PathBuf) -> Result<Box<dyn Mapping>, CheckError> {
+    let file_contents = fs::read_to_string(path)?;
+    from_string(&file_contents)
+}
+
+pub(crate) fn from_string(
+    doc: &str,
+) -> Result<Box<dyn Mapping>, crate::checkers::base::CheckError> {
+    if doc.trim().is_empty() {
+        return Ok(Box::new(serde_yaml::Mapping::new()));
+    }
+    let doc: serde_yaml::Value =
+        serde_yaml::from_str(doc).map_err(|e| CheckError::InvalidFileFormat(e.to_string()))?;
+    Ok(Box::new(
+        doc.as_mapping()
+            .ok_or(CheckError::InvalidFileFormat("No object".to_string()))?
+            .clone(),
+    ))
+}
+
 impl Mapping for serde_yaml::Mapping {
+    fn to_string(&self) -> Result<String, CheckError> {
+        Ok(serde_yaml::to_string(&self).unwrap())
+    }
     fn contains_key(&self, key: &str) -> bool {
         self.contains_key(key)
     }
@@ -55,6 +82,17 @@ impl Mapping for serde_yaml::Mapping {
             Err(MappingError::WrongType(format!("{} is not a string", key)))
         } else {
             Ok(value.as_str().unwrap().to_string())
+        }
+    }
+    fn insert(&mut self, key: &str, value: &toml::Value) {
+        self.insert(
+            serde_yaml::value::Value::String(key.to_string()),
+            serde_yaml::Value::from_toml_value(value),
+        );
+    }
+    fn remove(&mut self, key: &str) {
+        if self.contains_key(key) {
+            self.remove(key);
         }
     }
 }
