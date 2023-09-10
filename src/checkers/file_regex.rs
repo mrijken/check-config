@@ -44,7 +44,6 @@ impl Check for FileRegexMatch {
             Ok(regex) => regex,
             Err(s) => return Err(CheckError::InvalidRegex(s.to_string())),
         };
-
         if regex.is_match(contents.as_str()) {
             Ok(Action::None)
         } else {
@@ -75,28 +74,29 @@ mod tests {
             file_with_checks,
         };
 
-        let regex_check = FileRegexMatch::new(generic_check, ".*export KEY=.*".to_string());
+        let regex_check = FileRegexMatch::new(generic_check, "export KEY=.*".to_string());
 
         // not existing file
         let mut file = File::create(regex_check.generic_check().file_to_check()).unwrap();
         assert_eq!(
             regex_check.check().unwrap(),
-            Action::SetContents("".to_string())
+            Action::MatchFileRegex {
+                regex: "export KEY=.*".to_string()
+            }
         );
 
         // file with correct contents
         writeln!(file, "export KEY=test").unwrap();
-        assert_eq!(
-            regex_check.check().unwrap(),
-            Action::SetContents("".to_string())
-        );
+        assert_eq!(regex_check.check().unwrap(), Action::None);
 
         // file with incorrect contents
         let mut file = File::create(regex_check.generic_check().file_to_check()).unwrap();
         writeln!(file, "export WRONG_KEY=test").unwrap();
         assert_eq!(
             regex_check.check().unwrap(),
-            Action::SetContents("".to_string())
+            Action::MatchFileRegex {
+                regex: "export KEY=.*".to_string()
+            }
         );
     }
 }

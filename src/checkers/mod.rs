@@ -142,30 +142,6 @@ impl GenericCheck {
         }
         Err(CheckError::UnknownFileType(extension))
     }
-
-    /// Get the file type of the file_to_check
-    fn file_type(&self) -> Result<Box<dyn FileType>, CheckError> {
-        let extension = self.file_to_check().extension();
-        if extension.is_none() && self.file_type_override.is_none() {
-            return Err(CheckError::UnknownFileType(
-                "No extension found".to_string(),
-            ));
-        };
-
-        let extension = self
-            .file_type_override
-            .clone()
-            .unwrap_or(extension.unwrap().to_str().unwrap().to_string());
-
-        if extension == "toml" {
-            return Ok(Box::new(file_types::toml::Toml::new()));
-        } else if extension == "json" {
-            return Ok(Box::new(file_types::json::Json::new()));
-        } else if extension == "yaml" || extension == "yml" {
-            return Ok(Box::new(file_types::yaml::Yaml::new()));
-        }
-        Err(CheckError::UnknownFileType(extension))
-    }
 }
 
 fn determine_filetype_from_config_table(config_table: &mut toml::Table) -> Option<String> {

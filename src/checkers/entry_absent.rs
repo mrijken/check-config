@@ -83,7 +83,8 @@ mod tests {
 
     #[test]
     fn test_test_files() {
-        for (test_nr, test_input, test_expected_output, checker) in read_test_files("entry_absent")
+        for (test_path, test_input, test_expected_output, checker) in
+            read_test_files("entry_absent")
         {
             let mut test_input = test_input;
             remove_entries(test_input.as_mut(), checker.as_table().unwrap());
@@ -91,8 +92,8 @@ mod tests {
             assert_eq!(
                 *test_expected_output,
                 test_input.to_string().unwrap(),
-                "test_nr {} failed",
-                test_nr
+                "test_path {} failed",
+                test_path
             );
         }
     }

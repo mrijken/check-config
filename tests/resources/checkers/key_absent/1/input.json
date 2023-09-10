@@ -1,0 +1,12 @@
+{
+    "package": {
+        "name": "foo",
+        "version": "1.0"
+    },
+    "dependencies": {
+        "bar": {
+            "version": "1.0"
+        },
+        "foo": "1.0"
+    }
+}

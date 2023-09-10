@@ -1,0 +1,15 @@
+{
+    "dependencies": {
+        "bar": {
+            "features": [
+                "bar"
+            ],
+            "version": "2.0"
+        },
+        "toml": "1.0"
+    },
+    "package": {
+        "name": "foo",
+        "version": "1.0"
+    }
+}
