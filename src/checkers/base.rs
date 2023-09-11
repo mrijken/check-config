@@ -85,7 +85,7 @@ pub(crate) trait Check: DebugTrait {
                     false,
                     None,
                     Some(&format!(
-                        "Set file contents to: {}",
+                        "Set file contents to: \n{}",
                         TextDiff::from_lines(
                             self.generic_check()
                                 .get_file_contents(super::DefaultContent::EmptyString)

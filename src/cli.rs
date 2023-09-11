@@ -64,30 +64,28 @@ pub fn cli() -> ExitCode {
     let checks = read_checks_from_path(file_with_checks);
 
     let mut action_count = 0;
+    let mut success_count = 0;
 
     for check in checks {
-        if cli.fix {
-            match check.fix() {
-                Err(_) => {
-                    return ExitCode::from(2);
-                }
-                Ok(Action::None) => {}
-                _ => action_count += 1,
-            };
-        } else {
-            match check.check() {
-                Err(_) => {
-                    return ExitCode::from(2);
-                }
-                Ok(Action::None) => {}
-                Ok(_) => action_count += 1,
+        let result = if cli.fix { check.fix() } else { check.check() };
+
+        match result {
+            Err(_) => {
+                log::error!("There was an error fixing files.");
+                return ExitCode::from(ExitStatus::Error);
             }
+            Ok(Action::None) => success_count += 1,
+            _ => action_count += 1,
         };
     }
+    log::info!("{} checks successful.", success_count);
     if action_count > 0 {
-        ExitCode::from(1)
+        // note: error level is used to always show this message, also with the lowest verbose level
+        log::error!("There are {} violations to fix.", action_count,);
+        ExitCode::from(ExitStatus::Failure)
     } else {
-        log::info!("No violations found. ✨ 🍰 ✨");
-        ExitCode::from(0)
+        // note: error level is used to always show this message, also with the lowest verbose level
+        log::error!("No violations found.");
+        ExitCode::from(ExitStatus::Success)
     }
 }
