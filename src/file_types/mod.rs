@@ -1,7 +1,6 @@
 pub mod json;
 
 use crate::{checkers::base::CheckError, mapping::generic::Mapping};
-mod generic;
 pub mod toml;
 pub mod yaml;
 
