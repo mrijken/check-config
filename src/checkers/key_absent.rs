@@ -4,7 +4,7 @@ use super::{
     base::{Action, Check, CheckError},
     DefaultContent, GenericCheck,
 };
-use std::fs;
+
 
 #[derive(Debug)]
 pub(crate) struct KeyAbsent {

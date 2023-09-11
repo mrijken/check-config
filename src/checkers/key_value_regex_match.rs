@@ -3,8 +3,7 @@ use regex::Regex;
 use crate::{file_types::RegexValidateResult, mapping::generic::Mapping};
 
 use super::{
-    base::{Action, Check, CheckError},
-    DefaultContent, GenericCheck,
+    base::{Action, Check, CheckError}, GenericCheck,
 };
 
 #[derive(Debug)]
