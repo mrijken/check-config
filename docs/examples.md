@@ -102,3 +102,10 @@ __items__ = [
 [[".gitignore".lines_present]]
 __lines__ = ".mypy_cache"
 ```
+
+## Bashrc
+
+```toml
+[".bashrc".file_regex_match]
+__regex__ = "export KEY=.*"
+```

@@ -1,5 +1,7 @@
 use dirs::home_dir;
 use std::path::{self, Path, PathBuf};
+
+#[warn(unused_imports)]
 use std::process::Command;
 
 #[cfg(test)]

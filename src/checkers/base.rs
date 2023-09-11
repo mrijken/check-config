@@ -10,7 +10,8 @@ use super::GenericCheck;
 pub(crate) enum Action {
     RemoveFile,
     SetContents(String),
-    MatchRegex { key: String, regex: String },
+    MatchKeyRegex { key: String, regex: String },
+    MatchFileRegex { regex: String },
     None,
 }
 
@@ -84,10 +85,10 @@ pub(crate) trait Check: DebugTrait {
                     false,
                     None,
                     Some(&format!(
-                        "Set file contents to: {}",
+                        "Set file contents to: \n{}",
                         TextDiff::from_lines(
                             self.generic_check()
-                                .get_file_contents(Some("".to_string()))
+                                .get_file_contents(super::DefaultContent::EmptyString)
                                 .unwrap_or("".to_string())
                                 .as_str(),
                             new_contents.as_str()
@@ -96,10 +97,17 @@ pub(crate) trait Check: DebugTrait {
                     )),
                 );
             }
-            Action::MatchRegex { key, regex } => {
+            Action::MatchKeyRegex { key, regex } => {
                 self.print(
                     false,
                     Some(&key),
+                    Some(&format!("Make sure value matches regex {}", regex)),
+                );
+            }
+            Action::MatchFileRegex { regex } => {
+                self.print(
+                    false,
+                    None,
                     Some(&format!("Make sure value matches regex {}", regex)),
                 );
             }

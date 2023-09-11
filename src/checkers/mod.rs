@@ -4,6 +4,7 @@ use toml::Value;
 
 use crate::{
     file_types::{self, FileType},
+    mapping::generic::Mapping,
     uri::uri_to_path,
 };
 
@@ -14,11 +15,13 @@ pub(crate) mod entry_absent;
 pub(crate) mod entry_present;
 pub(crate) mod file_absent;
 pub(crate) mod file_present;
+pub(crate) mod file_regex;
 pub(crate) mod key_absent;
 pub(crate) mod key_value_present;
 pub(crate) mod key_value_regex_match;
 pub(crate) mod lines_absent;
 pub(crate) mod lines_present;
+pub(crate) mod test_helpers;
 
 fn get_checks_from_config_table(
     file_with_checks: PathBuf,
@@ -66,6 +69,10 @@ pub(crate) struct GenericCheck {
     file_type_override: Option<String>,
 }
 
+pub(crate) enum DefaultContent {
+    None,
+    EmptyString,
+}
 impl GenericCheck {
     fn file_with_checks(&self) -> &PathBuf {
         &self.file_with_checks
@@ -75,23 +82,20 @@ impl GenericCheck {
         &self.file_to_check
     }
 
-    fn get_file_contents(&self, default_content: Option<String>) -> Result<String, CheckError> {
+    fn get_file_contents(&self, default_content: DefaultContent) -> Result<String, CheckError> {
         match fs::read_to_string(self.file_to_check()) {
             Ok(contents) => Ok(contents),
-            Err(e) => {
-                if let Some(default_content) = default_content {
-                    Ok(default_content)
-                } else {
-                    Err(CheckError::FileCanNotBeRead(e))
-                }
-            }
+            Err(e) => match default_content {
+                DefaultContent::None => Err(CheckError::FileCanNotBeRead(e)),
+                DefaultContent::EmptyString => Ok("".to_string()),
+            },
         }
     }
 
     fn set_file_contents(&self, contents: String) -> Result<(), CheckError> {
         if let Err(e) = fs::write(self.file_to_check(), contents) {
             log::error!(
-                "Cannot write file {} {}",
+                "⚠ Cannot write file {} {}",
                 self.file_to_check().to_string_lossy(),
                 e
             );
@@ -104,7 +108,7 @@ impl GenericCheck {
     fn remove_file(&self) -> Result<(), CheckError> {
         if let Err(e) = fs::remove_file(self.file_to_check()) {
             log::error!(
-                "Cannot remove file {} {}",
+                "⚠ Cannot remove file {} {}",
                 self.file_to_check().to_string_lossy(),
                 e
             );
@@ -114,8 +118,7 @@ impl GenericCheck {
         }
     }
 
-    /// Get the file type of the file_to_check
-    fn file_type(&self) -> Result<Box<dyn FileType>, CheckError> {
+    fn get_mapping(&self) -> Result<Box<dyn Mapping>, CheckError> {
         let extension = self.file_to_check().extension();
         if extension.is_none() && self.file_type_override.is_none() {
             return Err(CheckError::UnknownFileType(
@@ -123,17 +126,19 @@ impl GenericCheck {
             ));
         };
 
+        let contents = self.get_file_contents(DefaultContent::EmptyString)?;
+
         let extension = self
             .file_type_override
             .clone()
             .unwrap_or(extension.unwrap().to_str().unwrap().to_string());
 
         if extension == "toml" {
-            return Ok(Box::new(file_types::toml::Toml::new()));
+            return file_types::toml::Toml::new().to_mapping(&contents);
         } else if extension == "json" {
-            return Ok(Box::new(file_types::json::Json::new()));
+            return file_types::json::Json::new().to_mapping(&contents);
         } else if extension == "yaml" || extension == "yml" {
-            return Ok(Box::new(file_types::yaml::Yaml::new()));
+            return file_types::yaml::Yaml::new().to_mapping(&contents);
         }
         Err(CheckError::UnknownFileType(extension))
     }
@@ -173,6 +178,15 @@ fn get_check_from_check_table(
         )),
         "file_absent" => Box::new(file_absent::FileAbsent::new(generic_check)),
         "file_present" => Box::new(file_present::FilePresent::new(generic_check)),
+        "file_regex_match" => Box::new(file_regex::FileRegexMatch::new(
+            generic_check,
+            check_table
+                .get("__regex__")
+                .unwrap()
+                .as_str()
+                .unwrap()
+                .to_string(),
+        )),
         "lines_absent" => Box::new(lines_absent::LinesAbsent::new(
             generic_check,
             check_table
@@ -212,7 +226,7 @@ pub(crate) fn read_checks_from_path(file_with_checks: &PathBuf) -> Vec<Box<dyn C
     let mut checks: Vec<Box<dyn Check>> = vec![];
 
     if !file_with_checks.exists() {
-        log::error!("{} does not exist", file_with_checks.to_string_lossy());
+        log::error!("⚠ {} does not exist", file_with_checks.to_string_lossy());
         return checks;
     }
 

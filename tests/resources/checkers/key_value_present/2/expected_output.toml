@@ -1,0 +1,10 @@
+[package]
+name = "foo"
+version = "1.0"
+
+[dependencies]
+toml = "1.0"
+
+[dependencies.bar]
+version = "2.0"
+features = ["bar"]

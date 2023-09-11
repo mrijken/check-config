@@ -35,7 +35,7 @@ impl Check for LinesPresent {
     fn get_action(&self) -> Result<Action, CheckError> {
         let contents = self
             .generic_check()
-            .get_file_contents(Some("".to_string()))?;
+            .get_file_contents(super::DefaultContent::EmptyString)?;
 
         if contents.contains(&self.lines) {
             // TODO: check that the content start at the beginning of line
