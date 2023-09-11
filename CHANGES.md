@@ -1,5 +1,10 @@
 # CHANGES
 
+## 0.4.0
+
+- Refactor checkers
+- Add file regex
+
 ## 0.3.3
 
 - Add documentation
