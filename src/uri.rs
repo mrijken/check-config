@@ -76,7 +76,7 @@ mod test {
 
         assert_eq!(
             py_uri_to_path("py://pathlib:asset/file.txt".to_string()).unwrap(),
-            path::PathBuf::from("/path/to/python/lib/site-packages\\asset/file.txt")
+            path::PathBuf::from("/path/to/python/lib/site-packages/asset/file.txt")
         );
     }
 }

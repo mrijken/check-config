@@ -12,12 +12,12 @@ pub(crate) fn from_string(
     doc: &str,
 ) -> Result<Box<dyn Mapping>, crate::checkers::base::CheckError> {
     let doc = doc
-        .parse::<toml_edit::Document>()
+        .parse::<toml_edit::DocumentMut>()
         .map_err(|e| CheckError::InvalidFileFormat(e.to_string()))?;
     Ok(Box::new(doc.clone()))
 }
 
-impl Mapping for toml_edit::Document {
+impl Mapping for toml_edit::DocumentMut {
     fn to_string(&self) -> Result<String, CheckError> {
         Ok(std::string::ToString::to_string(&self))
     }

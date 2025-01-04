@@ -1,6 +1,6 @@
 [package]
 name = "check-config"
-version = "0.4.0"
+version = "0.4.1"
 edition = "2021"
 license = "MIT"
 homepage = "https://pypi.org/project/check-config/"
@@ -18,20 +18,20 @@ exclude = [".github/*", "videos/*"]
 name = "check_config"
 
 [dependencies]
-toml = { version = "0.7.6", features = [] }
+toml = { version = "0.8.19", features = [] }
 serde = { version = "1.0", features = [] }
 serde_yaml = "0.9.25"
-toml_edit = "0.19.14"
+toml_edit = "0.22.22"
 similar = "2.2.1"
 log = "0.4.20"
 clap = { version = "4.3.19", features = ["derive"] }
 regex = "1.9.1"
-thiserror = "1.0.44"
+thiserror = "2.0.9"
 serde_json = "1.0.104"
 tempfile = "3.7.1"
 dirs = "5.0.1"
-clap-verbosity-flag = "2.0.1"
-env_logger = "0.10.0"
+clap-verbosity-flag = "3.0.2"
+env_logger = "0.11.6"
 
 [profile.release]
 panic = "abort"
