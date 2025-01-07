@@ -1,3 +1,6 @@
+[check-config]
+additional_checks = ["https://raw.githubusercontent.com/mrijken/check-config/refs/heads/main/example/checkers/http_checkers.toml"]
+
 ["output/to_be_removed".file_absent]
 
 ["output/.bashrc".file_present]
