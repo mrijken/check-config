@@ -25,8 +25,9 @@ The `checkers.toml` consist of zero or one `check-config` tables with configurat
 additional_checks = [  # optional list of toml files with additional checks
     "/home/me/.checkers/check.toml",  # absolute path
     "~/.checkers/check.toml",  # relative to home dir of current user
-    "check.toml", # relative (to the parent toml) path
+    "check.toml", # relative to this parent toml, indifferent if it is a filesystem path or a webserver path
     "py://my_package:checkers/python.toml", # path to file in python package
+    "https//example.com/check.toml", # path on webserver
 ]
 ```
 

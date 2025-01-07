@@ -6,8 +6,7 @@ Fetch checkers from more schemes, like:
 
 - [x] file
 - [x] asset in Python package
-- [ ] http(s)
-- [ ] git
+- [x] http(s)
 - [ ] ...
 
 ## File types

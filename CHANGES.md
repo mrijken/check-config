@@ -1,5 +1,9 @@
 # CHANGES
 
+## 0.5.0
+
+- Support http(s) location for checkers.
+
 ## 0.4.1
 
 - Update dependencies
