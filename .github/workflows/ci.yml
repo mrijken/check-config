@@ -20,13 +20,13 @@ permissions:
 
 jobs:
   linux:
-    runs-on: ubuntu-latest
+    # Use Ubuntu 20.04 here, because latest (22.04) uses OpenSSL v3.
+    # Currently, OpenSSL v3 causes compile issues with openssl-sys
+    runs-on: ubuntu-20.04
     strategy:
       matrix:
         target: [x86_64, x86, aarch64, armv7, s390x, ppc64le]
     steps:
-      - name: Install openssl-dev
-        run: sudo apt-get install -y openssl-dev
       - uses: actions/checkout@v3
       - name: Build wheels
         uses: PyO3/maturin-action@v1
