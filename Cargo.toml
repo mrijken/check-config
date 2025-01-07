@@ -33,8 +33,9 @@ dirs = "5.0.1"
 clap-verbosity-flag = "3.0.2"
 env_logger = "0.11.6"
 url = "2.5.4"
-reqwest = { version = "0.12.12", features = ["blocking"] }
+reqwest = { version = "0.12.12", features = ["blocking", "native-tls"] }
 derive_more = {version = "1.0.0", features = ["std","debug", "from", "display"]}
+openssl = { version = "0.10", features = ["vendored"] }
 
 [profile.release]
 panic = "abort"

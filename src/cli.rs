@@ -53,7 +53,6 @@ pub fn cli() -> ExitCode {
             return ExitCode::from(ExitStatus::Error);
         }
     };
-    dbg!("hi");
 
     env_logger::Builder::new()
         .filter_level(cli.verbose.log_level_filter())
