@@ -1,11 +1,15 @@
-use std::{env, fs, path::PathBuf};
+use std::{
+    env,
+    fs::{self},
+    path::PathBuf,
+};
 
 use toml::Value;
 
 use crate::{
     file_types::{self, FileType},
     mapping::generic::Mapping,
-    uri::uri_to_path,
+    uri::Uri,
 };
 
 use self::base::{Check, CheckError};
@@ -24,7 +28,7 @@ pub(crate) mod lines_present;
 pub(crate) mod test_helpers;
 
 fn get_checks_from_config_table(
-    file_with_checks: PathBuf,
+    file_with_checks: &Uri,
     file_to_check: PathBuf,
     config_table: &toml::Table,
 ) -> Vec<Box<dyn Check>> {
@@ -34,7 +38,7 @@ fn get_checks_from_config_table(
         match check_table {
             Value::Table(check_table) => {
                 checks.push(get_check_from_check_table(
-                    file_with_checks.clone(),
+                    file_with_checks,
                     file_to_check.clone(),
                     check_type,
                     check_table,
@@ -42,9 +46,9 @@ fn get_checks_from_config_table(
             }
             Value::Array(array) => {
                 for table in array {
-                    let check_table = table.as_table().unwrap();
+                    let check_table = table.as_table().expect("value is a table");
                     checks.push(get_check_from_check_table(
-                        file_with_checks.clone(),
+                        file_with_checks,
                         file_to_check.clone(),
                         check_type,
                         check_table,
@@ -52,7 +56,8 @@ fn get_checks_from_config_table(
                 }
             }
             _ => {
-                panic!("Unexpected value type");
+                log::error!("Unexpected value type");
+                std::process::exit(1);
             }
         };
     }
@@ -62,10 +67,10 @@ fn get_checks_from_config_table(
 #[derive(Debug, Clone)]
 pub(crate) struct GenericCheck {
     // path to the file where the checkers are defined
-    file_with_checks: PathBuf,
+    file_with_checks: Uri,
     // path to the file which needs to be checked
     file_to_check: PathBuf,
-    // overriden file type
+    // overridden file type
     file_type_override: Option<String>,
 }
 
@@ -74,7 +79,7 @@ pub(crate) enum DefaultContent {
     EmptyString,
 }
 impl GenericCheck {
-    fn file_with_checks(&self) -> &PathBuf {
+    fn file_with_checks(&self) -> &Uri {
         &self.file_with_checks
     }
 
@@ -128,10 +133,13 @@ impl GenericCheck {
 
         let contents = self.get_file_contents(DefaultContent::EmptyString)?;
 
-        let extension = self
-            .file_type_override
-            .clone()
-            .unwrap_or(extension.unwrap().to_str().unwrap().to_string());
+        let extension = self.file_type_override.clone().unwrap_or(
+            extension
+                .expect("file has an extension")
+                .to_str()
+                .expect("extension is a string")
+                .to_string(),
+        );
 
         if extension == "toml" {
             return file_types::toml::Toml::new().to_mapping(&contents);
@@ -149,13 +157,13 @@ fn determine_filetype_from_config_table(config_table: &mut toml::Table) -> Optio
         config_table
             .remove("__filetype__")?
             .as_str()
-            .unwrap()
+            .expect("__filetype__ is a string")
             .to_string(),
     )
 }
 
 fn get_check_from_check_table(
-    file_with_checks: PathBuf,
+    file_with_checks: &Uri,
     file_to_check: PathBuf,
     check_type: &str,
     check_table: &toml::Table,
@@ -178,33 +186,51 @@ fn get_check_from_check_table(
         )),
         "file_absent" => Box::new(file_absent::FileAbsent::new(generic_check)),
         "file_present" => Box::new(file_present::FilePresent::new(generic_check)),
-        "file_regex_match" => Box::new(file_regex::FileRegexMatch::new(
-            generic_check,
-            check_table
-                .get("__regex__")
-                .unwrap()
-                .as_str()
-                .unwrap()
-                .to_string(),
-        )),
-        "lines_absent" => Box::new(lines_absent::LinesAbsent::new(
-            generic_check,
-            check_table
-                .get("__lines__")
-                .unwrap()
-                .as_str()
-                .unwrap()
-                .to_string(),
-        )),
-        "lines_present" => Box::new(lines_present::LinesPresent::new(
-            generic_check,
-            check_table
-                .get("__lines__")
-                .unwrap()
-                .as_str()
-                .unwrap()
-                .to_string(),
-        )),
+        "file_regex_match" => {
+            if check_table.get("__regex__").is_none() {
+                log::error!("No __regex__ found in {}", check_table);
+                std::process::exit(1);
+            }
+            Box::new(file_regex::FileRegexMatch::new(
+                generic_check,
+                check_table
+                    .get("__regex__")
+                    .expect("__regex__ is present")
+                    .as_str()
+                    .expect("__regex__ is a string")
+                    .to_string(),
+            ))
+        }
+        "lines_absent" => {
+            if check_table.get("__lines__").is_none() {
+                log::error!("No __lines__ found in {}", check_table);
+                std::process::exit(1);
+            }
+            Box::new(lines_absent::LinesAbsent::new(
+                generic_check,
+                check_table
+                    .get("__lines__")
+                    .expect("__lines__ is present")
+                    .as_str()
+                    .expect("__lines__ is a string")
+                    .to_string(),
+            ))
+        }
+        "lines_present" => {
+            if check_table.get("__lines__").is_none() {
+                log::error!("No __lines__ found in {}", check_table);
+                std::process::exit(1);
+            }
+            Box::new(lines_present::LinesPresent::new(
+                generic_check,
+                check_table
+                    .get("__lines__")
+                    .expect("__lines__ is present")
+                    .as_str()
+                    .expect("__lines__ is a string")
+                    .to_string(),
+            ))
+        }
         "key_value_present" => Box::new(key_value_present::KeyValuePresent::new(
             generic_check,
             check_table.clone(),
@@ -217,41 +243,62 @@ fn get_check_from_check_table(
             generic_check,
             check_table.clone(),
         )),
-        _ => panic!("unknown check {} {}", check_type, check_table),
+        _ => {
+            log::error!("unknown check {} {}", check_type, check_table);
+
+            // exit can not be tested
+            #[cfg(test)]
+            core::panic!("unknown check");
+
+            #[cfg(not(test))]
+            std::process::exit(1);
+        }
     };
     check
 }
 
-pub(crate) fn read_checks_from_path(file_with_checks: &PathBuf) -> Vec<Box<dyn Check>> {
+pub(crate) fn read_checks_from_path(file_with_checks: &Uri) -> Vec<Box<dyn Check>> {
     let mut checks: Vec<Box<dyn Check>> = vec![];
 
-    if !file_with_checks.exists() {
-        log::error!("⚠ {} does not exist", file_with_checks.to_string_lossy());
-        return checks;
-    }
-
-    let checks_toml = fs::read_to_string(file_with_checks).unwrap();
-    let checks_toml: toml::Table = toml::from_str(checks_toml.as_str()).unwrap();
+    let checks_toml = match file_with_checks.read_to_string() {
+        Ok(checks_toml) => checks_toml,
+        Err(_) => {
+            log::error!("⚠ {} could not be read", file_with_checks);
+            return checks;
+        }
+    };
+    let checks_toml: toml::Table = toml::from_str(checks_toml.as_str()).expect("valid toml");
 
     for (file_to_check, value) in checks_toml {
         if file_to_check == "check-config" {
             if let Some(Value::Array(include_uris)) = value.get("additional_checks") {
                 for include_uri in include_uris {
-                    let include_path = uri_to_path(
-                        file_with_checks.parent().unwrap(),
-                        include_uri.as_str().unwrap(),
-                    );
+                    let include_path =
+                        match Uri::new(include_uri.as_str().expect("uri is a string")) {
+                            Ok(include_path) => include_path,
+                            Err(_) => match file_with_checks
+                                .join(include_uri.as_str().expect("uri is a string"))
+                            {
+                                Ok(include_path) => include_path,
+                                Err(_) => {
+                                    log::error!("{} is not a valid uri", include_uri);
+                                    std::process::exit(1);
+                                }
+                            },
+                        };
                     checks.extend(read_checks_from_path(&include_path));
                 }
             }
             continue;
         }
-        let file_to_check = env::current_dir().unwrap().join(file_to_check);
+        let file_to_check = env::current_dir()
+            .expect("current dir exists")
+            .join(file_to_check);
         match value {
             Value::Table(config_table) => {
                 checks.extend(get_checks_from_config_table(
-                    file_with_checks.clone(),
-                    file_to_check,
+                    file_with_checks,
+                    file_to_check.clone(),
                     &config_table,
                 ));
             }
@@ -259,7 +306,7 @@ pub(crate) fn read_checks_from_path(file_with_checks: &PathBuf) -> Vec<Box<dyn C
                 for element in array {
                     if let Some(config_table) = element.as_table() {
                         checks.extend(get_checks_from_config_table(
-                            file_with_checks.clone(),
+                            file_with_checks,
                             file_to_check.clone(),
                             config_table,
                         ));
@@ -323,6 +370,7 @@ __items__ = [1,2,3]
         )
         .unwrap();
 
+        let path_with_checkers = crate::uri::Uri::Path(path_with_checkers);
         let checks = read_checks_from_path(&path_with_checkers);
 
         assert_eq!(checks.len(), 9);
@@ -344,6 +392,7 @@ __items__ = [1,2,3]
         )
         .unwrap();
 
+        let path_with_checkers = crate::uri::Uri::Path(path_with_checkers);
         let checks = read_checks_from_path(&path_with_checkers);
 
         assert_eq!(checks.len(), 0);

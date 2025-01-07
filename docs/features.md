@@ -19,8 +19,6 @@ File types which can be handled:
 - [x] yaml
 - [x] toml
 - [ ] ini
-- [ ] xml
-- [ ] hocon
 - [ ] env variables
 - [ ] ...
 

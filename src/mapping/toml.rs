@@ -61,7 +61,8 @@ impl Mapping for toml_edit::DocumentMut {
 
 impl Mapping for toml_edit::Table {
     fn to_string(&self) -> Result<String, CheckError> {
-        panic!("not implemented, call to_string on Document instead");
+        log::error!("not implemented, call to_string on Document instead");
+        std::process::exit(1);
     }
 
     fn contains_key(&self, key: &str) -> bool {
@@ -145,6 +146,7 @@ impl Array for toml_edit::Array {
         let value = toml_edit::Value::from_toml_value(value);
         if let Some(idx) = toml_edit_array_index(self, &value) {
             self.remove(idx);
+            self.fmt(); // make sure spaces around removed item are removed also
         }
     }
 

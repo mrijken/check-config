@@ -1,6 +1,6 @@
 use similar::TextDiff;
 
-use core::{fmt::Debug as DebugTrait, panic};
+use core::fmt::Debug as DebugTrait;
 use std::io;
 use thiserror::Error;
 
@@ -35,7 +35,8 @@ pub(crate) trait Check: DebugTrait {
     fn check_type(&self) -> String;
     fn generic_check(&self) -> &GenericCheck;
     fn get_action(&self) -> Result<Action, CheckError> {
-        panic!("Function is not implemented");
+        log::error!("Function is not implemented");
+        std::process::exit(1);
     }
 
     fn print(&self, is_ok: bool, key: Option<&str>, action_message: Option<&str>) {
@@ -54,7 +55,7 @@ pub(crate) trait Check: DebugTrait {
         let msg = format!(
             "{} {} - {} - {}{}{}",
             ok,
-            self.generic_check().file_with_checks().to_string_lossy(),
+            self.generic_check().file_with_checks(),
             self.generic_check().file_to_check().to_string_lossy(),
             self.check_type(),
             key,

@@ -1,0 +1,57 @@
+["output/to_be_removed".file_absent]
+
+["output/.bashrc".file_present]
+
+["output/.bashrc".file_regex_match]
+__regex__ = "export KEY=.*"
+
+["output/.bashrc".lines_present]
+__lines__ = "alias ll='ls -alF'"
+
+["output/.bashrc".lines_absent]
+__lines__ = "alias to_be_removed='ls'"
+
+["output/test.json".key_absent.to_be_removed]
+
+["output/test.toml".key_absent.to_be_removed]
+
+["output/test.yaml".key_absent.to_be_removed]
+
+["output/test.json".key_value_present]
+to_be_added = "value"
+
+["output/test.toml".key_value_present]
+to_be_added = "value"
+
+["output/test.yaml".key_value_present]
+to_be_added = "value"
+
+["output/test.json".key_value_present.to_be_kept]
+key = "value"
+
+["output/test.toml".key_value_present.to_be_kept]
+key = "value"
+
+["output/test.yaml".key_value_present.to_be_kept]
+key = "value"
+
+["output/test.json".entry_absent.list]
+__items__ = ["to_be_removed"]
+
+["output/test.toml".entry_absent.list]
+__items__ = ["to_be_removed"]
+
+["output/test.yaml".entry_absent.list]
+__items__ = ["to_be_removed"]
+
+["output/test.json".entry_present.list]
+__items__ = ["to_be_added", "to_be_kept"]
+
+["output/test.toml".entry_present.list]
+__items__ = ["to_be_added", "to_be_kept"]
+
+["output/test.yaml".entry_present.list]
+__items__ = ["to_be_added", "to_be_kept"]
+
+["output/test.json".key_value_regex_match]
+regex = "m[a-z]tches"

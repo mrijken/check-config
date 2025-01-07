@@ -53,8 +53,8 @@ fn set_key_value(doc: &mut dyn Mapping, table_to_set: &toml::Table) {
             doc.insert(k, v);
             continue;
         }
-        let child_doc = doc.get_mapping(k, true).unwrap();
-        set_key_value(child_doc, v.as_table().unwrap());
+        let child_doc = doc.get_mapping(k, true).expect("key exists or is added");
+        set_key_value(child_doc, v.as_table().expect("value is a table"));
     }
 }
 

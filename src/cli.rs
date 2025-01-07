@@ -1,5 +1,4 @@
 use std::io::Write;
-use std::path::PathBuf;
 use std::process::ExitCode;
 
 use clap::Parser;
@@ -47,7 +46,14 @@ struct Cli {
 
 pub fn cli() -> ExitCode {
     let cli = Cli::parse();
-    let file_with_checks = &PathBuf::from(&cli.path);
+    let file_with_checks = match super::uri::Uri::new(&cli.path) {
+        Ok(uri) => uri,
+        Err(_) => {
+            log::error!("Unable to load checkers  {}", cli.path);
+            return ExitCode::from(ExitStatus::Error);
+        }
+    };
+    dbg!("hi");
 
     env_logger::Builder::new()
         .filter_level(cli.verbose.log_level_filter())
@@ -55,13 +61,10 @@ pub fn cli() -> ExitCode {
         .init();
     log::info!("Starting check-config");
 
-    log::info!(
-        "Using checkers from {}",
-        &file_with_checks.to_string_lossy()
-    );
+    log::info!("Using checkers from {}", &file_with_checks);
     log::info!("Fix: {}", &cli.fix);
 
-    let checks = read_checks_from_path(file_with_checks);
+    let checks = read_checks_from_path(&file_with_checks);
 
     let mut action_count = 0;
     let mut success_count = 0;

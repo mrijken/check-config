@@ -41,7 +41,7 @@ mod tests {
     fn test_file_absent() {
         let dir = tempdir().unwrap();
         let file_to_check = dir.path().join("file_to_check");
-        let file_with_checks = dir.path().join("file_with_checks");
+        let file_with_checks = crate::uri::Uri::Path(dir.path().join("file_with_checks"));
         let generic_check = GenericCheck {
             file_to_check,
             file_type_override: None,

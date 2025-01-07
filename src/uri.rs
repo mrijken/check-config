@@ -1,8 +1,75 @@
 use dirs::home_dir;
-use std::path::{self, Path, PathBuf};
+use std::{
+    fs,
+    path::{self, PathBuf},
+};
+use url::Url;
 
-#[warn(unused_imports)]
-use std::process::Command;
+use derive_more::Display;
+
+#[derive(Debug)]
+pub(crate) enum Error {
+    NoAbsolutePath,
+    InvalidUrl,
+    UnknownUrlScheme,
+    FileCanNotBeRead,
+}
+
+#[derive(Debug, Clone, Display)]
+pub(crate) enum Uri {
+    #[display("Path {}", _0.display())]
+    Path(PathBuf),
+    #[display("Uri {}", _0)]
+    Http(Url),
+}
+
+impl Uri {
+    pub(crate) fn new(uri: &str) -> Result<Uri, Error> {
+        if uri.starts_with("py") {
+            match py_uri_to_path(uri.to_string()) {
+                Some(path) => return Ok(Uri::Path(path)),
+                None => {
+                    log::error!("{} is not a valid python uri", uri);
+                    return Err(Error::NoAbsolutePath);
+                }
+            }
+        }
+        if uri.starts_with("http") {
+            return Ok(Uri::Http(Url::parse(uri).map_err(|_| Error::InvalidUrl)?));
+        }
+        if uri.starts_with("file://") {
+            return Ok(Uri::Path(PathBuf::from(uri.replace("file://", "/"))));
+        }
+        if uri.starts_with('/') {
+            return Ok(Uri::Path(PathBuf::from(uri.to_string())));
+        }
+        if uri.starts_with('~') {
+            return Ok(Uri::Path(
+                home_dir().expect("Home directory found").join(&uri[2..]),
+            ));
+        }
+        Ok(Uri::Path(PathBuf::from(uri)))
+    }
+
+    // get relative url
+    pub(crate) fn join(&self, path: &str) -> Result<Uri, Error> {
+        match self {
+            Uri::Path(path) => Ok(Uri::Path(path.join(path))),
+            Uri::Http(url) => Ok(Uri::Http(url.join(path).map_err(|_| Error::InvalidUrl)?)),
+        }
+    }
+
+    pub(crate) fn read_to_string(&self) -> Result<String, Error> {
+        match self {
+            Uri::Path(path) => Ok(fs::read_to_string(path).map_err(|_| Error::FileCanNotBeRead)?),
+
+            Uri::Http(url) => Ok(reqwest::blocking::get(url.clone())
+                .map_err(|_| Error::FileCanNotBeRead)?
+                .text()
+                .map_err(|_| Error::FileCanNotBeRead)?),
+        }
+    }
+}
 
 #[cfg(test)]
 fn get_python_module_path(module: &str) -> String {
@@ -11,7 +78,7 @@ fn get_python_module_path(module: &str) -> String {
 
 #[cfg(not(test))]
 fn get_python_module_path(module: &str) -> String {
-    let output = match Command::new("python")
+    let output = match std::process::Command::new("python")
         .args([
             "-c",
             format!(
@@ -22,27 +89,17 @@ fn get_python_module_path(module: &str) -> String {
         ])
         .output()
     {
-        Err(_) => panic!("Python can not be called"),
+        Err(_) => {
+            log::error!("Python can not be called");
+            std::process::exit(1);
+        }
         Ok(output) => output,
     };
 
-    String::from_utf8(output.stdout).unwrap().trim().to_string()
-}
-
-pub(crate) fn uri_to_path(working_path: &Path, include_uri: &str) -> PathBuf {
-    if include_uri.starts_with("py") {
-        match py_uri_to_path(include_uri.to_string()) {
-            Some(path) => return path,
-            None => panic!("{} is not a valid python uri", include_uri),
-        }
-    }
-    if include_uri.starts_with('/') {
-        return PathBuf::from(include_uri);
-    }
-    if include_uri.starts_with('~') {
-        return home_dir().unwrap().join(&include_uri[2..]);
-    }
-    working_path.join(include_uri)
+    String::from_utf8(output.stdout)
+        .expect("Read output from Python command")
+        .trim()
+        .to_string()
 }
 
 fn py_uri_to_path(package_uri: String) -> Option<path::PathBuf> {
@@ -53,12 +110,12 @@ fn py_uri_to_path(package_uri: String) -> Option<path::PathBuf> {
     if !package_uri.contains(':') {
         return None;
     }
-    let (package_name, path) = package_uri.split_once(':').unwrap();
+    let (package_name, path) = package_uri.split_once(':').expect(": in uri");
 
     Some(
         path::PathBuf::from(get_python_module_path(package_name))
             .parent()
-            .unwrap()
+            .expect("parent path is present")
             .to_path_buf()
             .join(path),
     )

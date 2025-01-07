@@ -49,27 +49,39 @@ impl Check for EntryAbsent {
 
 fn remove_entries(doc: &mut dyn Mapping, entries_to_remove: &toml::Table) {
     for (key_to_remove, value_to_remove) in entries_to_remove {
-        if !value_to_remove.is_table() {
-            panic!("Unexpected value type");
+        if !doc.contains_key(key_to_remove) {
+            // key_to_remove does not exists, so no need to remove value_to_remove
+            continue;
         }
-        let value_to_remove = value_to_remove.as_table().unwrap();
+        if !value_to_remove.is_table() {
+            log::error!("No __items__ element found in checker");
+            return;
+        }
+        let value_to_remove = value_to_remove
+            .as_table()
+            .expect("value to remove is a table");
         if value_to_remove.contains_key("__items__") {
             let doc_array = match doc.get_array(key_to_remove, false) {
                 Ok(a) => a,
-                Err(_) => panic!("expecting key to exist"),
+                Err(_) => {
+                    log::error!("expecting key to exist");
+                    std::process::exit(1);
+                }
             };
 
             for item in value_to_remove
                 .get("__items__")
-                .unwrap()
+                .expect("__items__ is present")
                 .as_array()
-                .unwrap()
+                .expect("__items__ is an array")
             {
                 doc_array.remove(item)
             }
             continue;
         }
-        let child_doc = doc.get_mapping(key_to_remove, false).unwrap();
+        let child_doc = doc
+            .get_mapping(key_to_remove, false)
+            .expect("key exists from which value is removed");
         remove_entries(child_doc, value_to_remove);
     }
 }

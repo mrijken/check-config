@@ -1,0 +1,11 @@
+{
+    "list": [
+        "to_be_removed",
+        "to_be_kept"
+    ],
+    "to_be_removed": "foo",
+    "to_be_kept": {
+        "key": "value"
+    },
+    "regex": "matches"
+}

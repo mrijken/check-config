@@ -50,21 +50,29 @@ impl Check for EntryPresent {
 fn add_entries(doc: &mut dyn Mapping, entries_to_add: &toml::map::Map<String, toml::Value>) {
     for (key_to_add, value_to_add) in entries_to_add {
         if !value_to_add.is_table() {
-            panic!("Unexpected value type");
+            log::error!("Unexpected value type");
+            std::process::exit(1);
         }
-        let table_to_add = value_to_add.as_table().unwrap();
+        let table_to_add = value_to_add.as_table().expect("value is a table");
         if table_to_add.contains_key("__items__") {
             let doc_array = doc
                 .get_array(key_to_add, true)
                 .expect("expecting key to exist");
 
-            for item in table_to_add.get("__items__").unwrap().as_array().unwrap() {
+            for item in table_to_add
+                .get("__items__")
+                .expect("__items__ is present")
+                .as_array()
+                .expect("__items__ is an array")
+            {
                 doc_array.insert_when_not_present(item)
             }
             continue;
         }
 
-        let child_doc = doc.get_mapping(key_to_add, true).unwrap();
+        let child_doc = doc
+            .get_mapping(key_to_add, true)
+            .expect("expecting key to exist");
         add_entries(child_doc, table_to_add);
     }
 }

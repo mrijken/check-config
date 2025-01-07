@@ -1,6 +1,8 @@
+use derive_more::derive::Display;
+
 use crate::checkers::base::CheckError;
 
-#[derive(Debug)]
+#[derive(Debug, Display)]
 pub(crate) enum MappingError {
     MissingKey(String),
     WrongType(String),
