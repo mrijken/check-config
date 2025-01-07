@@ -22,7 +22,7 @@ jobs:
   linux:
     # Use Ubuntu 20.04 here, because latest (22.04) uses OpenSSL v3.
     # Currently, OpenSSL v3 causes compile issues with openssl-sys
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
     strategy:
       matrix:
         target: [x86_64, x86, aarch64, armv7, s390x, ppc64le]
