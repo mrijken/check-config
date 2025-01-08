@@ -1,9 +1,15 @@
 # Usage
 
-With the next command you can check your configuration files
+After installation, with the next command you can check your configuration files
 
 ```shell
 check_config
+```
+
+Note: with [uvx](https://docs.astral.sh/uv/guides/tools/) it is also possible to run it without installation:
+
+```shell
+uvx check_config
 ```
 
 It will output whether the check is succeeded:
