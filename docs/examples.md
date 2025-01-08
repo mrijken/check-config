@@ -109,3 +109,22 @@ __lines__ = ".mypy_cache"
 [".bashrc".file_regex_match]
 __regex__ = "export KEY=.*"
 ```
+
+```toml
+[".bashrc".lines_present]
+__lines__ = "export KEY=1"
+```
+
+
+## .env files
+
+```toml
+[".env".file_regex_match]
+__regex__ = "KEY=.*"
+```
+
+
+```toml
+[".env".lines_present]
+__lines__ = "KEY=1"
+```

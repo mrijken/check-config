@@ -13,12 +13,10 @@ Fetch checkers from more schemes, like:
 
 File types which can be handled:
 
-- [x] plain text
+- [x] plain text (.bashrc, .env, ...)
 - [x] json
 - [x] yaml
 - [x] toml
-- [ ] ini
-- [ ] env variables
 - [ ] ...
 
 ## Check types
