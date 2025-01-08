@@ -36,7 +36,7 @@ jobs:
           sccache: "true"
           manylinux: auto
           before-script-linux: |
-             sudo apt-get install -y build-essential pkg-config libssl-dev
+             apt-get install -y build-essential pkg-config libssl-dev
       - name: Upload wheels
         uses: actions/upload-artifact@v3
         with:
