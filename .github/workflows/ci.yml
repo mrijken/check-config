@@ -27,8 +27,6 @@ jobs:
       matrix:
         target: [x86_64, x86, aarch64, armv7, s390x, ppc64le]
     steps:
-      - name: Install openssl-dev
-        run: sudo apt-get install -y build-essential pkg-config libssl-dev
       - uses: actions/checkout@v3
       - name: Build wheels
         uses: PyO3/maturin-action@v1
@@ -37,6 +35,8 @@ jobs:
           args: --release --out dist
           sccache: "true"
           manylinux: auto
+          before=script-linux: |
+             sudo apt-get install -y build-essential pkg-config libssl-dev
       - name: Upload wheels
         uses: actions/upload-artifact@v3
         with:
