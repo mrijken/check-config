@@ -73,6 +73,15 @@ not check the contents.
 ["test/present_file".file_present]
 ```
 
+When the file does not exists, running with fix will create the file. At default an empty file
+will be created. When a placeholder is given, the created file will contain the placeholder as content.
+
+```toml
+["test/present_file".file_present]
+placeholder = "sample content"
+```
+
+
 ## Key Absent
 
 `key_absent` will check if the key is not present in the file.

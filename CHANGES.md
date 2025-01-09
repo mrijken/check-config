@@ -1,5 +1,9 @@
 # CHANGES
 
+## not released
+
+- Add optional placeholder when creating a file with file_present
+
 ## 0.5.1
 
 - Update documentation
