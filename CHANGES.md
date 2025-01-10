@@ -1,8 +1,9 @@
 # CHANGES
 
-## not released
+## 0.6.0
 
 - Add optional placeholder when creating a file with file_present
+- Add optional placeholder when creating a file with file_regex
 
 ## 0.5.1
 
