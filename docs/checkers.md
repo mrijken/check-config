@@ -7,7 +7,7 @@ checker types (and more to come):
 |------|-------------|---------|
 | [file_absent](#file-absent) |  the file must be absent | yes |
 | [file_present](#file-present) |  the file must be present, indifferent the content | yes |
-| [file_regex_match](#file-regex-match) |  the content of the file must match the regex expression | no |
+| [file_regex_match](#file-regex-match) |  the content of the file must match the regex expression | when placeholder is prsent |
 | [key_absent](#key-absent) | a specified key must be absent in a toml / yaml / json file  | yes |
 | [key_value_present](#key-value-present) | a specified key with a specified value must be present in a toml / yaml / json file  | yes |
 | [key_value_regex_match](#key-value-regex-match) | the value of a specified key must be match the specified regex in a toml / yaml / json file  | no |
@@ -73,6 +73,14 @@ not check the contents.
 ["test/present_file".file_present]
 ```
 
+When the file does not exists, running with fix will create the file. At default an empty file
+will be created. When a placeholder is given, the created file will contain the placeholder as content.
+
+```toml
+["test/present_file".file_present]
+__placeholder__ = "sample content"
+```
+
 ## Key Absent
 
 `key_absent` will check if the key is not present in the file.
@@ -97,19 +105,30 @@ This checker type can handle different kind of [mapping file types](#mapping-fil
 Checks whether the contents of the file matches the regex expression.
 
 ```toml
-[[".bashrc".file_regex_match]]
-__regex__ = "export KEY=.*"
-
-[[".bashrc".file_regex_match]]
-__regex__ = "export ANOTHER_KEY=.*"
+[".bashrc".file_regex_match]
+__regex__ = 'export KEY=.*'
 ```
 
 Multiple regex can be given when the file.checker_type pair is an array, ie:
 
 ```toml
-[".bashrc".file_regex_match]
-__regex__ = "export KEY=.*"
+[[".bashrc".file_regex_match]]
+__regex__ = 'export KEY=.*'
+
+[[".bashrc".file_regex_match]]
+__regex__ = 'export ANOTHER_KEY=.*'
 ```
+
+When the file does not exists, running with fix will create the file if a `__placeholder__` value is given
+with that value as content. If no `__placeholder__` is given, no file is created.
+
+```toml
+[".bashrc".file_regex_match]
+__regex__ = 'export KEY=.*'
+__placeholder__ = "export KEY=value"
+```
+
+Note: specify the regex as a raw string (single quotes) to be prevent escaping.
 
 This checker type can handle any text file.
 

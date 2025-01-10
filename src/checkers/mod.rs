@@ -185,7 +185,14 @@ fn get_check_from_check_table(
             check_table.clone(),
         )),
         "file_absent" => Box::new(file_absent::FileAbsent::new(generic_check)),
-        "file_present" => Box::new(file_present::FilePresent::new(generic_check)),
+        "file_present" => {
+            let placeholder = check_table
+                .get("__placeholder__")
+                .map(|v| v.as_str().expect("placeholder is a string").to_string())
+                .unwrap_or("".to_string());
+
+            Box::new(file_present::FilePresent::new(generic_check, placeholder))
+        }
         "file_regex_match" => {
             if check_table.get("__regex__").is_none() {
                 log::error!("No __regex__ found in {}", check_table);
@@ -199,6 +206,9 @@ fn get_check_from_check_table(
                     .as_str()
                     .expect("__regex__ is a string")
                     .to_string(),
+                check_table
+                    .get("__placeholder__")
+                    .map(|v| v.as_str().expect("placeholder is a string").to_string()),
             ))
         }
         "lines_absent" => {

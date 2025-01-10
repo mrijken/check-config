@@ -9,13 +9,15 @@ use super::{
 pub(crate) struct FileRegexMatch {
     generic_check: GenericCheck,
     regex: String,
+    placeholder: Option<String>,
 }
 
 impl FileRegexMatch {
-    pub fn new(generic_check: GenericCheck, regex: String) -> Self {
+    pub fn new(generic_check: GenericCheck, regex: String, placeholder: Option<String>) -> Self {
         Self {
             generic_check,
             regex,
+            placeholder,
         }
     }
 }
@@ -31,9 +33,14 @@ impl Check for FileRegexMatch {
 
     fn get_action(&self) -> Result<Action, CheckError> {
         if !self.generic_check().file_to_check().exists() {
-            return Ok(Action::MatchFileRegex {
-                regex: self.regex.clone(),
-            });
+            return if let Some(placeholder) = &self.placeholder {
+                Ok(Action::SetContents(placeholder.clone()))
+            } else {
+                dbg!(&self.placeholder);
+                Ok(Action::MatchFileRegex {
+                    regex: self.regex.clone(),
+                })
+            };
         }
 
         let contents = self
@@ -74,10 +81,9 @@ mod tests {
             file_with_checks,
         };
 
-        let regex_check = FileRegexMatch::new(generic_check, "export KEY=.*".to_string());
+        let regex_check = FileRegexMatch::new(generic_check, "export KEY=.*".to_string(), None);
 
         // not existing file
-        let mut file = File::create(regex_check.generic_check().file_to_check()).unwrap();
         assert_eq!(
             regex_check.check().unwrap(),
             Action::MatchFileRegex {
@@ -86,6 +92,46 @@ mod tests {
         );
 
         // file with correct contents
+        let mut file = File::create(regex_check.generic_check().file_to_check()).unwrap();
+        writeln!(file, "export KEY=test").unwrap();
+        assert_eq!(regex_check.check().unwrap(), Action::None);
+
+        // file with incorrect contents
+        let mut file = File::create(regex_check.generic_check().file_to_check()).unwrap();
+        writeln!(file, "export WRONG_KEY=test").unwrap();
+        assert_eq!(
+            regex_check.check().unwrap(),
+            Action::MatchFileRegex {
+                regex: "export KEY=.*".to_string()
+            }
+        );
+    }
+
+    #[test]
+    fn test_regex_present_with_placeholder() {
+        let dir = tempdir().unwrap();
+        let file_to_check = dir.path().join("file_to_check");
+        let file_with_checks = crate::uri::Uri::Path(dir.path().join("file_with_checks"));
+        let generic_check = GenericCheck {
+            file_to_check,
+            file_type_override: None,
+            file_with_checks,
+        };
+
+        let regex_check = FileRegexMatch::new(
+            generic_check,
+            "export KEY=.*".to_string(),
+            Some("export KEY=value".to_string()),
+        );
+
+        // not existing file
+        assert_eq!(
+            regex_check.check().unwrap(),
+            Action::SetContents("export KEY=value".to_string())
+        );
+
+        // file with correct contents
+        let mut file = File::create(regex_check.generic_check().file_to_check()).unwrap();
         writeln!(file, "export KEY=test").unwrap();
         assert_eq!(regex_check.check().unwrap(), Action::None);
 
