@@ -6,7 +6,7 @@ additional_checks = ["https://raw.githubusercontent.com/mrijken/check-config/ref
 ["output/.bashrc".file_present]
 
 ["output/.gitconfig".file_present]
-placeholder = """
+__placeholder__ = """
 [user]
         name = <your name>
         email = <your email>
