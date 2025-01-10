@@ -35,7 +35,7 @@ Fix: false
 +line-length = 120
 ```
 
-Check Config will use the checkers as defined in `checkers.toml`, but you can specify another path:
+Check Config will use the checkers as defined in `check_config.toml`, but you can specify another path:
 
 ```shell
 check_config -p <path>
@@ -45,6 +45,43 @@ Optionally you can not just check your files, but also try to fix them:
 
 ```shell
 check_config --fix
+```
+
+## Pre-commit
+
+[pre-commit](https://pre-commit.com/) helps checking your code before committing git, so you can catch errors
+before the build pipeline does.
+
+Add the next repo to the `.pre-commit-config.yaml` in your repository with the id of the hook
+you want to use:
+
+```yaml
+repos:
+  - repo: https://github.com/mrijken/check_config
+    rev: v0.6.1
+    hooks:
+      # Install via Cargo and execute `check_config --fix`
+      - id: check_config_fix_install_via_rust
+      # Install via pip and execute `check_config --fix`
+      - id: check_config_fix_install_via_python
+      # Install via Cargo and execute `check_config`
+      - id: check_config_check_install_via_rust
+      # Install via pip and execute `check_config`
+      - id: check_config_check_install_via_python
+```
+
+If you want to call check_config with other arguments, like a different toml, you can create your own hook
+in your `.pre-commit-config.toml`:
+
+```yaml
+- repo: local
+  hooks:
+  - id: check_config_fix_install_via_rust
+    name: check configuration files based on check_config.toml and try to fix them
+    language: rust
+    entry: check_config --fix -p check.toml -vv
+    pass_filenames: false
+    always_run: true
 ```
 
 ## Exit Codes

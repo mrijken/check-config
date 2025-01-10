@@ -6,7 +6,7 @@ file have the (upgraded) settings.
 
 Check-config works with checker files in which you define checks, ie
 
-```checkers.toml
+```check_config.toml
 # check that .venv is included in the .gitignore
 [".gitignore".lines_present]
 __lines__ = ".venv"

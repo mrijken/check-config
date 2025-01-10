@@ -1,0 +1,24 @@
+- id: check_config_fix_install_via_rust
+  name: check configuration files based on check_config.toml and try to fix them
+  language: rust
+  entry: check_config --fix
+  pass_filenames: false
+  always_run: true
+- id: check_config_fix_install_via_python
+  name: check configuration files based on check_config.toml and try to fix them
+  language: python
+  entry: check_config --fix
+  pass_filenames: false
+  always_run: true
+- id: check_config_check_install_via_rust
+  name: check configuration files based on check_config.toml
+  language: rust
+  entry: check_config
+  pass_filenames: false
+  always_run: true
+- id: check_config_check_install_via_python
+  name: check configuration files based on check_config.toml
+  language: python
+  entry: check_config
+  pass_filenames: false
+  always_run: true

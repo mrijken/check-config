@@ -33,7 +33,7 @@ impl From<ExitStatus> for ExitCode {
 #[command(author, version, about, long_about = None)]
 struct Cli {
     /// Path to the root checkers file in toml format
-    #[arg(short, long, default_value = "checkers.toml")]
+    #[arg(short, long, default_value = "check_config.toml")]
     path: String,
 
     /// Try to fix the config

@@ -18,7 +18,7 @@ checker types (and more to come):
 
 ## Checker.toml
 
-The `checkers.toml` consist of zero or one `check-config` tables with configuration for check-config itself:
+The `check_config.toml` consist of zero or one `check-config` tables with configuration for check-config itself:
 
 ```toml
 [check-config]

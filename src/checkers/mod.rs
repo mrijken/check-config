@@ -339,7 +339,7 @@ mod test {
     #[test]
     fn test_read_checks_from_path() {
         let dir = tempdir().unwrap();
-        let path_with_checkers = dir.path().join("checkers.toml");
+        let path_with_checkers = dir.path().join("check_config.toml");
         let mut file_with_checkers = File::create(&path_with_checkers).unwrap();
 
         writeln!(
@@ -390,7 +390,7 @@ __items__ = [1,2,3]
     #[should_panic]
     fn test_read_invalid_checks_from_path() {
         let dir = tempdir().unwrap();
-        let path_with_checkers = dir.path().join("checkers.toml");
+        let path_with_checkers = dir.path().join("check_config.toml");
         let mut file_with_checkers = File::create(&path_with_checkers).unwrap();
 
         writeln!(

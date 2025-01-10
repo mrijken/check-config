@@ -1,5 +1,10 @@
 # CHANGES
 
+## 0.6.1
+
+ - BREAKING: Use check_config.toml (in stead of checkers.toml) as default style file
+ - Add pre-commit hook
+
 ## 0.6.0
 
 - Add optional placeholder when creating a file with file_present
