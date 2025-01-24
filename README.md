@@ -17,9 +17,6 @@ With `check-config` you can check (for example in a build pipeline) whether your
 Most checks can also be automatically fixed with `check-config --fix`, so in this case a missing line will
 be added to the `.gitignore`.
 
-A large number of [file types](features/#file-types) and [checks](checkers) are supported or will
-be supported in the near [future](features).
-
 ## Documentation
 
 Check out the [documentation](https://check-config.readthedocs.io)
