@@ -1,8 +1,10 @@
 # Check Config
 
-It can be cumbersome when you have multiple projects and environments with configuration files which need to be
-upgraded and keep in sync regularly. Check-config will help you with i.e. making sure that the configuration
-file have the (upgraded) settings.
+I have a lot of repo's. Some config for tools like ruff, is included in the repo ie via a pyproject.toml. Without
+check-config it is hard to keep them in sync.
+
+The build pipeline can check if the latest config is used via `check_config`. When I want to change the config, 
+ie using a different line length, I can update the config in a repo via `check_config --fix`.
 
 Check-config works with checker files in which you define checks, ie
 
