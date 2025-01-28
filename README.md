@@ -19,6 +19,8 @@ With `check-config` you can check (for example in a build pipeline) whether your
 Most checks can also be automatically fixed with `check-config --fix`, so in this case a missing line will
 be added to the `.gitignore`.
 
+The checker files can be located on a file/webserver or in a Python Package.
+
 ## Documentation
 
 Check out the [documentation](https://check-config.readthedocs.io)
