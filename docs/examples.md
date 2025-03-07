@@ -4,7 +4,7 @@
 
 ```toml
 [check-config]
-additional_checks = ["black.toml", "mypy.toml", "tuff.toml"]
+include = ["black.toml", "mypy.toml", "tuff.toml"]
 
 # Do not use setup.cfg
 ["setup.cfg".file_absent]

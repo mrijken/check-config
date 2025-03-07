@@ -22,7 +22,7 @@ The `check_config.toml` consist of zero or one `check-config` tables with config
 
 ```toml
 [check-config]
-additional_checks = [  # optional list of toml files with additional checks
+include = [  # optional list of toml files with additional checks
     "/home/me/.checkers/check.toml",  # absolute path
     "~/.checkers/check.toml",  # relative to home dir of current user
     "check.toml", # relative to this parent toml, indifferent if it is a filesystem path or a webserver path

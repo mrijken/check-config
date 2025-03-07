@@ -1,5 +1,5 @@
 [check-config]
-additional_checks = ["https://raw.githubusercontent.com/mrijken/check-config/refs/heads/main/example/checkers/http_check_config.toml"]
+include = ["https://raw.githubusercontent.com/mrijken/check-config/refs/heads/main/example/checkers/http_check_config.toml"]
 
 ["output/to_be_removed".file_absent]
 

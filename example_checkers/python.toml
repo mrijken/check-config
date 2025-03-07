@@ -1,5 +1,5 @@
 [check-config]
-additional_checks = ["black.toml", "mypy.toml", "ruff.toml"]
+include = ["black.toml", "mypy.toml", "ruff.toml"]
 
 # Do not use setup.cfg
 ["setup.cfg".file_absent]
