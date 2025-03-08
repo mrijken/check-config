@@ -281,7 +281,13 @@ pub(crate) fn read_checks_from_path(file_with_checks: &Uri) -> Vec<Box<dyn Check
 
     for (file_to_check, value) in checks_toml {
         if file_to_check == "check-config" {
-            if let Some(Value::Array(include_uris)) = value.get("additional_checks") {
+            let include = if let Some(include) = value.get("include") {
+                Some(include)
+            } else {
+                // for backward compatibility
+                value.get("additional_checks")
+            };
+            if let Some(Value::Array(include_uris)) = include {
                 for include_uri in include_uris {
                     let include_path =
                         match Uri::new(include_uri.as_str().expect("uri is a string")) {
@@ -346,7 +352,7 @@ mod test {
             file_with_checkers,
             r#"
 [check-config]
-additional_checks = []  # optional list of toml files with additional checks
+include = []  # optional list of toml files with additional checks
 
 ["test/absent_file".file_absent]
 
