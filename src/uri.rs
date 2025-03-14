@@ -1,83 +1,55 @@
-use dirs::home_dir;
-use std::{
-    fs,
-    path::{self, PathBuf},
-};
-use url::Url;
+use derive_more::{Display, From};
 
-use derive_more::Display;
-
-#[derive(Debug)]
-pub(crate) enum Error {
-    NoAbsolutePath,
+#[derive(Debug, From, Display)]
+pub enum Error {
     InvalidUrl,
     UnknownUrlScheme,
-    FileCanNotBeRead,
+    NoValidPythonURL,
+    #[from]
+    IO(std::io::Error),
+    #[from]
+    Parse(url::ParseError),
+    #[from]
+    Reqwest(reqwest::Error),
+}
+impl std::error::Error for Error {}
+
+pub fn read_to_string(url: &url::Url) -> Result<String, Error> {
+    if url.scheme() == "file" {
+        Ok(std::fs::read_to_string(url.path())?)
+    } else if url.scheme().starts_with("http") {
+        Ok(reqwest::blocking::get(url.clone())?.text()?)
+    } else {
+        Err(Error::UnknownUrlScheme)
+    }
 }
 
-#[derive(Debug, Clone, Display)]
-pub(crate) enum Uri {
-    #[display("Path {}", _0.display())]
-    Path(PathBuf),
-    #[display("Uri {}", _0)]
-    Http(Url),
-}
+pub fn parse_uri(uri: &str, base: Option<&url::Url>) -> Result<url::Url, Error> {
+    let url = match url::Url::parse(uri) {
+        Ok(url) => url,
+        Err(_) => match base {
+            Some(base) => base.join(uri)?,
+            None => return Err(Error::InvalidUrl),
+        },
+    };
 
-impl Uri {
-    pub(crate) fn new(uri: &str) -> Result<Uri, Error> {
-        if uri.starts_with("py") {
-            match py_uri_to_path(uri.to_string()) {
-                Some(path) => return Ok(Uri::Path(path)),
-                None => {
-                    log::error!("{} is not a valid python uri", uri);
-                    return Err(Error::NoAbsolutePath);
-                }
-            }
-        }
-        if uri.starts_with("http") {
-            return Ok(Uri::Http(Url::parse(uri).map_err(|_| Error::InvalidUrl)?));
-        }
-        if uri.starts_with("file://") {
-            return Ok(Uri::Path(PathBuf::from(uri.replace("file://", "/"))));
-        }
-        if uri.starts_with('/') {
-            return Ok(Uri::Path(PathBuf::from(uri.to_string())));
-        }
-        if uri.starts_with('~') {
-            return Ok(Uri::Path(
-                home_dir().expect("Home directory found").join(&uri[2..]),
-            ));
-        }
-        Ok(Uri::Path(PathBuf::from(uri)))
+    if url.scheme() != "py" {
+        return Ok(url);
     }
-
-    // get relative url
-    pub(crate) fn join(&self, path: &str) -> Result<Uri, Error> {
-        match self {
-            Uri::Path(path) => Ok(Uri::Path(path.join(path))),
-            Uri::Http(url) => Ok(Uri::Http(url.join(path).map_err(|_| Error::InvalidUrl)?)),
-        }
-    }
-
-    pub(crate) fn read_to_string(&self) -> Result<String, Error> {
-        match self {
-            Uri::Path(path) => Ok(fs::read_to_string(path).map_err(|_| Error::FileCanNotBeRead)?),
-
-            Uri::Http(url) => Ok(reqwest::blocking::get(url.clone())
-                .map_err(|_| Error::FileCanNotBeRead)?
-                .text()
-                .map_err(|_| Error::FileCanNotBeRead)?),
-        }
-    }
+    py_url_to_url(url)
 }
 
 #[cfg(test)]
-fn get_python_module_path(module: &str) -> String {
-    format!("/path/to/python/lib/site-packages/{}.py", module)
+fn get_python_package_path(module: &str) -> Option<url::Url> {
+    url::Url::parse(&dbg!(format!(
+        "file:///path/to/python/lib/site-packages/{}",
+        module
+    )))
+    .ok()
 }
 
 #[cfg(not(test))]
-fn get_python_module_path(module: &str) -> String {
+fn get_python_package_path(module: &str) -> Option<url::Url> {
     let output = match std::process::Command::new("python")
         .args([
             "-c",
@@ -95,30 +67,32 @@ fn get_python_module_path(module: &str) -> String {
         }
         Ok(output) => output,
     };
-
-    String::from_utf8(output.stdout)
+    let path = String::from_utf8(output.stdout)
         .expect("Read output from Python command")
         .trim()
-        .to_string()
+        .to_string();
+    let path = path.rsplit_once('/').unwrap().0;
+
+    url::Url::parse(&format!("file://{}", path)).ok()
 }
 
-fn py_uri_to_path(package_uri: String) -> Option<path::PathBuf> {
-    if !package_uri.starts_with("py://") {
-        return None;
-    }
-    let package_uri = package_uri.replace("py://", "");
-    if !package_uri.contains(':') {
-        return None;
-    }
-    let (package_name, path) = package_uri.split_once(':').expect(": in uri");
+fn py_url_to_url(package_uri: url::Url) -> Result<url::Url, Error> {
+    let package_name = package_uri.host().expect("host is present");
 
-    Some(
-        path::PathBuf::from(get_python_module_path(package_name))
-            .parent()
-            .expect("parent path is present")
-            .to_path_buf()
-            .join(path),
-    )
+    let module_url = match get_python_package_path(package_name.to_string().as_str()) {
+        Some(url) => url,
+        None => {
+            log::error!("{} is not a valid python package", package_name);
+            return Err(Error::NoValidPythonURL);
+        }
+    };
+    let path_inside_package_without_leading_slash = package_uri
+        .path()
+        .split_once('/')
+        .expect("valid path with a leading slash")
+        .1;
+
+    Ok(module_url.join(path_inside_package_without_leading_slash)?)
 }
 
 #[cfg(test)]
@@ -126,14 +100,56 @@ mod test {
     use super::*;
 
     #[test]
-    fn test_read_py_packages() {
-        assert!(py_uri_to_path("pathlib".to_string()).is_none(),);
-
-        assert!(py_uri_to_path("py://pathlib".to_string()).is_none(),);
+    fn test_uris() {
+        assert_eq!(
+            parse_uri("file:///path/to/test", None).unwrap().path(),
+            "/path/to/test"
+        );
+        assert_eq!(
+            parse_uri("https://path/to/test", None).unwrap().path(),
+            "/to/test"
+        );
+        assert_eq!(
+            parse_uri("py://pathlib/to/test", None).unwrap().path(),
+            "/path/to/python/lib/site-packages/to/test"
+        );
+        assert!(!parse_uri("pathlib", None).is_ok(),);
+        assert!(!parse_uri("/path/to/test", None).is_ok(),);
 
         assert_eq!(
-            py_uri_to_path("py://pathlib:asset/file.txt".to_string()).unwrap(),
-            path::PathBuf::from("/path/to/python/lib/site-packages/asset/file.txt")
+            parse_uri(
+                "https://path/to/test",
+                Some(&parse_uri("https://some/other/path", None).unwrap())
+            )
+            .unwrap()
+            .path(),
+            "/to/test"
         );
+
+        assert_eq!(
+            parse_uri(
+                "test",
+                Some(&parse_uri("https://some/other/path", None).unwrap())
+            )
+            .unwrap()
+            .path(),
+            "/other/test"
+        );
+
+        assert_eq!(
+            parse_uri(
+                "test",
+                Some(&parse_uri("https://some/other/path/", None).unwrap())
+            )
+            .unwrap()
+            .path(),
+            "/other/path/test"
+        );
+        // assert!(py_url_to_url("py://pathlib".to_string()).is_none(),);
+
+        // assert_eq!(
+        //     py_url_to_url("py://pathlib:asset/file.txt".to_string()).unwrap(),
+        //     path::PathBuf::from("/path/to/python/lib/site-packages/asset/file.txt")
+        // );
     }
 }

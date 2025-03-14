@@ -47,7 +47,8 @@ mod tests {
     fn test_file_absent() {
         let dir = tempdir().unwrap();
         let file_to_check = dir.path().join("file_to_check");
-        let file_with_checks = crate::uri::Uri::Path(dir.path().join("file_with_checks"));
+        let file_with_checks =
+            url::Url::from_file_path(dir.path().join("file_with_checks")).unwrap();
         let generic_check = GenericCheck {
             file_to_check,
             file_type_override: None,
@@ -67,7 +68,8 @@ mod tests {
         let dir = tempdir().unwrap();
         let file_to_check = dir.path().join("file_to_check");
         File::create(&file_to_check).unwrap();
-        let file_with_checks = crate::uri::Uri::Path(dir.path().join("file_with_checks"));
+        let file_with_checks =
+            url::Url::from_file_path(dir.path().join("file_with_checks")).unwrap();
         let generic_check = GenericCheck {
             file_to_check,
             file_type_override: None,
@@ -83,7 +85,8 @@ mod tests {
     fn test_file_absent_with_placeholder() {
         let dir = tempdir().unwrap();
         let file_to_check = dir.path().join("file_to_check");
-        let file_with_checks = crate::uri::Uri::Path(dir.path().join("file_with_checks"));
+        let file_with_checks =
+            url::Url::from_file_path(dir.path().join("file_with_checks")).unwrap();
         let generic_check = GenericCheck {
             file_to_check,
             file_type_override: None,
@@ -103,7 +106,8 @@ mod tests {
         let dir = tempdir().unwrap();
         let file_to_check = dir.path().join("file_to_check");
         File::create(&file_to_check).unwrap();
-        let file_with_checks = crate::uri::Uri::Path(dir.path().join("file_with_checks"));
+        let file_with_checks =
+            url::Url::from_file_path(dir.path().join("file_with_checks")).unwrap();
         let generic_check = GenericCheck {
             file_to_check,
             file_type_override: None,

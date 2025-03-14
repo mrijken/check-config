@@ -46,7 +46,15 @@ struct Cli {
 
 pub fn cli() -> ExitCode {
     let cli = Cli::parse();
-    let file_with_checks = match super::uri::Uri::new(&cli.path) {
+    let cwd = super::uri::parse_uri(
+        &format!(
+            "file://{}/",
+            std::env::current_dir().unwrap().as_path().to_str().unwrap()
+        ),
+        None,
+    )
+    .unwrap();
+    let file_with_checks = match dbg!(super::uri::parse_uri(&cli.path, Some(&cwd))) {
         Ok(uri) => uri,
         Err(_) => {
             log::error!("Unable to load checkers  {}", cli.path);

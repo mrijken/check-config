@@ -9,7 +9,7 @@ use toml::Value;
 use crate::{
     file_types::{self, FileType},
     mapping::generic::Mapping,
-    uri::Uri,
+    uri,
 };
 
 use self::base::{Check, CheckError};
@@ -28,7 +28,7 @@ pub(crate) mod lines_present;
 pub(crate) mod test_helpers;
 
 fn get_checks_from_config_table(
-    file_with_checks: &Uri,
+    file_with_checks: &url::Url,
     file_to_check: PathBuf,
     config_table: &toml::Table,
 ) -> Vec<Box<dyn Check>> {
@@ -67,7 +67,7 @@ fn get_checks_from_config_table(
 #[derive(Debug, Clone)]
 pub(crate) struct GenericCheck {
     // path to the file where the checkers are defined
-    file_with_checks: Uri,
+    file_with_checks: url::Url,
     // path to the file which needs to be checked
     file_to_check: PathBuf,
     // overridden file type
@@ -79,7 +79,7 @@ pub(crate) enum DefaultContent {
     EmptyString,
 }
 impl GenericCheck {
-    fn file_with_checks(&self) -> &Uri {
+    fn file_with_checks(&self) -> &url::Url {
         &self.file_with_checks
     }
 
@@ -163,7 +163,7 @@ fn determine_filetype_from_config_table(config_table: &mut toml::Table) -> Optio
 }
 
 fn get_check_from_check_table(
-    file_with_checks: &Uri,
+    file_with_checks: &url::Url,
     file_to_check: PathBuf,
     check_type: &str,
     check_table: &toml::Table,
@@ -267,10 +267,10 @@ fn get_check_from_check_table(
     check
 }
 
-pub(crate) fn read_checks_from_path(file_with_checks: &Uri) -> Vec<Box<dyn Check>> {
+pub(crate) fn read_checks_from_path(file_with_checks: &url::Url) -> Vec<Box<dyn Check>> {
     let mut checks: Vec<Box<dyn Check>> = vec![];
 
-    let checks_toml = match file_with_checks.read_to_string() {
+    let checks_toml = match uri::read_to_string(file_with_checks) {
         Ok(checks_toml) => checks_toml,
         Err(_) => {
             log::error!("⚠ {} could not be read", file_with_checks);
@@ -289,19 +289,17 @@ pub(crate) fn read_checks_from_path(file_with_checks: &Uri) -> Vec<Box<dyn Check
             };
             if let Some(Value::Array(include_uris)) = include {
                 for include_uri in include_uris {
-                    let include_path =
-                        match Uri::new(include_uri.as_str().expect("uri is a string")) {
-                            Ok(include_path) => include_path,
-                            Err(_) => match file_with_checks
-                                .join(include_uri.as_str().expect("uri is a string"))
-                            {
-                                Ok(include_path) => include_path,
-                                Err(_) => {
-                                    log::error!("{} is not a valid uri", include_uri);
-                                    std::process::exit(1);
-                                }
-                            },
-                        };
+                    let include_path = match uri::parse_uri(
+                        include_uri.as_str().expect("uri is a string"),
+                        Some(file_with_checks),
+                    ) {
+                        Ok(include_path) => include_path,
+                        Err(_) => {
+                            log::error!("{} is not a valid uri", include_uri);
+                            std::process::exit(1);
+                        }
+                    };
+
                     checks.extend(read_checks_from_path(&include_path));
                 }
             }
@@ -386,7 +384,8 @@ __items__ = [1,2,3]
         )
         .unwrap();
 
-        let path_with_checkers = crate::uri::Uri::Path(path_with_checkers);
+        let path_with_checkers =
+            url::Url::parse(&format!("file://{}", path_with_checkers.to_str().unwrap())).unwrap();
         let checks = read_checks_from_path(&path_with_checkers);
 
         assert_eq!(checks.len(), 9);
@@ -408,7 +407,8 @@ __items__ = [1,2,3]
         )
         .unwrap();
 
-        let path_with_checkers = crate::uri::Uri::Path(path_with_checkers);
+        let path_with_checkers =
+            url::Url::parse(&format!("file://{}", path_with_checkers.to_str().unwrap())).unwrap();
         let checks = read_checks_from_path(&path_with_checkers);
 
         assert_eq!(checks.len(), 0);
