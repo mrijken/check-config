@@ -1,6 +1,6 @@
 # CHANGES
 
-## Not released:
+## 0.7.0
 
 - fix rename additional checks to include [#7](https://github.com/mrijken/check-config/issues/7)
 - fix relative includes [#8](https://github.com/mrijken/check-config/issues/8)
