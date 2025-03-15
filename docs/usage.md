@@ -35,7 +35,10 @@ Fix: false
 +line-length = 120
 ```
 
-Check Config will use the checkers as defined in `check_config.toml`, but you can specify another path:
+Check Config will use the checkers as defined in `check_config.toml`. When that file is not present,
+it will use `pyproject.toml` if it is present.
+
+Optionally you can specify another path to a toml file with checkers:
 
 ```shell
 check_config -p <path>

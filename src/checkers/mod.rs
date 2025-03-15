@@ -37,27 +37,37 @@ fn get_checks_from_config_table(
     for (check_type, check_table) in config_table {
         match check_table {
             Value::Table(check_table) => {
-                checks.push(get_check_from_check_table(
+                if let Some(check) = get_check_from_check_table(
                     file_with_checks,
                     file_to_check.clone(),
                     check_type,
                     check_table,
-                ));
+                ) {
+                    checks.push(check);
+                }
             }
             Value::Array(array) => {
                 for table in array {
                     let check_table = table.as_table().expect("value is a table");
-                    checks.push(get_check_from_check_table(
+                    if let Some(check) = get_check_from_check_table(
                         file_with_checks,
                         file_to_check.clone(),
                         check_type,
                         check_table,
-                    ));
+                    ) {
+                        checks.push(check);
+                    }
                 }
             }
-            _ => {
-                log::error!("Unexpected value type");
-                std::process::exit(1);
+            value => {
+                if !file_with_checks.path().ends_with("pyproject.toml") {
+                    log::error!(
+                        "Unexpected value type {} {}",
+                        value,
+                        file_with_checks.path()
+                    );
+                    std::process::exit(1);
+                }
             }
         };
     }
@@ -167,7 +177,7 @@ fn get_check_from_check_table(
     file_to_check: PathBuf,
     check_type: &str,
     check_table: &toml::Table,
-) -> Box<dyn Check> {
+) -> Option<Box<dyn Check>> {
     let mut check_table = check_table.clone();
 
     let generic_check = GenericCheck {
@@ -175,30 +185,33 @@ fn get_check_from_check_table(
         file_to_check: file_to_check.clone(),
         file_type_override: determine_filetype_from_config_table(&mut check_table),
     };
-    let check: Box<dyn Check> = match check_type {
-        "entry_absent" => Box::new(entry_absent::EntryAbsent::new(
+    let check: Option<Box<dyn Check>> = match check_type {
+        "entry_absent" => Some(Box::new(entry_absent::EntryAbsent::new(
             generic_check,
             check_table.clone(),
-        )),
-        "entry_present" => Box::new(entry_present::EntryPresent::new(
+        ))),
+        "entry_present" => Some(Box::new(entry_present::EntryPresent::new(
             generic_check,
             check_table.clone(),
-        )),
-        "file_absent" => Box::new(file_absent::FileAbsent::new(generic_check)),
+        ))),
+        "file_absent" => Some(Box::new(file_absent::FileAbsent::new(generic_check))),
         "file_present" => {
             let placeholder = check_table
                 .get("__placeholder__")
                 .map(|v| v.as_str().expect("placeholder is a string").to_string())
                 .unwrap_or("".to_string());
 
-            Box::new(file_present::FilePresent::new(generic_check, placeholder))
+            Some(Box::new(file_present::FilePresent::new(
+                generic_check,
+                placeholder,
+            )))
         }
         "file_regex_match" => {
             if check_table.get("__regex__").is_none() {
                 log::error!("No __regex__ found in {}", check_table);
                 std::process::exit(1);
             }
-            Box::new(file_regex::FileRegexMatch::new(
+            Some(Box::new(file_regex::FileRegexMatch::new(
                 generic_check,
                 check_table
                     .get("__regex__")
@@ -209,14 +222,14 @@ fn get_check_from_check_table(
                 check_table
                     .get("__placeholder__")
                     .map(|v| v.as_str().expect("placeholder is a string").to_string()),
-            ))
+            )))
         }
         "lines_absent" => {
             if check_table.get("__lines__").is_none() {
                 log::error!("No __lines__ found in {}", check_table);
                 std::process::exit(1);
             }
-            Box::new(lines_absent::LinesAbsent::new(
+            Some(Box::new(lines_absent::LinesAbsent::new(
                 generic_check,
                 check_table
                     .get("__lines__")
@@ -224,14 +237,14 @@ fn get_check_from_check_table(
                     .as_str()
                     .expect("__lines__ is a string")
                     .to_string(),
-            ))
+            )))
         }
         "lines_present" => {
             if check_table.get("__lines__").is_none() {
                 log::error!("No __lines__ found in {}", check_table);
                 std::process::exit(1);
             }
-            Box::new(lines_present::LinesPresent::new(
+            Some(Box::new(lines_present::LinesPresent::new(
                 generic_check,
                 check_table
                     .get("__lines__")
@@ -239,29 +252,32 @@ fn get_check_from_check_table(
                     .as_str()
                     .expect("__lines__ is a string")
                     .to_string(),
-            ))
+            )))
         }
-        "key_value_present" => Box::new(key_value_present::KeyValuePresent::new(
+        "key_value_present" => Some(Box::new(key_value_present::KeyValuePresent::new(
             generic_check,
             check_table.clone(),
-        )),
-        "key_absent" => Box::new(key_absent::KeyAbsent::new(
+        ))),
+        "key_absent" => Some(Box::new(key_absent::KeyAbsent::new(
             generic_check,
             check_table.clone(),
-        )),
-        "key_value_regex_match" => Box::new(key_value_regex_match::EntryRegexMatch::new(
+        ))),
+        "key_value_regex_match" => Some(Box::new(key_value_regex_match::EntryRegexMatch::new(
             generic_check,
             check_table.clone(),
-        )),
+        ))),
         _ => {
-            log::error!("unknown check {} {}", check_type, check_table);
+            if !file_with_checks.path().ends_with("pyproject.toml") {
+                log::error!("unknown check {} {}", check_type, check_table);
 
-            // exit can not be tested
-            #[cfg(test)]
-            core::panic!("unknown check");
+                // exit can not be tested
+                #[cfg(test)]
+                core::panic!("unknown check");
 
-            #[cfg(not(test))]
-            std::process::exit(1);
+                #[cfg(not(test))]
+                std::process::exit(1);
+            }
+            None
         }
     };
     check

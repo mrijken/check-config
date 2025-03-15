@@ -1,5 +1,6 @@
 use std::io::Write;
 use std::process::ExitCode;
+use std::sync::Arc;
 
 use clap::Parser;
 
@@ -54,13 +55,29 @@ pub fn cli() -> ExitCode {
         None,
     )
     .unwrap();
-    let file_with_checks = match dbg!(super::uri::parse_uri(&cli.path, Some(&cwd))) {
+    let mut file_with_checks = match super::uri::parse_uri(&cli.path, Some(&cwd)) {
         Ok(uri) => uri,
         Err(_) => {
-            log::error!("Unable to load checkers  {}", cli.path);
+            log::error!("Unable to load checkers. Invalid path: {}", cli.path);
             return ExitCode::from(ExitStatus::Error);
         }
     };
+
+    if !std::path::Path::new(file_with_checks.path()).exists() {
+        if !std::path::Path::new("pyproject.toml").exists() {
+            log::error!(
+                "Path with checkers does not exist: {}",
+                file_with_checks.path()
+            );
+            return ExitCode::from(ExitStatus::Error);
+        }
+        log::info!(
+            "Path with checkers does not exist: {}",
+            file_with_checks.path()
+        );
+        log::info!("Using pyproject.toml as alternative");
+        file_with_checks = super::uri::parse_uri("pyproject.toml", Some(&cwd)).unwrap();
+    }
 
     env_logger::Builder::new()
         .filter_level(cli.verbose.log_level_filter())
