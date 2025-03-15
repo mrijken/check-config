@@ -4,6 +4,7 @@
 
 - fix rename additional checks to include [#7](https://github.com/mrijken/check-config/issues/7)
 - fix relative includes [#8](https://github.com/mrijken/check-config/issues/8)
+- add fallback to pyproject.toml [[#6](https://github.com/mrijken/check-config/issues/6)]
 
 
 ## 0.6.1

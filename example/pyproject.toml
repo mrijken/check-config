@@ -1,0 +1,10 @@
+[project]
+name = "example"
+version = "0.1.0"
+
+[check-config]
+include = ["checkers/check_config.toml"]
+
+[tool.ruff]
+target-version = "py312"
+line-length = 120
