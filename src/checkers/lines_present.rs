@@ -64,7 +64,8 @@ mod tests {
     fn test_add_line_ending_when_needed() {
         let dir = tempdir().unwrap();
         let file_to_check = dir.path().join("file_to_check");
-        let file_with_checks = crate::uri::Uri::Path(dir.path().join("file_with_checks"));
+        let file_with_checks =
+            url::Url::from_file_path(dir.path().join("file_with_checks")).unwrap();
         let generic_check = GenericCheck {
             file_to_check,
             file_type_override: None,
@@ -85,7 +86,8 @@ mod tests {
     fn test_lines_present() {
         let dir = tempdir().unwrap();
         let file_to_check = dir.path().join("file_to_check");
-        let file_with_checks = crate::uri::Uri::Path(dir.path().join("file_with_checks"));
+        let file_with_checks =
+            url::Url::from_file_path(dir.path().join("file_with_checks")).unwrap();
         let generic_check = GenericCheck {
             file_to_check,
             file_type_override: None,

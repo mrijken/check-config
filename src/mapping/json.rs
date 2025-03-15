@@ -117,7 +117,7 @@ impl Array for serde_json::Value {
 
     fn contains_item(&self, value: &toml::Value) -> bool {
         let value = serde_json::Value::from_toml_value(value);
-        return self.as_array().unwrap().contains(&value);
+        self.as_array().unwrap().contains(&value)
     }
 }
 

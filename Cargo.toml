@@ -18,24 +18,24 @@ exclude = [".github/*", "videos/*"]
 name = "check_config"
 
 [dependencies]
-toml = { version = "0.8.19", features = [] }
+toml = { version = "0.8.20", features = [] }
 serde = { version = "1.0", features = [] }
 serde_yaml = "0.9.25"
-toml_edit = "0.22.22"
-similar = "2.2.1"
-log = "0.4.20"
-clap = { version = "4.3.19", features = ["derive"] }
+toml_edit = "0.22.24"
+similar = "2.7.0"
+log = "0.4.26"
+clap = { version = "4.5.31", features = ["derive"] }
 regex = "1.9.1"
-thiserror = "2.0.9"
-serde_json = "1.0.104"
-tempfile = "3.7.1"
-dirs = "5.0.1"
+thiserror = "2.0.12"
+serde_json = "1.0.140"
+tempfile = "3.18.0"
+dirs = "6.0.0"
 clap-verbosity-flag = "3.0.2"
 env_logger = "0.11.6"
 url = "2.5.4"
 reqwest = { version = "0.12.12", features = ["blocking"] }
-derive_more = {version = "1.0.0", features = ["std","debug", "from", "display"]}
-openssl = { version = "0.10", features = ["vendored"] }
+derive_more = {version = "2.0.1", features = ["std","debug", "from", "display"]}
+openssl = { version = "0.10.71", features = ["vendored"] }
 
 [profile.release]
 panic = "abort"

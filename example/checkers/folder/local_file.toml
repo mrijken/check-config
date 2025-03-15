@@ -1,0 +1,8 @@
+[check-config]
+include = [
+        "relative_local_file.toml"
+]
+
+
+["output/test.yaml".entry_present.list]
+__items__ = ["to_be_added", "to_be_kept"]
