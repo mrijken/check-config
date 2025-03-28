@@ -48,14 +48,15 @@ fn get_checks_from_config_table(
             }
             Value::Array(array) => {
                 for table in array {
-                    let check_table = table.as_table().expect("value is a table");
-                    if let Some(check) = get_check_from_check_table(
-                        file_with_checks,
-                        file_to_check.clone(),
-                        check_type,
-                        check_table,
-                    ) {
-                        checks.push(check);
+                    if let Some(check_table) = table.as_table() {
+                        if let Some(check) = get_check_from_check_table(
+                            file_with_checks,
+                            file_to_check.clone(),
+                            check_type,
+                            check_table,
+                        ) {
+                            checks.push(check);
+                        }
                     }
                 }
             }

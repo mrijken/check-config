@@ -1,16 +1,19 @@
 # CHANGES
 
+## 0.7.1
+
+- fix reading python paths
+
 ## 0.7.0
 
 - fix rename additional checks to include [#7](https://github.com/mrijken/check-config/issues/7)
 - fix relative includes [#8](https://github.com/mrijken/check-config/issues/8)
 - add fallback to pyproject.toml [[#6](https://github.com/mrijken/check-config/issues/6)]
 
-
 ## 0.6.1
 
- - BREAKING: Use check_config.toml (in stead of checkers.toml) as default style file
- - Add pre-commit hook
+- BREAKING: Use check_config.toml (in stead of checkers.toml) as default style file
+- Add pre-commit hook
 
 ## 0.6.0
 

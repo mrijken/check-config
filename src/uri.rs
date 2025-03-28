@@ -73,7 +73,7 @@ fn get_python_package_path(module: &str) -> Option<url::Url> {
         .to_string();
     let path = path.rsplit_once('/').unwrap().0;
 
-    url::Url::parse(&format!("file://{}", path)).ok()
+    url::Url::parse(&format!("file://{}/", path)).ok()
 }
 
 fn py_url_to_url(package_uri: url::Url) -> Result<url::Url, Error> {
