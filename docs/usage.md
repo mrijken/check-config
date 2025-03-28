@@ -61,7 +61,7 @@ you want to use:
 ```yaml
 repos:
   - repo: https://github.com/mrijken/check_config
-    rev: v0.7.0
+    rev: v0.7.1
     hooks:
       # Install via Cargo and execute `check_config --fix`
       - id: check_config_fix_install_via_rust
@@ -79,20 +79,20 @@ in your `.pre-commit-config.toml`:
 ```yaml
 - repo: local
   hooks:
-  - id: check_config_fix_install_via_rust
-    name: check configuration files based on check_config.toml and try to fix them
-    language: rust
-    entry: check_config --fix -p check.toml -vv
-    pass_filenames: false
-    always_run: true
+    - id: check_config_fix_install_via_rust
+      name: check configuration files based on check_config.toml and try to fix them
+      language: rust
+      entry: check_config --fix -p check.toml -vv
+      pass_filenames: false
+      always_run: true
 ```
 
 ## Exit Codes
 
 We use the following exit codes, which you can make use of in your build pipelines.
 
-| code | meaning |
-|------|-----------|
-| 0 | OK      |
-| 1 | Parsing error: the checkers file is not valid TOML, has a wrong check type or any other parsing error |
-| 2 | Violation error: one or more of you checker have failed  |
+| code | meaning                                                                                               |
+| ---- | ----------------------------------------------------------------------------------------------------- |
+| 0    | OK                                                                                                    |
+| 1    | Parsing error: the checkers file is not valid TOML, has a wrong check type or any other parsing error |
+| 2    | Violation error: one or more of you checker have failed                                               |
