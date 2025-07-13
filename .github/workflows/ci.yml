@@ -37,7 +37,7 @@ jobs:
           token: ${{ secrets.CODECOV_TOKEN }} # not required for public repos
           files: lcov.info
           fail_ci_if_error: true
-linux:
+  linux:
     # Use Ubuntu 20.04 here, because latest (22.04) uses OpenSSL v3.
     # Currently, OpenSSL v3 causes compile issues with openssl-sys
     runs-on: ubuntu-latest
