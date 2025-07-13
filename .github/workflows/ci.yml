@@ -19,7 +19,25 @@ permissions:
   contents: read
 
 jobs:
-  linux:
+  coverage:
+    runs-on: ubuntu-latest
+    env:
+      CARGO_TERM_COLOR: always
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Rust
+        run: rustup update stable
+      - name: Install cargo-llvm-cov
+        uses: taiki-e/install-action@cargo-llvm-cov
+      - name: Generate code coverage
+        run: cargo llvm-cov --all-features --workspace --lcov --output-path lcov.info
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v3
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }} # not required for public repos
+          files: lcov.info
+          fail_ci_if_error: true
+linux:
     # Use Ubuntu 20.04 here, because latest (22.04) uses OpenSSL v3.
     # Currently, OpenSSL v3 causes compile issues with openssl-sys
     runs-on: ubuntu-latest
