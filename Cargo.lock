@@ -138,7 +138,7 @@ checksum = "9555578bc9e57714c812a1f84e4fc5b4d21fcb063490c624de019f7464c91268"
 
 [[package]]
 name = "check-config"
-version = "0.7.0"
+version = "0.7.1"
 dependencies = [
  "clap",
  "clap-verbosity-flag",

@@ -1,5 +1,9 @@
 # CHANGES
 
+## 0.7.1
+
+- fix reading python paths
+
 ## 0.7.0
 
 - fix rename additional checks to include [#7](https://github.com/mrijken/check-config/issues/7)
