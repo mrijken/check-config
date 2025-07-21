@@ -111,6 +111,9 @@ mod tests {
     }
 
     #[test]
+    fn test_get_action() {}
+
+    #[test]
     fn test_remove_entries_with_tables() {
         let entries_to_remove = r#"
 [key.list]

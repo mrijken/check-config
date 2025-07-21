@@ -88,23 +88,8 @@ pub fn cli() -> ExitCode {
     log::info!("Using checkers from {}", &file_with_checks);
     log::info!("Fix: {}", &cli.fix);
 
-    let checks = read_checks_from_path(&file_with_checks);
+    let (action_count, success_count) = run_check_for_file(&file_with_checks, cli.fix);
 
-    let mut action_count = 0;
-    let mut success_count = 0;
-
-    for check in checks {
-        let result = if cli.fix { check.fix() } else { check.check() };
-
-        match result {
-            Err(_) => {
-                log::error!("There was an error fixing files.");
-                return ExitCode::from(ExitStatus::Error);
-            }
-            Ok(Action::None) => success_count += 1,
-            _ => action_count += 1,
-        };
-    }
     log::info!("{} checks successful.", success_count);
     if action_count > 0 {
         // note: error level is used to always show this message, also with the lowest verbose level
@@ -115,4 +100,25 @@ pub fn cli() -> ExitCode {
         log::error!("No violations found.");
         ExitCode::from(ExitStatus::Success)
     }
+}
+
+pub fn run_check_for_file(file_with_checks: &url::Url, fix: bool) -> (i32, i32) {
+    let checks = read_checks_from_path(file_with_checks);
+
+    let mut action_count = 0;
+    let mut success_count = 0;
+
+    for check in checks {
+        let result = if fix { check.fix() } else { check.check() };
+        match result {
+            Err(_) => {
+                log::error!("There was an error fixing files.");
+                return (0, 0);
+            }
+            Ok(Action::None) => success_count += 1,
+            _ => action_count += 1,
+        };
+    }
+
+    (action_count, success_count)
 }
