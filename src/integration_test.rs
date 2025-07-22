@@ -15,9 +15,9 @@ mod tests {
         let (action_count, success_count) = cli::run_checks(&checks, true);
 
         assert_eq!(action_count, 0);
-        assert_eq!(success_count, 21);
+        assert_eq!(success_count, 25);
         assert!(!dir_diff::is_different("output", "example/expected_output").unwrap());
 
-        std::fs::remove_dir_all("output").unwrap();
+        //std::fs::remove_dir_all("output").unwrap();
     }
 }

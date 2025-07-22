@@ -18,7 +18,8 @@ pub(crate) fn read_test_files(check_type: &str) -> TestFiles {
             Rc::new(toml::from_str::<toml::Value>(file_checker_content.as_str()).unwrap());
 
         let json_input = json::from_path(test.join("input.json")).unwrap();
-        let json_expected_output = fs::read_to_string(test.join("expected_output.json")).unwrap();
+        let json_expected_output =
+            fs::read_to_string(test.join("expected_output.json")).unwrap() + "\n";
 
         tests.push((
             test.join("input.json").to_string_lossy().to_string(),

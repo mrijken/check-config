@@ -33,7 +33,7 @@ impl Mapping for serde_json::Map<String, serde_json::Value> {
         let formatter = serde_json::ser::PrettyFormatter::with_indent(b"    ");
         let mut ser = serde_json::Serializer::with_formatter(buf, formatter);
         self.serialize(&mut ser).unwrap();
-        Ok(String::from_utf8(ser.into_inner()).unwrap())
+        Ok(String::from_utf8(ser.into_inner()).unwrap() + "\n")
     }
 
     fn contains_key(&self, key: &str) -> bool {
