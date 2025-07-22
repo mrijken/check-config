@@ -109,6 +109,12 @@ impl GenericCheck {
     }
 
     fn set_file_contents(&self, contents: String) -> Result<(), CheckError> {
+        if fs::exists(self.file_to_check()).expect("no error checking existance of path")
+            && contents.is_empty()
+        {
+            return Ok(());
+        }
+
         if let Err(e) = fs::write(self.file_to_check(), contents) {
             log::error!(
                 "⚠ Cannot write file {} {}",
@@ -294,7 +300,13 @@ pub(crate) fn read_checks_from_path(file_with_checks: &url::Url) -> Vec<Box<dyn 
             return checks;
         }
     };
-    let checks_toml: toml::Table = toml::from_str(checks_toml.as_str()).expect("valid toml");
+    let checks_toml: toml::Table = match toml::from_str(checks_toml.as_str()) {
+        Ok(checks_toml) => checks_toml,
+        Err(e) => {
+            log::error!("Invalid toml file {file_with_checks} {e}");
+            return checks;
+        }
+    };
 
     for (file_to_check, value) in checks_toml {
         if file_to_check == "check-config" {

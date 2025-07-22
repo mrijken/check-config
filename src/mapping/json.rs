@@ -25,6 +25,9 @@ pub(crate) fn from_string(doc: &str) -> Result<Box<dyn Mapping>, CheckError> {
 
 impl Mapping for serde_json::Map<String, serde_json::Value> {
     fn to_string(&self) -> Result<String, CheckError> {
+        if self.is_empty() {
+            return Ok("".to_string());
+        }
         let buf = Vec::new();
 
         let formatter = serde_json::ser::PrettyFormatter::with_indent(b"    ");

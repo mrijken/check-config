@@ -110,7 +110,7 @@ pub fn cli() -> ExitCode {
 
     if cli.list_checkers {
         checks.iter().for_each(|check| {
-            log::info!(
+            log::error!(
                 "Loaded check: {} {} {:?}",
                 check.check_type(),
                 check.generic_check().file_with_checks.as_str(),

@@ -26,6 +26,9 @@ pub(crate) fn from_string(
 
 impl Mapping for serde_yaml::Mapping {
     fn to_string(&self) -> Result<String, CheckError> {
+        if self.is_empty() {
+            return Ok("".to_string());
+        }
         Ok(serde_yaml::to_string(&self).unwrap())
     }
     fn contains_key(&self, key: &str) -> bool {

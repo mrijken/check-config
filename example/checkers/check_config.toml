@@ -51,17 +51,45 @@ key = "value"
 ["output/test.json".entry_absent.list2]
 __items__ = ["already_absent"]
 
+["output/absent.json".entry_absent.list]
+__items__ = ["already_absent"]
+
 ["output/test.json".entry_absent.list]
 __items__ = ["to_be_removed", "already_absent"]
+
+["output/test.toml".entry_absent.list2]
+__items__ = ["already_absent"]
+
+["output/absent.toml".entry_absent.list]
+__items__ = ["already_absent"]
 
 ["output/test.toml".entry_absent.list]
 __items__ = ["to_be_removed"]
 
+["output/test.yaml".entry_absent.list2]
+__items__ = ["already_absent"]
+
+["output/absent.yaml".entry_absent.list]
+__items__ = ["already_absent"]
+
 ["output/test.yaml".entry_absent.list]
 __items__ = ["to_be_removed"]
+
+["output/test.json".entry_present.list2]
+__items__ = ["already_present"]
 
 ["output/test.json".entry_present.list]
 __items__ = ["to_be_added", "to_be_kept"]
 
 ["output/test.toml".entry_present.list]
 __items__ = ["to_be_added", "to_be_kept"]
+
+["output/test.toml".entry_present.list2]
+__items__ = ["already_present"]
+
+["output/test.yaml".entry_present.list]
+__items__ = ["to_be_added", "to_be_kept"]
+
+["output/test.yaml".entry_present.list2]
+__items__ = ["already_present"]
+
