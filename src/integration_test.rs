@@ -18,6 +18,6 @@ mod tests {
         assert_eq!(success_count, 25);
         assert!(!dir_diff::is_different("output", "example/expected_output").unwrap());
 
-        //std::fs::remove_dir_all("output").unwrap();
+        std::fs::remove_dir_all("output").unwrap();
     }
 }
