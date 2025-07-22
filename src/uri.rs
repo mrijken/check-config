@@ -41,11 +41,7 @@ pub fn parse_uri(uri: &str, base: Option<&url::Url>) -> Result<url::Url, Error> 
 
 #[cfg(test)]
 fn get_python_package_path(module: &str) -> Option<url::Url> {
-    url::Url::parse(&dbg!(format!(
-        "file:///path/to/python/lib/site-packages/{}",
-        module
-    )))
-    .ok()
+    url::Url::parse(format!("file:///path/to/python/lib/site-packages/{}", module).as_str()).ok()
 }
 
 #[cfg(not(test))]

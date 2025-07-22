@@ -36,7 +36,6 @@ impl Check for FileRegexMatch {
             return if let Some(placeholder) = &self.placeholder {
                 Ok(Action::SetContents(placeholder.clone()))
             } else {
-                dbg!(&self.placeholder);
                 Ok(Action::MatchFileRegex {
                     regex: self.regex.clone(),
                 })

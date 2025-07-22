@@ -1,6 +1,5 @@
 use std::io::Write;
 use std::process::ExitCode;
-use std::sync::Arc;
 
 use clap::Parser;
 
@@ -45,19 +44,35 @@ struct Cli {
     verbose: clap_verbosity_flag::Verbosity,
 }
 
+pub fn parse_path(path: &str) -> Option<url::Url> {
+    if path.starts_with("/") {
+        match super::uri::parse_uri(format!("file://{}", path).as_str(), None) {
+            Ok(uri) => Some(uri),
+            Err(e) => None,
+        }
+    } else {
+        let cwd = super::uri::parse_uri(
+            &format!(
+                "file://{}/",
+                std::env::current_dir().unwrap().as_path().to_str().unwrap()
+            ),
+            None,
+        )
+        .unwrap();
+        match super::uri::parse_uri(path, Some(&cwd)) {
+            Ok(uri) => Some(uri),
+            Err(_) => {
+                log::error!("Invalid path: {}", path);
+                None
+            }
+        }
+    }
+}
 pub fn cli() -> ExitCode {
     let cli = Cli::parse();
-    let cwd = super::uri::parse_uri(
-        &format!(
-            "file://{}/",
-            std::env::current_dir().unwrap().as_path().to_str().unwrap()
-        ),
-        None,
-    )
-    .unwrap();
-    let mut file_with_checks = match super::uri::parse_uri(&cli.path, Some(&cwd)) {
-        Ok(uri) => uri,
-        Err(_) => {
+    let mut file_with_checks = match parse_path(&cli.path) {
+        Some(uri) => uri,
+        None => {
             log::error!("Unable to load checkers. Invalid path: {}", cli.path);
             return ExitCode::from(ExitStatus::Error);
         }
@@ -76,7 +91,7 @@ pub fn cli() -> ExitCode {
             file_with_checks.path()
         );
         log::info!("Using pyproject.toml as alternative");
-        file_with_checks = super::uri::parse_uri("pyproject.toml", Some(&cwd)).unwrap();
+        file_with_checks = parse_path("pyproject.toml").unwrap();
     }
 
     env_logger::Builder::new()

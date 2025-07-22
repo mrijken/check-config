@@ -10,7 +10,6 @@ pub(crate) fn read_test_files(
     test_dir.push("tests/resources/checkers/".to_string() + check_type);
 
     let mut tests = vec![];
-    dbg!(&test_dir);
 
     for test in test_dir.read_dir().expect("read_dir call failed") {
         let test = test.unwrap().path();
