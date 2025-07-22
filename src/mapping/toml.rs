@@ -81,7 +81,7 @@ impl Mapping for toml_edit::Table {
         }
         let value = self.get_mut(key).unwrap();
         if !value.is_table_like() {
-            Err(MappingError::WrongType(format!("{} is not a mapping", key)))
+            Err(MappingError::WrongType(format!("{key} is not a mapping")))
         } else {
             Ok(value.as_table_mut().unwrap())
         }
@@ -103,8 +103,7 @@ impl Mapping for toml_edit::Table {
         let value = self.get_mut(key).unwrap();
         if !value.is_array() {
             Err(MappingError::WrongType(format!(
-                "`{}` is not an array",
-                key
+                "`{key}` is not an array"
             )))
         } else {
             Ok(value.as_array_mut().unwrap())
@@ -116,7 +115,7 @@ impl Mapping for toml_edit::Table {
         }
         let value = self.get(key).unwrap();
         if !value.is_str() {
-            Err(MappingError::WrongType(format!("{} is not a string", key)))
+            Err(MappingError::WrongType(format!("{key} is not a string")))
         } else {
             Ok(value.as_str().unwrap().to_string())
         }

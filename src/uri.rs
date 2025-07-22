@@ -14,7 +14,7 @@ pub enum Error {
 }
 impl std::error::Error for Error {}
 
-pub fn read_to_string(url: &url::Url) -> Result<String, Error> {
+pub(crate) fn read_to_string(url: &url::Url) -> Result<String, Error> {
     if url.scheme() == "file" {
         Ok(std::fs::read_to_string(url.path())?)
     } else if url.scheme().starts_with("http") {
@@ -24,7 +24,7 @@ pub fn read_to_string(url: &url::Url) -> Result<String, Error> {
     }
 }
 
-pub fn parse_uri(uri: &str, base: Option<&url::Url>) -> Result<url::Url, Error> {
+pub(crate) fn parse_uri(uri: &str, base: Option<&url::Url>) -> Result<url::Url, Error> {
     let url = match url::Url::parse(uri) {
         Ok(url) => url,
         Err(_) => match base {
@@ -41,7 +41,7 @@ pub fn parse_uri(uri: &str, base: Option<&url::Url>) -> Result<url::Url, Error> 
 
 #[cfg(test)]
 fn get_python_package_path(module: &str) -> Option<url::Url> {
-    url::Url::parse(format!("file:///path/to/python/lib/site-packages/{}", module).as_str()).ok()
+    url::Url::parse(format!("file:///path/to/python/lib/site-packages/{module}").as_str()).ok()
 }
 
 #[cfg(not(test))]
@@ -49,11 +49,8 @@ fn get_python_package_path(module: &str) -> Option<url::Url> {
     let output = match std::process::Command::new("python")
         .args([
             "-c",
-            format!(
-                "import importlib; print(importlib.import_module('{}').__file__)",
-                module
-            )
-            .as_str(),
+            format!("import importlib; print(importlib.import_module('{module}').__file__)")
+                .as_str(),
         ])
         .output()
     {
@@ -69,7 +66,7 @@ fn get_python_package_path(module: &str) -> Option<url::Url> {
         .to_string();
     let path = path.rsplit_once('/').unwrap().0;
 
-    url::Url::parse(&format!("file://{}/", path)).ok()
+    url::Url::parse(&format!("file://{path}/")).ok()
 }
 
 fn py_url_to_url(package_uri: url::Url) -> Result<url::Url, Error> {
@@ -78,7 +75,7 @@ fn py_url_to_url(package_uri: url::Url) -> Result<url::Url, Error> {
     let module_url = match get_python_package_path(package_name.to_string().as_str()) {
         Some(url) => url,
         None => {
-            log::error!("{} is not a valid python package", package_name);
+            log::error!("{package_name} is not a valid python package");
             return Err(Error::NoValidPythonURL);
         }
     };
@@ -109,8 +106,8 @@ mod test {
             parse_uri("py://pathlib/to/test", None).unwrap().path(),
             "/path/to/python/lib/site-packages/to/test"
         );
-        assert!(!parse_uri("pathlib", None).is_ok(),);
-        assert!(!parse_uri("/path/to/test", None).is_ok(),);
+        assert!(parse_uri("pathlib", None).is_err(),);
+        assert!(parse_uri("/path/to/test", None).is_err(),);
 
         assert_eq!(
             parse_uri(

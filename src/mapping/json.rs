@@ -52,7 +52,7 @@ impl Mapping for serde_json::Map<String, serde_json::Value> {
         }
         let value = self.get_mut(key).unwrap();
         if !value.is_object() {
-            Err(MappingError::WrongType(format!("{} is not a mapping", key)))
+            Err(MappingError::WrongType(format!("{key} is not a mapping")))
         } else {
             Ok(value.as_object_mut().unwrap())
         }
@@ -70,7 +70,7 @@ impl Mapping for serde_json::Map<String, serde_json::Value> {
         }
         let value = self.get_mut(key).unwrap();
         if !value.is_array() {
-            Err(MappingError::WrongType(format!("{} is not an array", key)))
+            Err(MappingError::WrongType(format!("{key} is not an array")))
         } else {
             Ok(value)
         }
@@ -81,7 +81,7 @@ impl Mapping for serde_json::Map<String, serde_json::Value> {
         }
         let value = self.get(key).unwrap();
         if !value.is_string() {
-            Err(MappingError::WrongType(format!("{} is not a string", key)))
+            Err(MappingError::WrongType(format!("{key} is not a string")))
         } else {
             Ok(value.as_str().unwrap().to_string())
         }

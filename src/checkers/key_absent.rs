@@ -5,7 +5,6 @@ use super::{
     DefaultContent, GenericCheck,
 };
 
-
 #[derive(Debug)]
 pub(crate) struct KeyAbsent {
     generic_check: GenericCheck,
@@ -13,7 +12,7 @@ pub(crate) struct KeyAbsent {
 }
 
 impl KeyAbsent {
-    pub fn new(generic_check: GenericCheck, value: toml::Table) -> Self {
+    pub(crate) fn new(generic_check: GenericCheck, value: toml::Table) -> Self {
         Self {
             generic_check,
             value,
@@ -61,8 +60,7 @@ fn unset_key(doc: &mut dyn Mapping, table_to_unset: &toml::Table) {
                 unset_key(child_doc, child_table_to_unset);
             } else {
                 log::info!(
-                    "Key {} is not found in toml, so we can not remove that key",
-                    key_to_unset,
+                    "Key {key_to_unset} is not found in toml, so we can not remove that key",
                 );
             }
         }
@@ -85,8 +83,7 @@ mod tests {
             assert_eq!(
                 *test_expected_output,
                 test_input.to_string().unwrap(),
-                "test_path {} failed",
-                test_path
+                "test_path {test_path} failed"
             );
         }
     }

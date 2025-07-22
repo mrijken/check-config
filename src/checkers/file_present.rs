@@ -10,7 +10,7 @@ pub(crate) struct FilePresent {
 }
 
 impl FilePresent {
-    pub fn new(generic_check: GenericCheck, placeholder: String) -> Self {
+    pub(crate) fn new(generic_check: GenericCheck, placeholder: String) -> Self {
         Self {
             generic_check,
             placeholder,

@@ -7,7 +7,7 @@ use serde_yaml::{Mapping, Value};
 pub(crate) struct Yaml {}
 
 impl Yaml {
-    pub fn new() -> Yaml {
+    pub(crate) fn new() -> Yaml {
         Yaml {}
     }
 }

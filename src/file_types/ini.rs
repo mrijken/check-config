@@ -35,7 +35,7 @@ impl Check for IniEntryPresent {
 }
 
 #[derive(Debug)]
-pub struct IniEntryAbsent {
+pub(crate) struct IniEntryAbsent {
     path: PathBuf,
     table: toml::Table,
 }

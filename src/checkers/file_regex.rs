@@ -13,7 +13,11 @@ pub(crate) struct FileRegexMatch {
 }
 
 impl FileRegexMatch {
-    pub fn new(generic_check: GenericCheck, regex: String, placeholder: Option<String>) -> Self {
+    pub(crate) fn new(
+        generic_check: GenericCheck,
+        regex: String,
+        placeholder: Option<String>,
+    ) -> Self {
         Self {
             generic_check,
             regex,

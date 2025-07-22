@@ -3,7 +3,7 @@ use std::process::ExitCode;
 
 use clap::Parser;
 
-use crate::checkers::base::Action;
+use crate::checkers::base::{Action, Check};
 
 use super::checkers::read_checks_from_path;
 
@@ -40,16 +40,19 @@ struct Cli {
     #[arg(long, default_value = "false")]
     fix: bool,
 
+    /// Show loaded checkers
+    #[arg(long, default_value = "false")]
+    list_checkers: bool,
+
+    // -v s
+    // -vv show all
     #[clap(flatten)]
     verbose: clap_verbosity_flag::Verbosity,
 }
 
-pub fn parse_path(path: &str) -> Option<url::Url> {
+pub(crate) fn parse_path(path: &str) -> Option<url::Url> {
     if path.starts_with("/") {
-        match super::uri::parse_uri(format!("file://{}", path).as_str(), None) {
-            Ok(uri) => Some(uri),
-            Err(e) => None,
-        }
+        super::uri::parse_uri(format!("file://{path}").as_str(), None).ok()
     } else {
         let cwd = super::uri::parse_uri(
             &format!(
@@ -62,7 +65,7 @@ pub fn parse_path(path: &str) -> Option<url::Url> {
         match super::uri::parse_uri(path, Some(&cwd)) {
             Ok(uri) => Some(uri),
             Err(_) => {
-                log::error!("Invalid path: {}", path);
+                log::error!("Invalid path: {path}");
                 None
             }
         }
@@ -86,11 +89,11 @@ pub fn cli() -> ExitCode {
             );
             return ExitCode::from(ExitStatus::Error);
         }
-        log::info!(
+        log::error!(
             "Path with checkers does not exist: {}",
             file_with_checks.path()
         );
-        log::info!("Using pyproject.toml as alternative");
+        log::error!("Using pyproject.toml as alternative");
         file_with_checks = parse_path("pyproject.toml").unwrap();
     }
 
@@ -103,12 +106,25 @@ pub fn cli() -> ExitCode {
     log::info!("Using checkers from {}", &file_with_checks);
     log::info!("Fix: {}", &cli.fix);
 
-    let (action_count, success_count) = run_check_for_file(&file_with_checks, cli.fix);
+    let checks = read_checks_from_path(&file_with_checks);
 
-    log::info!("{} checks successful.", success_count);
+    if cli.list_checkers {
+        checks.iter().for_each(|check| {
+            log::info!(
+                "Loaded check: {} {} {:?}",
+                check.check_type(),
+                check.generic_check().file_with_checks.as_str(),
+                check.generic_check().file_to_check.as_os_str()
+            )
+        });
+    }
+
+    let (action_count, success_count) = run_checks(&checks, cli.fix);
+
+    log::warn!("{success_count} checks successful.");
     if action_count > 0 {
         // note: error level is used to always show this message, also with the lowest verbose level
-        log::error!("There are {} violations to fix.", action_count,);
+        log::error!("There are {action_count} violations to fix.",);
         ExitCode::from(ExitStatus::Failure)
     } else {
         // note: error level is used to always show this message, also with the lowest verbose level
@@ -117,9 +133,7 @@ pub fn cli() -> ExitCode {
     }
 }
 
-pub fn run_check_for_file(file_with_checks: &url::Url, fix: bool) -> (i32, i32) {
-    let checks = read_checks_from_path(file_with_checks);
-
+pub(crate) fn run_checks(checks: &Vec<Box<dyn Check>>, fix: bool) -> (i32, i32) {
     let mut action_count = 0;
     let mut success_count = 0;
 

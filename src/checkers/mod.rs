@@ -78,11 +78,11 @@ fn get_checks_from_config_table(
 #[derive(Debug, Clone)]
 pub(crate) struct GenericCheck {
     // path to the file where the checkers are defined
-    file_with_checks: url::Url,
+    pub(crate) file_with_checks: url::Url,
     // path to the file which needs to be checked
-    file_to_check: PathBuf,
+    pub(crate) file_to_check: PathBuf,
     // overridden file type
-    file_type_override: Option<String>,
+    pub(crate) file_type_override: Option<String>,
 }
 
 pub(crate) enum DefaultContent {
@@ -209,7 +209,7 @@ fn get_check_from_check_table(
         }
         "file_regex_match" => {
             if check_table.get("__regex__").is_none() {
-                log::error!("No __regex__ found in {}", check_table);
+                log::error!("No __regex__ found in {check_table}");
                 std::process::exit(1);
             }
             Some(Box::new(file_regex::FileRegexMatch::new(
@@ -227,7 +227,7 @@ fn get_check_from_check_table(
         }
         "lines_absent" => {
             if check_table.get("__lines__").is_none() {
-                log::error!("No __lines__ found in {}", check_table);
+                log::error!("No __lines__ found in {check_table}");
                 std::process::exit(1);
             }
             Some(Box::new(lines_absent::LinesAbsent::new(
@@ -242,7 +242,7 @@ fn get_check_from_check_table(
         }
         "lines_present" => {
             if check_table.get("__lines__").is_none() {
-                log::error!("No __lines__ found in {}", check_table);
+                log::error!("No __lines__ found in {check_table}");
                 std::process::exit(1);
             }
             Some(Box::new(lines_present::LinesPresent::new(
@@ -269,7 +269,7 @@ fn get_check_from_check_table(
         ))),
         _ => {
             if !file_with_checks.path().ends_with("pyproject.toml") {
-                log::error!("unknown check {} {}", check_type, check_table);
+                log::error!("unknown check {check_type} {check_table}");
 
                 // exit can not be tested
                 #[cfg(test)]
@@ -290,7 +290,7 @@ pub(crate) fn read_checks_from_path(file_with_checks: &url::Url) -> Vec<Box<dyn 
     let checks_toml = match uri::read_to_string(file_with_checks) {
         Ok(checks_toml) => checks_toml,
         Err(_) => {
-            log::error!("⚠ {} could not be read", file_with_checks);
+            log::error!("⚠ {file_with_checks} could not be read");
             return checks;
         }
     };
@@ -312,7 +312,7 @@ pub(crate) fn read_checks_from_path(file_with_checks: &url::Url) -> Vec<Box<dyn 
                     ) {
                         Ok(include_path) => include_path,
                         Err(_) => {
-                            log::error!("{} is not a valid uri", include_uri);
+                            log::error!("{include_uri} is not a valid uri");
                             std::process::exit(1);
                         }
                     };

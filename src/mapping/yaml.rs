@@ -47,7 +47,7 @@ impl Mapping for serde_yaml::Mapping {
         }
         let value = self.get_mut(key).unwrap();
         if !value.is_mapping() {
-            Err(MappingError::WrongType(format!("{} is not a mapping", key)))
+            Err(MappingError::WrongType(format!("{key} is not a mapping")))
         } else {
             Ok(value.as_mapping_mut().unwrap())
         }
@@ -68,7 +68,7 @@ impl Mapping for serde_yaml::Mapping {
         }
         let value = self.get_mut(key).unwrap();
         if !value.is_sequence() {
-            Err(MappingError::WrongType(format!("{} is not an array", key)))
+            Err(MappingError::WrongType(format!("{key} is not an array")))
         } else {
             Ok(value.as_sequence_mut().unwrap())
         }
@@ -79,7 +79,7 @@ impl Mapping for serde_yaml::Mapping {
         }
         let value = self.get(key).unwrap();
         if !value.is_string() {
-            Err(MappingError::WrongType(format!("{} is not a string", key)))
+            Err(MappingError::WrongType(format!("{key} is not a string")))
         } else {
             Ok(value.as_str().unwrap().to_string())
         }

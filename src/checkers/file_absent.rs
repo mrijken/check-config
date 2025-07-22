@@ -7,7 +7,7 @@ pub(crate) struct FileAbsent {
 }
 
 impl FileAbsent {
-    pub fn new(generic_check: GenericCheck) -> Self {
+    pub(crate) fn new(generic_check: GenericCheck) -> Self {
         Self { generic_check }
     }
 }

@@ -2,10 +2,10 @@ use std::{fs, path::PathBuf, rc::Rc};
 
 use crate::mapping::{generic::Mapping, json};
 
+type TestFiles = Vec<(String, Box<dyn Mapping>, String, Rc<toml::Value>)>;
+
 #[allow(dead_code)]
-pub(crate) fn read_test_files(
-    check_type: &str,
-) -> Vec<(String, Box<dyn Mapping>, String, Rc<toml::Value>)> {
+pub(crate) fn read_test_files(check_type: &str) -> TestFiles {
     let mut test_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
     test_dir.push("tests/resources/checkers/".to_string() + check_type);
 

@@ -5,7 +5,7 @@ use super::FileType;
 pub(crate) struct Toml {}
 
 impl Toml {
-    pub fn new() -> Toml {
+    pub(crate) fn new() -> Toml {
         Toml {}
     }
 }

@@ -12,7 +12,7 @@ pub(crate) struct EntryPresent {
 }
 
 impl EntryPresent {
-    pub fn new(generic_check: GenericCheck, value: toml::Table) -> Self {
+    pub(crate) fn new(generic_check: GenericCheck, value: toml::Table) -> Self {
         Self {
             generic_check,
             value,
@@ -94,8 +94,7 @@ mod tests {
             assert_eq!(
                 *test_expected_output,
                 test_input.to_string().unwrap(),
-                "test_path {} failed",
-                test_path
+                "test_path {test_path} failed"
             );
         }
     }

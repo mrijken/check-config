@@ -10,7 +10,7 @@ pub(crate) struct LinesPresent {
 }
 
 impl LinesPresent {
-    pub fn new(generic_check: GenericCheck, lines: String) -> Self {
+    pub(crate) fn new(generic_check: GenericCheck, lines: String) -> Self {
         let lines = if !lines.ends_with('\n') {
             lines + "\n"
         } else {
