@@ -4,6 +4,7 @@ use std::{
     path::PathBuf,
 };
 
+use base::CheckConstructor;
 use toml::Value;
 
 use crate::{
@@ -12,7 +13,7 @@ use crate::{
     uri,
 };
 
-use self::base::{Check, CheckError};
+use self::base::{Check, CheckDefinitionError, CheckError};
 
 pub(crate) mod base;
 pub(crate) mod entry_absent;
@@ -27,6 +28,9 @@ pub(crate) mod lines_absent;
 pub(crate) mod lines_present;
 pub(crate) mod test_helpers;
 
+/// get the valid checks
+/// invalid check are logged with error level and passed silently
+/// todo: do not perform checks when at least one check has a definition error
 fn get_checks_from_config_table(
     file_with_checks: &url::Url,
     file_to_check: PathBuf,
@@ -37,25 +41,31 @@ fn get_checks_from_config_table(
     for (check_type, check_table) in config_table {
         match check_table {
             Value::Table(check_table) => {
-                if let Some(check) = get_check_from_check_table(
+                match get_check_from_check_table(
                     file_with_checks,
                     file_to_check.clone(),
                     check_type,
                     check_table,
                 ) {
-                    checks.push(check);
+                    Ok(check) => checks.push(check),
+                    Err(err) => {
+                        log::error!("Check {file_with_checks}:{check_type} has errors: {err}")
+                    }
                 }
             }
             Value::Array(array) => {
                 for table in array {
                     if let Some(check_table) = table.as_table() {
-                        if let Some(check) = get_check_from_check_table(
+                        match get_check_from_check_table(
                             file_with_checks,
                             file_to_check.clone(),
                             check_type,
                             check_table,
                         ) {
-                            checks.push(check);
+                            Ok(check) => checks.push(check),
+                            Err(err) => log::error!(
+                                "Check {file_with_checks}:{check_type} has errors: {err}"
+                            ),
                         }
                     }
                 }
@@ -184,7 +194,7 @@ fn get_check_from_check_table(
     file_to_check: PathBuf,
     check_type: &str,
     check_table: &toml::Table,
-) -> Option<Box<dyn Check>> {
+) -> Result<Box<dyn Check>, CheckDefinitionError> {
     let mut check_table = check_table.clone();
 
     let generic_check = GenericCheck {
@@ -192,87 +202,51 @@ fn get_check_from_check_table(
         file_to_check: file_to_check.clone(),
         file_type_override: determine_filetype_from_config_table(&mut check_table),
     };
-    let check: Option<Box<dyn Check>> = match check_type {
-        "entry_absent" => Some(Box::new(entry_absent::EntryAbsent::new(
+    match check_type {
+        "entry_absent" => Ok(Box::new(entry_absent::EntryAbsent::from_check_table(
             generic_check,
-            check_table.clone(),
-        ))),
-        "entry_present" => Some(Box::new(entry_present::EntryPresent::new(
+            check_table,
+        )?)),
+        "entry_present" => Ok(Box::new(entry_present::EntryPresent::from_check_table(
             generic_check,
-            check_table.clone(),
-        ))),
-        "file_absent" => Some(Box::new(file_absent::FileAbsent::new(generic_check))),
-        "file_present" => {
-            let placeholder = check_table
-                .get("__placeholder__")
-                .map(|v| v.as_str().expect("placeholder is a string").to_string())
-                .unwrap_or("".to_string());
-
-            Some(Box::new(file_present::FilePresent::new(
+            check_table,
+        )?)),
+        "file_absent" => Ok(Box::new(file_absent::FileAbsent::from_check_table(
+            generic_check,
+            check_table,
+        )?)),
+        "file_present" => Ok(Box::new(file_present::FilePresent::from_check_table(
+            generic_check,
+            check_table,
+        )?)),
+        "file_regex_match" => Ok(Box::new(file_regex::FileRegexMatch::from_check_table(
+            generic_check,
+            check_table,
+        )?)),
+        "lines_absent" => Ok(Box::new(lines_absent::LinesAbsent::from_check_table(
+            generic_check,
+            check_table,
+        )?)),
+        "lines_present" => Ok(Box::new(lines_present::LinesPresent::from_check_table(
+            generic_check,
+            check_table,
+        )?)),
+        "key_value_present" => Ok(Box::new(
+            key_value_present::KeyValuePresent::from_check_table(
                 generic_check,
-                placeholder,
-            )))
-        }
-        "file_regex_match" => {
-            if check_table.get("__regex__").is_none() {
-                log::error!("No __regex__ found in {check_table}");
-                std::process::exit(1);
-            }
-            Some(Box::new(file_regex::FileRegexMatch::new(
-                generic_check,
-                check_table
-                    .get("__regex__")
-                    .expect("__regex__ is present")
-                    .as_str()
-                    .expect("__regex__ is a string")
-                    .to_string(),
-                check_table
-                    .get("__placeholder__")
-                    .map(|v| v.as_str().expect("placeholder is a string").to_string()),
-            )))
-        }
-        "lines_absent" => {
-            if check_table.get("__lines__").is_none() {
-                log::error!("No __lines__ found in {check_table}");
-                std::process::exit(1);
-            }
-            Some(Box::new(lines_absent::LinesAbsent::new(
-                generic_check,
-                check_table
-                    .get("__lines__")
-                    .expect("__lines__ is present")
-                    .as_str()
-                    .expect("__lines__ is a string")
-                    .to_string(),
-            )))
-        }
-        "lines_present" => {
-            if check_table.get("__lines__").is_none() {
-                log::error!("No __lines__ found in {check_table}");
-                std::process::exit(1);
-            }
-            Some(Box::new(lines_present::LinesPresent::new(
-                generic_check,
-                check_table
-                    .get("__lines__")
-                    .expect("__lines__ is present")
-                    .as_str()
-                    .expect("__lines__ is a string")
-                    .to_string(),
-            )))
-        }
-        "key_value_present" => Some(Box::new(key_value_present::KeyValuePresent::new(
+                check_table.clone(),
+            )?,
+        )),
+        "key_absent" => Ok(Box::new(key_absent::KeyAbsent::from_check_table(
             generic_check,
             check_table.clone(),
-        ))),
-        "key_absent" => Some(Box::new(key_absent::KeyAbsent::new(
-            generic_check,
-            check_table.clone(),
-        ))),
-        "key_value_regex_match" => Some(Box::new(key_value_regex_match::EntryRegexMatch::new(
-            generic_check,
-            check_table.clone(),
-        ))),
+        )?)),
+        "key_value_regex_match" => Ok(Box::new(
+            key_value_regex_match::EntryRegexMatch::from_check_table(
+                generic_check,
+                check_table.clone(),
+            )?,
+        )),
         _ => {
             if !file_with_checks.path().ends_with("pyproject.toml") {
                 log::error!("unknown check {check_type} {check_table}");
@@ -284,10 +258,11 @@ fn get_check_from_check_table(
                 #[cfg(not(test))]
                 std::process::exit(1);
             }
-            None
+            Err(CheckDefinitionError::UnknownCheckType(
+                check_type.to_string(),
+            ))
         }
-    };
-    check
+    }
 }
 
 pub(crate) fn read_checks_from_path(file_with_checks: &url::Url) -> Vec<Box<dyn Check>> {

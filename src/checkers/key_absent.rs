@@ -1,7 +1,7 @@
 use crate::mapping::generic::Mapping;
 
 use super::{
-    base::{Action, Check, CheckError},
+    base::{Action, Check, CheckConstructor, CheckError},
     DefaultContent, GenericCheck,
 };
 
@@ -11,15 +11,19 @@ pub(crate) struct KeyAbsent {
     value: toml::Table,
 }
 
-impl KeyAbsent {
-    pub(crate) fn new(generic_check: GenericCheck, value: toml::Table) -> Self {
-        Self {
+impl CheckConstructor for KeyAbsent {
+    type Output = Self;
+
+    fn from_check_table(
+        generic_check: GenericCheck,
+        value: toml::Table,
+    ) -> Result<Self::Output, super::base::CheckDefinitionError> {
+        Ok(Self {
             generic_check,
             value,
-        }
+        })
     }
 }
-
 impl Check for KeyAbsent {
     fn check_type(&self) -> String {
         "key_absent".to_string()

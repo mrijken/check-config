@@ -1,31 +1,61 @@
-use regex::Regex;
+pub(crate) use regex::Regex;
 
 use super::{
-    base::{Action, Check, CheckError},
+    base::{Action, Check, CheckConstructor, CheckDefinitionError, CheckError},
     GenericCheck,
 };
 
 #[derive(Debug)]
 pub(crate) struct FileRegexMatch {
     generic_check: GenericCheck,
-    regex: String,
+    regex: Regex,
     placeholder: Option<String>,
 }
 
-impl FileRegexMatch {
-    pub(crate) fn new(
+impl CheckConstructor for FileRegexMatch {
+    type Output = Self;
+
+    fn from_check_table(
         generic_check: GenericCheck,
-        regex: String,
-        placeholder: Option<String>,
-    ) -> Self {
-        Self {
-            generic_check,
-            regex,
-            placeholder,
+        value: toml::Table,
+    ) -> Result<Self::Output, CheckDefinitionError> {
+        let placeholder = match value.get("__placeholder__") {
+            None => None,
+            Some(r) => match r.as_str() {
+                Some(r) => Some(r.to_string()),
+                None => {
+                    return Err(CheckDefinitionError::InvalidDefinition(
+                        "__placeholder__ is not a string".to_string(),
+                    ))
+                }
+            },
+        };
+
+        match value.get("__regex__") {
+            None => {
+                log::error!("No __regex__ found in {value}");
+                Err(CheckDefinitionError::InvalidRegex(
+                    "no __regex__ found".to_string(),
+                ))
+            }
+            Some(regex) => match regex.as_str() {
+                None => Err(CheckDefinitionError::InvalidRegex(format!(
+                    "__regex__ ({regex}) is not a string"
+                ))),
+                Some(s) => match Regex::new(s) {
+                    Ok(r) => Ok(Self {
+                        generic_check,
+                        regex: r,
+                        placeholder,
+                    }),
+                    Err(_) => Err(CheckDefinitionError::InvalidRegex(format!(
+                        "__regex__ ({regex}) is not a valid regex"
+                    ))),
+                },
+            },
         }
     }
 }
-
 impl Check for FileRegexMatch {
     fn check_type(&self) -> String {
         "file_regex_match".to_string()
@@ -41,7 +71,7 @@ impl Check for FileRegexMatch {
                 Ok(Action::SetContents(placeholder.clone()))
             } else {
                 Ok(Action::MatchFileRegex {
-                    regex: self.regex.clone(),
+                    regex: self.regex.as_str().to_string(),
                 })
             };
         }
@@ -50,15 +80,11 @@ impl Check for FileRegexMatch {
             .generic_check()
             .get_file_contents(super::DefaultContent::EmptyString)?;
 
-        let regex = match Regex::new(self.regex.as_str()) {
-            Ok(regex) => regex,
-            Err(s) => return Err(CheckError::InvalidRegex(s.to_string())),
-        };
-        if regex.is_match(contents.as_str()) {
+        if self.regex.is_match(contents.as_str()) {
             Ok(Action::None)
         } else {
             Ok(Action::MatchFileRegex {
-                regex: self.regex.clone(),
+                regex: self.regex.as_str().to_string(),
             })
         }
     }
@@ -85,7 +111,10 @@ mod tests {
             file_with_checks,
         };
 
-        let regex_check = FileRegexMatch::new(generic_check, "export KEY=.*".to_string(), None);
+        let mut check_table = toml::Table::new();
+        check_table.insert("__regex__".to_string(), "export KEY=.*".into());
+
+        let regex_check = FileRegexMatch::from_check_table(generic_check, check_table).unwrap();
 
         // not existing file
         assert_eq!(
@@ -123,11 +152,11 @@ mod tests {
             file_with_checks,
         };
 
-        let regex_check = FileRegexMatch::new(
-            generic_check,
-            "export KEY=.*".to_string(),
-            Some("export KEY=value".to_string()),
-        );
+        let mut check_table = toml::Table::new();
+        check_table.insert("__regex__".to_string(), "export KEY=.*".into());
+        check_table.insert("__placeholder__".to_string(), "export KEY=value".into());
+
+        let regex_check = FileRegexMatch::from_check_table(generic_check, check_table).unwrap();
 
         // not existing file
         assert_eq!(

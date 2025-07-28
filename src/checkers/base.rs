@@ -16,6 +16,18 @@ pub(crate) enum Action {
 }
 
 #[derive(Error, Debug)]
+pub(crate) enum CheckDefinitionError {
+    #[error("__placeholder__ must be a string")]
+    InvalidPlaceHolder,
+    #[error("invalid check definition")]
+    InvalidDefinition(String),
+    #[error("invalid regex format")]
+    InvalidRegex(String),
+    #[error("unknown check type")]
+    UnknownCheckType(String),
+}
+
+#[derive(Error, Debug)]
 pub(crate) enum CheckError {
     #[error("file can not be read")]
     FileCanNotBeRead(#[from] io::Error),
@@ -31,6 +43,13 @@ pub(crate) enum CheckError {
     InvalidRegex(String),
 }
 
+pub(crate) trait CheckConstructor {
+    type Output;
+    fn from_check_table(
+        generic_check: GenericCheck,
+        value: toml::Table,
+    ) -> Result<Self::Output, CheckDefinitionError>;
+}
 pub(crate) trait Check: DebugTrait {
     fn check_type(&self) -> String;
     fn generic_check(&self) -> &GenericCheck;

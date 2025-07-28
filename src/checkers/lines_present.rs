@@ -1,5 +1,6 @@
-use super::{
-    base::{Action, Check, CheckError},
+use super::base::CheckConstructor;
+pub(crate) use super::{
+    base::{Action, Check, CheckDefinitionError, CheckError},
     GenericCheck,
 };
 
@@ -9,20 +10,38 @@ pub(crate) struct LinesPresent {
     lines: String,
 }
 
-impl LinesPresent {
-    pub(crate) fn new(generic_check: GenericCheck, lines: String) -> Self {
+impl CheckConstructor for LinesPresent {
+    type Output = Self;
+    fn from_check_table(
+        generic_check: GenericCheck,
+        value: toml::Table,
+    ) -> Result<Self::Output, CheckDefinitionError> {
+        let lines = match value.get("__lines__") {
+            None => {
+                return Err(CheckDefinitionError::InvalidDefinition(
+                    "__lines__ is not present".to_string(),
+                ))
+            }
+            Some(lines) => match lines.as_str() {
+                None => {
+                    return Err(CheckDefinitionError::InvalidDefinition(
+                        "__lines__ is not a string".to_string(),
+                    ))
+                }
+                Some(lines) => lines.to_string(),
+            },
+        };
         let lines = if !lines.ends_with('\n') {
             lines + "\n"
         } else {
             lines
         };
-        Self {
+        Ok(Self {
             generic_check,
             lines,
-        }
+        })
     }
 }
-
 impl Check for LinesPresent {
     fn check_type(&self) -> String {
         "lines_present".to_string()
@@ -72,13 +91,25 @@ mod tests {
             file_with_checks,
         };
 
-        let lines_present_checker = LinesPresent::new(generic_check.clone(), "".to_string());
+        let mut check_table = toml::Table::new();
+        check_table.insert("__lines__".to_string(), "".into());
+
+        let lines_present_checker =
+            LinesPresent::from_check_table(generic_check.clone(), check_table).unwrap();
         assert_eq!(lines_present_checker.lines, "\n".to_string());
 
-        let lines_present_checker = LinesPresent::new(generic_check.clone(), "1".to_string());
+        let mut check_table = toml::Table::new();
+        check_table.insert("__lines__".to_string(), "1".into());
+
+        let lines_present_checker =
+            LinesPresent::from_check_table(generic_check.clone(), check_table).unwrap();
         assert_eq!(lines_present_checker.lines, "1\n".to_string());
 
-        let lines_present_checker = LinesPresent::new(generic_check.clone(), "2\n".to_string());
+        let mut check_table = toml::Table::new();
+        check_table.insert("__lines__".to_string(), "2\n".into());
+
+        let lines_present_checker =
+            LinesPresent::from_check_table(generic_check.clone(), check_table).unwrap();
         assert_eq!(lines_present_checker.lines, "2\n".to_string());
     }
 
@@ -94,7 +125,11 @@ mod tests {
             file_with_checks,
         };
 
-        let lines_present_check = LinesPresent::new(generic_check, "1\n2\n".to_string());
+        let mut check_table = toml::Table::new();
+        check_table.insert("__lines__".to_string(), "1\n2\n".into());
+
+        let lines_present_check =
+            LinesPresent::from_check_table(generic_check, check_table).unwrap();
 
         // not existing file
         assert_eq!(

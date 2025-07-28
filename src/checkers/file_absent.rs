@@ -1,4 +1,4 @@
-use super::base::{Action, Check, CheckError};
+use super::base::{Action, Check, CheckConstructor, CheckDefinitionError, CheckError};
 use super::GenericCheck;
 
 #[derive(Debug)]
@@ -6,12 +6,16 @@ pub(crate) struct FileAbsent {
     generic_check: GenericCheck,
 }
 
-impl FileAbsent {
-    pub(crate) fn new(generic_check: GenericCheck) -> Self {
-        Self { generic_check }
+impl CheckConstructor for FileAbsent {
+    type Output = Self;
+
+    fn from_check_table(
+        generic_check: GenericCheck,
+        _value: toml::Table,
+    ) -> Result<Self::Output, CheckDefinitionError> {
+        Ok(Self { generic_check })
     }
 }
-
 impl Check for FileAbsent {
     fn check_type(&self) -> String {
         "file_absent".to_string()
@@ -49,7 +53,8 @@ mod tests {
             file_with_checks,
         };
 
-        let file_absent_check = FileAbsent::new(generic_check);
+        let file_absent_check =
+            FileAbsent::from_check_table(generic_check, toml::Table::new()).unwrap();
 
         assert_eq!(file_absent_check.check().unwrap(), Action::None);
 
