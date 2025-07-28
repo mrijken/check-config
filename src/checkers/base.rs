@@ -17,13 +17,9 @@ pub(crate) enum Action {
 
 #[derive(Error, Debug)]
 pub(crate) enum CheckDefinitionError {
-    #[error("__placeholder__ must be a string")]
-    InvalidPlaceHolder,
     #[error("invalid check definition")]
     InvalidDefinition(String),
     #[error("invalid regex format")]
-    InvalidRegex(String),
-    #[error("unknown check type")]
     UnknownCheckType(String),
 }
 

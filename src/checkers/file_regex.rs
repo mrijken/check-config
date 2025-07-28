@@ -34,12 +34,12 @@ impl CheckConstructor for FileRegexMatch {
         match value.get("__regex__") {
             None => {
                 log::error!("No __regex__ found in {value}");
-                Err(CheckDefinitionError::InvalidRegex(
+                Err(CheckDefinitionError::InvalidDefinition(
                     "no __regex__ found".to_string(),
                 ))
             }
             Some(regex) => match regex.as_str() {
-                None => Err(CheckDefinitionError::InvalidRegex(format!(
+                None => Err(CheckDefinitionError::InvalidDefinition(format!(
                     "__regex__ ({regex}) is not a string"
                 ))),
                 Some(s) => match Regex::new(s) {
@@ -48,7 +48,7 @@ impl CheckConstructor for FileRegexMatch {
                         regex: r,
                         placeholder,
                     }),
-                    Err(_) => Err(CheckDefinitionError::InvalidRegex(format!(
+                    Err(_) => Err(CheckDefinitionError::InvalidDefinition(format!(
                         "__regex__ ({regex}) is not a valid regex"
                     ))),
                 },
