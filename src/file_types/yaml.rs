@@ -2,8 +2,6 @@ use crate::checkers::base::CheckError;
 
 use super::FileType;
 
-use serde_yaml::{Mapping, Value};
-
 pub(crate) struct Yaml {}
 
 impl Yaml {
