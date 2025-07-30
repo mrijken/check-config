@@ -39,3 +39,23 @@ pub(crate) trait Value {
     where
         Self: Sized;
 }
+
+#[cfg(test)]
+pub(crate) mod tests {
+
+    pub(crate) fn get_test_table() -> toml::Value {
+        let mut table = toml::Table::new();
+        table.insert("str".to_owned(), toml::Value::String("string".to_string()));
+        table.insert("int".to_owned(), toml::Value::Integer(1));
+        table.insert("float".to_owned(), toml::Value::Float(1.1));
+        table.insert("bool".to_owned(), toml::Value::Boolean(true));
+        table.insert(
+            "array".to_owned(),
+            toml::Value::Array(vec![toml::Value::Integer(1)]),
+        );
+        let nested_table = table.clone();
+        table.insert("dict".to_owned(), nested_table.into());
+
+        toml::Value::Table(table)
+    }
+}

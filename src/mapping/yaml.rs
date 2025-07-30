@@ -156,3 +156,19 @@ impl Value for serde_yaml::value::Value {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+
+    use super::super::generic::tests::get_test_table;
+    use super::*;
+
+    #[test]
+    fn test_from_toml_value() {
+        let table = get_test_table();
+
+        let yaml_table = serde_yaml::Value::from_toml_value(&table);
+
+        assert_eq!(serde_yaml::to_string(&yaml_table).unwrap(), "array:\n- 1\nbool: true\ndict:\n  array:\n  - 1\n  bool: true\n  float: 1.1\n  int: 1\n  str: string\nfloat: 1.1\nint: 1\nstr: string\n");
+    }
+}

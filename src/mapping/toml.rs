@@ -102,9 +102,7 @@ impl Mapping for toml_edit::Table {
         }
         let value = self.get_mut(key).unwrap();
         if !value.is_array() {
-            Err(MappingError::WrongType(format!(
-                "`{key}` is not an array"
-            )))
+            Err(MappingError::WrongType(format!("`{key}` is not an array")))
         } else {
             Ok(value.as_array_mut().unwrap())
         }
@@ -230,5 +228,27 @@ impl Value for toml_edit::Value {
                 toml_edit::Value::InlineTable(a)
             }
         }
+    }
+}
+#[cfg(test)]
+mod tests {
+
+    use serde_json::json;
+
+    use super::super::generic::tests::get_test_table;
+    use super::*;
+
+    #[test]
+    fn test_from_toml_value() {
+        let table = get_test_table();
+
+        let json_table = toml_edit::Value::from_toml_value(&table);
+
+        assert_eq!(
+            json_table.to_string(),
+            "{ array = [1], bool = true, dict = { array = [1], bool = true, float = 1.1, int = 1, str = \"string\" }, float = 1.1, int = 1, str = \"string\" }"
+
+
+        );
     }
 }

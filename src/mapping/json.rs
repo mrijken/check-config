@@ -152,3 +152,27 @@ impl Value for serde_json::Value {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+
+    use serde_json::json;
+
+    use super::super::generic::tests::get_test_table;
+    use super::*;
+
+    #[test]
+    fn test_from_toml_value() {
+        let table = get_test_table();
+
+        let json_table = serde_json::Value::from_toml_value(&table);
+
+        assert_eq!(
+            json_table,
+            json!({ "str": "string", "int": 1, "float": 1.1, "bool": true, "array": [1], "dict": {"str": "string", "int": 1, "float": 1.1, "bool": true, "array": [1],
+
+
+            }})
+        );
+    }
+}
