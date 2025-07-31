@@ -28,6 +28,28 @@ pub(crate) mod lines_absent;
 pub(crate) mod lines_present;
 pub(crate) mod test_helpers;
 
+pub(crate) trait RelativeUrl {
+    fn short_url_str(&self) -> String;
+}
+
+impl RelativeUrl for url::Url {
+    fn short_url_str(&self) -> String {
+        let cwd_url = url::Url::parse(&format!(
+            "file://{}",
+            env::current_dir()
+                .unwrap()
+                .into_os_string()
+                .into_string()
+                .unwrap()
+        ))
+        .unwrap();
+        match cwd_url.make_relative(self) {
+            Some(relative_url) => relative_url,
+            None => self.as_str().to_owned(),
+        }
+    }
+}
+
 /// get the valid checks
 /// invalid check are logged with error level and passed silently
 /// todo: do not perform checks when at least one check has a definition error
@@ -49,7 +71,7 @@ fn get_checks_from_config_table(
                 ) {
                     Ok(check) => checks.push(check),
                     Err(err) => {
-                        log::error!("Check {file_with_checks}:{check_type} has errors: {err}")
+                        log::error!("Checkfile {file_with_checks}:{check_type} has errors: {err}")
                     }
                 }
             }
@@ -64,7 +86,7 @@ fn get_checks_from_config_table(
                         ) {
                             Ok(check) => checks.push(check),
                             Err(err) => log::error!(
-                                "Check {file_with_checks}:{check_type} has errors: {err}"
+                                "Checkfile {file_with_checks}:{check_type} has errors: {err}"
                             ),
                         }
                     }

@@ -3,7 +3,10 @@ use std::process::ExitCode;
 
 use clap::Parser;
 
-use crate::checkers::base::{Action, Check};
+use crate::checkers::{
+    base::{Action, Check},
+    RelativeUrl,
+};
 
 use super::checkers::read_checks_from_path;
 
@@ -40,7 +43,7 @@ struct Cli {
     #[arg(long, default_value = "false")]
     fix: bool,
 
-    /// Show loaded checkers
+    /// List all checks. Checks are not executed.
     #[arg(long, default_value = "false")]
     list_checkers: bool,
 
@@ -109,14 +112,20 @@ pub fn cli() -> ExitCode {
     let checks = read_checks_from_path(&file_with_checks);
 
     if cli.list_checkers {
+        log::error!("List of checks (type, location of definition, file to check)");
         checks.iter().for_each(|check| {
             log::error!(
-                "Loaded check: {} {} {:?}",
+                "Check: {} {} {:}",
                 check.check_type(),
-                check.generic_check().file_with_checks.as_str(),
-                check.generic_check().file_to_check.as_os_str()
+                check.generic_check().file_with_checks.short_url_str(),
+                check
+                    .generic_check()
+                    .file_to_check
+                    .as_os_str()
+                    .to_string_lossy()
             )
         });
+        return ExitCode::from(ExitStatus::Success);
     }
 
     let (action_count, success_count) = run_checks(&checks, cli.fix);

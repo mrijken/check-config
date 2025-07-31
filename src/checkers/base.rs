@@ -19,7 +19,7 @@ pub(crate) enum Action {
 pub(crate) enum CheckDefinitionError {
     #[error("invalid check definition")]
     InvalidDefinition(String),
-    #[error("invalid regex format")]
+    #[error("Unknown checktype")]
     UnknownCheckType(String),
 }
 
