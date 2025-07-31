@@ -162,6 +162,34 @@ mod tests {
     use super::*;
 
     #[test]
+    fn test_access_map() {
+        let table = get_test_table();
+        let binding = serde_json::Value::from_toml_value(&table);
+        let mut json_table = binding.as_object().unwrap().to_owned();
+
+        assert!(json_table
+            .get_array("array", false)
+            .expect("")
+            .contains_item(&toml::Value::Integer(1)));
+
+        assert_eq!(
+            json_table.get_string("str").expect(""),
+            "string".to_string()
+        );
+        assert!(json_table.get_string("int").is_err(),);
+        assert!(json_table.get_string("absent").is_err(),);
+        assert!(json_table.get_array("absent", false).is_err(),);
+        assert_eq!(
+            json_table
+                .get_mapping("dict", false)
+                .expect("")
+                .to_string()
+                .unwrap(),
+            "{\n    \"array\": [\n        1\n    ],\n    \"bool\": true,\n    \"float\": 1.1,\n    \"int\": 1,\n    \"str\": \"string\"\n}\n".to_string()
+        );
+    }
+
+    #[test]
     fn test_from_toml_value() {
         let table = get_test_table();
 

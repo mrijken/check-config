@@ -82,8 +82,12 @@ impl Mapping for toml_edit::Table {
         let value = self.get_mut(key).unwrap();
         if !value.is_table_like() {
             Err(MappingError::WrongType(format!("{key} is not a mapping")))
+        } else if value.is_table() {
+            let value = value.as_table_mut().unwrap();
+            Ok(value)
         } else {
-            Ok(value.as_table_mut().unwrap())
+            let value = value.as_inline_table_mut().unwrap();
+            Ok(value)
         }
     }
     fn get_array(
@@ -123,6 +127,76 @@ impl Mapping for toml_edit::Table {
             key,
             toml_edit::Item::Value(toml_edit::Value::from_toml_value(value)),
         );
+    }
+    fn remove(&mut self, key: &str) {
+        if self.contains_key(key) {
+            self.remove(key);
+        }
+    }
+}
+
+impl Mapping for toml_edit::InlineTable {
+    fn to_string(&self) -> Result<String, CheckError> {
+        log::error!("not implemented, call to_string on Document instead");
+        std::process::exit(1);
+    }
+
+    fn contains_key(&self, key: &str) -> bool {
+        self.contains_key(key)
+    }
+    fn get_mapping(
+        &mut self,
+        key: &str,
+        create_missing: bool,
+    ) -> Result<&mut dyn Mapping, MappingError> {
+        if !self.contains_key(key) {
+            if !create_missing {
+                return Err(MappingError::MissingKey(key.to_string()));
+            }
+            self.insert(
+                key,
+                toml_edit::Value::InlineTable(toml_edit::InlineTable::new()),
+            );
+        }
+        let value = self.get_mut(key).unwrap();
+        if !value.is_inline_table() {
+            Err(MappingError::WrongType(format!("{key} is not a mapping")))
+        } else {
+            let value = value.as_inline_table_mut().unwrap();
+            Ok(value)
+        }
+    }
+    fn get_array(
+        &mut self,
+        key: &str,
+        create_missing: bool,
+    ) -> Result<&mut dyn Array, MappingError> {
+        if !self.contains_key(key) {
+            if !create_missing {
+                return Err(MappingError::MissingKey(key.to_string()));
+            }
+            self.insert(key, toml_edit::Value::Array(toml_edit::Array::new()));
+        }
+        let value = self.get_mut(key).unwrap();
+        if !value.is_array() {
+            Err(MappingError::WrongType(format!("`{key}` is not an array")))
+        } else {
+            Ok(value.as_array_mut().unwrap())
+        }
+    }
+    fn get_string(&self, key: &str) -> Result<String, MappingError> {
+        if !self.contains_key(key) {
+            return Err(MappingError::MissingKey(key.to_string()));
+        }
+        let value = self.get(key).unwrap();
+        if !value.is_str() {
+            Err(MappingError::WrongType(format!("{key} is not a string")))
+        } else {
+            Ok(value.as_str().unwrap().to_string())
+        }
+    }
+    fn insert(&mut self, key: &str, value: &toml::Value) {
+        self.insert(key, toml_edit::Value::from_toml_value(value));
     }
     fn remove(&mut self, key: &str) {
         if self.contains_key(key) {
@@ -233,19 +307,49 @@ impl Value for toml_edit::Value {
 #[cfg(test)]
 mod tests {
 
-    use serde_json::json;
-
     use super::super::generic::tests::get_test_table;
     use super::*;
+
+    #[test]
+    fn test_access_map() {
+        let table = get_test_table();
+        let mut toml_table = toml_edit::Value::from_toml_value(&table)
+            .as_inline_table()
+            .unwrap()
+            .clone()
+            .into_table();
+
+        assert!(toml_table
+            .get_array("array", false)
+            .expect("")
+            .contains_item(&toml::Value::Integer(1)));
+
+        assert_eq!(
+            toml_table.get_string("str").expect(""),
+            "string".to_string()
+        );
+        assert!(toml_table.get_string("int").is_err(),);
+        assert!(toml_table.get_string("absent").is_err(),);
+        assert!(toml_table.get_array("absent", false).is_err(),);
+
+        assert_eq!(
+            toml_table
+                .get_mapping("dict", false)
+                .expect("")
+                .get_string("str")
+                .unwrap(),
+            "string".to_string()
+        );
+    }
 
     #[test]
     fn test_from_toml_value() {
         let table = get_test_table();
 
-        let json_table = toml_edit::Value::from_toml_value(&table);
+        let toml_table = toml_edit::Value::from_toml_value(&table);
 
         assert_eq!(
-            json_table.to_string(),
+            toml_table.to_string(),
             "{ array = [1], bool = true, dict = { array = [1], bool = true, float = 1.1, int = 1, str = \"string\" }, float = 1.1, int = 1, str = \"string\" }"
 
 

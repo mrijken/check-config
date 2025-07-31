@@ -164,6 +164,34 @@ mod tests {
     use super::*;
 
     #[test]
+    fn test_access_map() {
+        let table = get_test_table();
+        let binding = serde_yaml::Value::from_toml_value(&table);
+        let mut yaml_table = binding.as_mapping().unwrap().to_owned();
+
+        assert!(yaml_table
+            .get_array("array", false)
+            .expect("")
+            .contains_item(&toml::Value::Integer(1)));
+
+        assert_eq!(
+            yaml_table.get_string("str").expect(""),
+            "string".to_string()
+        );
+        assert!(yaml_table.get_string("int").is_err(),);
+        assert!(yaml_table.get_string("absent").is_err(),);
+        assert!(yaml_table.get_array("absent", false).is_err(),);
+        assert_eq!(
+            yaml_table
+                .get_mapping("dict", false)
+                .expect("")
+                .to_string()
+                .unwrap(),
+            "array:\n- 1\nbool: true\nfloat: 1.1\nint: 1\nstr: string\n".to_string()
+        );
+    }
+
+    #[test]
     fn test_from_toml_value() {
         let table = get_test_table();
 
