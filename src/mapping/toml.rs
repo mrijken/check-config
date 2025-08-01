@@ -340,6 +340,72 @@ mod tests {
                 .unwrap(),
             "string".to_string()
         );
+
+        assert!(toml_table
+            .get_mapping("dict", false)
+            .expect("")
+            .get_array("array", false)
+            .unwrap()
+            .contains_item(&toml::Value::Integer(1)),);
+
+        toml_table
+            .get_mapping("new_dict", true)
+            .unwrap()
+            .insert("key", &toml::Value::String("new_dict_value".to_string()));
+
+        assert_eq!(
+            toml_table
+                .get_mapping("new_dict", false)
+                .expect("")
+                .get_string("key")
+                .unwrap(),
+            "new_dict_value".to_string()
+        );
+
+        toml_table
+            .get_mapping("dict", false)
+            .unwrap()
+            .get_mapping("new_nested_dict", true)
+            .unwrap()
+            .insert(
+                "key",
+                &toml::Value::String("new_nested_dict_value".to_string()),
+            );
+
+        assert_eq!(
+            toml_table
+                .get_mapping("dict", false)
+                .unwrap()
+                .get_mapping("new_nested_dict", false)
+                .unwrap()
+                .get_string("key")
+                .unwrap(),
+            "new_nested_dict_value".to_string()
+        );
+
+        toml_table
+            .get_array("new_array", true)
+            .unwrap()
+            .insert_when_not_present(&toml::Value::String("new_array_value".to_string()));
+
+        assert!(toml_table
+            .get_array("new_array", false)
+            .unwrap()
+            .contains_item(&toml::Value::String("new_array_value".to_string())),);
+
+        toml_table
+            .get_mapping("dict", false)
+            .unwrap()
+            .get_array("new_nested_array", true)
+            .unwrap()
+            .insert_when_not_present(&toml::Value::String("new_nested_array_value".to_string()));
+
+        assert!(toml_table
+            .get_mapping("dict", false)
+            .unwrap()
+            .get_array("new_nested_array", false)
+            .unwrap()
+            .contains_item(&toml::Value::String("new_nested_array_value".to_string())),);
     }
 
     #[test]
