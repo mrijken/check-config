@@ -159,28 +159,19 @@ mod tests {
     use serde_json::json;
 
     use super::super::generic::tests::get_test_table;
+    use super::super::generic::tests::test_mapping;
     use super::*;
 
     #[test]
     fn test_access_map() {
         let table = get_test_table();
         let binding = serde_json::Value::from_toml_value(&table);
-        let mut json_table = binding.as_object().unwrap().to_owned();
+        let mut mapping_to_check = binding.as_object().unwrap().to_owned();
 
-        assert!(json_table
-            .get_array("array", false)
-            .expect("")
-            .contains_item(&toml::Value::Integer(1)));
+        test_mapping(Box::new(mapping_to_check.clone()));
 
         assert_eq!(
-            json_table.get_string("str").expect(""),
-            "string".to_string()
-        );
-        assert!(json_table.get_string("int").is_err(),);
-        assert!(json_table.get_string("absent").is_err(),);
-        assert!(json_table.get_array("absent", false).is_err(),);
-        assert_eq!(
-            json_table
+            mapping_to_check
                 .get_mapping("dict", false)
                 .expect("")
                 .to_string()

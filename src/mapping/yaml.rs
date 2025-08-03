@@ -160,29 +160,21 @@ impl Value for serde_yaml::value::Value {
 #[cfg(test)]
 mod tests {
 
-    use super::super::generic::tests::get_test_table;
     use super::*;
+
+    use super::super::generic::tests::get_test_table;
+    use super::super::generic::tests::test_mapping;
 
     #[test]
     fn test_access_map() {
         let table = get_test_table();
         let binding = serde_yaml::Value::from_toml_value(&table);
-        let mut yaml_table = binding.as_mapping().unwrap().to_owned();
+        let mut mapping_to_check = binding.as_mapping().unwrap().to_owned();
 
-        assert!(yaml_table
-            .get_array("array", false)
-            .expect("")
-            .contains_item(&toml::Value::Integer(1)));
+        test_mapping(Box::new(mapping_to_check.clone()));
 
         assert_eq!(
-            yaml_table.get_string("str").expect(""),
-            "string".to_string()
-        );
-        assert!(yaml_table.get_string("int").is_err(),);
-        assert!(yaml_table.get_string("absent").is_err(),);
-        assert!(yaml_table.get_array("absent", false).is_err(),);
-        assert_eq!(
-            yaml_table
+            mapping_to_check
                 .get_mapping("dict", false)
                 .expect("")
                 .to_string()

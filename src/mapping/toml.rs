@@ -308,104 +308,19 @@ impl Value for toml_edit::Value {
 mod tests {
 
     use super::super::generic::tests::get_test_table;
+    use super::super::generic::tests::test_mapping;
     use super::*;
 
     #[test]
     fn test_access_map() {
         let table = get_test_table();
-        let mut toml_table = toml_edit::Value::from_toml_value(&table)
+        let mapping_to_check = toml_edit::Value::from_toml_value(&table)
             .as_inline_table()
             .unwrap()
             .clone()
             .into_table();
 
-        assert!(toml_table
-            .get_array("array", false)
-            .expect("")
-            .contains_item(&toml::Value::Integer(1)));
-
-        assert_eq!(
-            toml_table.get_string("str").expect(""),
-            "string".to_string()
-        );
-        assert!(toml_table.get_string("int").is_err(),);
-        assert!(toml_table.get_string("absent").is_err(),);
-        assert!(toml_table.get_array("absent", false).is_err(),);
-
-        assert_eq!(
-            toml_table
-                .get_mapping("dict", false)
-                .expect("")
-                .get_string("str")
-                .unwrap(),
-            "string".to_string()
-        );
-
-        assert!(toml_table
-            .get_mapping("dict", false)
-            .expect("")
-            .get_array("array", false)
-            .unwrap()
-            .contains_item(&toml::Value::Integer(1)),);
-
-        toml_table
-            .get_mapping("new_dict", true)
-            .unwrap()
-            .insert("key", &toml::Value::String("new_dict_value".to_string()));
-
-        assert_eq!(
-            toml_table
-                .get_mapping("new_dict", false)
-                .expect("")
-                .get_string("key")
-                .unwrap(),
-            "new_dict_value".to_string()
-        );
-
-        toml_table
-            .get_mapping("dict", false)
-            .unwrap()
-            .get_mapping("new_nested_dict", true)
-            .unwrap()
-            .insert(
-                "key",
-                &toml::Value::String("new_nested_dict_value".to_string()),
-            );
-
-        assert_eq!(
-            toml_table
-                .get_mapping("dict", false)
-                .unwrap()
-                .get_mapping("new_nested_dict", false)
-                .unwrap()
-                .get_string("key")
-                .unwrap(),
-            "new_nested_dict_value".to_string()
-        );
-
-        toml_table
-            .get_array("new_array", true)
-            .unwrap()
-            .insert_when_not_present(&toml::Value::String("new_array_value".to_string()));
-
-        assert!(toml_table
-            .get_array("new_array", false)
-            .unwrap()
-            .contains_item(&toml::Value::String("new_array_value".to_string())),);
-
-        toml_table
-            .get_mapping("dict", false)
-            .unwrap()
-            .get_array("new_nested_array", true)
-            .unwrap()
-            .insert_when_not_present(&toml::Value::String("new_nested_array_value".to_string()));
-
-        assert!(toml_table
-            .get_mapping("dict", false)
-            .unwrap()
-            .get_array("new_nested_array", false)
-            .unwrap()
-            .contains_item(&toml::Value::String("new_nested_array_value".to_string())),);
+        test_mapping(Box::new(mapping_to_check.clone()));
     }
 
     #[test]
