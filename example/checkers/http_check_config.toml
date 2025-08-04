@@ -1,4 +1,4 @@
-[check-config]
+[__config__]
 include = ["http_check_config_relative.toml"]
 
 ["output/test.json".key_value_regex_match]
