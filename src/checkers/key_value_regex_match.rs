@@ -3,7 +3,8 @@ use regex::Regex;
 use crate::{file_types::RegexValidateResult, mapping::generic::Mapping};
 
 use super::{
-    base::{Action, Check, CheckError}, GenericCheck,
+    base::{Action, Check, CheckConstructor, CheckError},
+    GenericCheck,
 };
 
 #[derive(Debug)]
@@ -12,15 +13,19 @@ pub(crate) struct EntryRegexMatch {
     value: toml::Table,
 }
 
-impl EntryRegexMatch {
-    pub fn new(generic_check: GenericCheck, value: toml::Table) -> Self {
-        Self {
+impl CheckConstructor for EntryRegexMatch {
+    type Output = Self;
+
+    fn from_check_table(
+        generic_check: GenericCheck,
+        value: toml::Table,
+    ) -> Result<Self::Output, super::base::CheckDefinitionError> {
+        Ok(Self {
             generic_check,
             value,
-        }
+        })
     }
 }
-
 impl Check for EntryRegexMatch {
     fn check_type(&self) -> String {
         "key_value_regex_match".to_string()
@@ -126,15 +131,13 @@ mod tests {
                 assert_eq!(
                     result,
                     RegexValidateResult::Valid,
-                    "test_path {} failed",
-                    test_path
+                    "test_path {test_path} failed"
                 );
             } else {
                 assert_ne!(
                     result,
                     RegexValidateResult::Valid,
-                    "test_path {} failed",
-                    test_path
+                    "test_path {test_path} failed"
                 );
             }
         }

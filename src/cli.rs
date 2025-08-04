@@ -1,10 +1,12 @@
 use std::io::Write;
 use std::process::ExitCode;
-use std::sync::Arc;
 
 use clap::Parser;
 
-use crate::checkers::base::Action;
+use crate::checkers::{
+    base::{Action, Check},
+    RelativeUrl,
+};
 
 use super::checkers::read_checks_from_path;
 
@@ -41,23 +43,42 @@ struct Cli {
     #[arg(long, default_value = "false")]
     fix: bool,
 
+    /// List all checks. Checks are not executed.
+    #[arg(long, default_value = "false")]
+    list_checkers: bool,
+
+    // -v s
+    // -vv show all
     #[clap(flatten)]
     verbose: clap_verbosity_flag::Verbosity,
 }
 
+pub(crate) fn parse_path(path: &str) -> Option<url::Url> {
+    if path.starts_with("/") {
+        super::uri::parse_uri(format!("file://{path}").as_str(), None).ok()
+    } else {
+        let cwd = super::uri::parse_uri(
+            &format!(
+                "file://{}/",
+                std::env::current_dir().unwrap().as_path().to_str().unwrap()
+            ),
+            None,
+        )
+        .unwrap();
+        match super::uri::parse_uri(path, Some(&cwd)) {
+            Ok(uri) => Some(uri),
+            Err(_) => {
+                log::error!("Invalid path: {path}");
+                None
+            }
+        }
+    }
+}
 pub fn cli() -> ExitCode {
     let cli = Cli::parse();
-    let cwd = super::uri::parse_uri(
-        &format!(
-            "file://{}/",
-            std::env::current_dir().unwrap().as_path().to_str().unwrap()
-        ),
-        None,
-    )
-    .unwrap();
-    let mut file_with_checks = match super::uri::parse_uri(&cli.path, Some(&cwd)) {
-        Ok(uri) => uri,
-        Err(_) => {
+    let mut file_with_checks = match parse_path(&cli.path) {
+        Some(uri) => uri,
+        None => {
             log::error!("Unable to load checkers. Invalid path: {}", cli.path);
             return ExitCode::from(ExitStatus::Error);
         }
@@ -71,12 +92,12 @@ pub fn cli() -> ExitCode {
             );
             return ExitCode::from(ExitStatus::Error);
         }
-        log::info!(
+        log::error!(
             "Path with checkers does not exist: {}",
             file_with_checks.path()
         );
-        log::info!("Using pyproject.toml as alternative");
-        file_with_checks = super::uri::parse_uri("pyproject.toml", Some(&cwd)).unwrap();
+        log::error!("Using pyproject.toml as alternative");
+        file_with_checks = parse_path("pyproject.toml").unwrap();
     }
 
     env_logger::Builder::new()
@@ -90,29 +111,52 @@ pub fn cli() -> ExitCode {
 
     let checks = read_checks_from_path(&file_with_checks);
 
-    let mut action_count = 0;
-    let mut success_count = 0;
-
-    for check in checks {
-        let result = if cli.fix { check.fix() } else { check.check() };
-
-        match result {
-            Err(_) => {
-                log::error!("There was an error fixing files.");
-                return ExitCode::from(ExitStatus::Error);
-            }
-            Ok(Action::None) => success_count += 1,
-            _ => action_count += 1,
-        };
+    if cli.list_checkers {
+        log::error!("List of checks (type, location of definition, file to check)");
+        checks.iter().for_each(|check| {
+            log::error!(
+                "Check: {} {} {:}",
+                check.check_type(),
+                check.generic_check().file_with_checks.short_url_str(),
+                check
+                    .generic_check()
+                    .file_to_check
+                    .as_os_str()
+                    .to_string_lossy()
+            )
+        });
+        return ExitCode::from(ExitStatus::Success);
     }
-    log::info!("{} checks successful.", success_count);
+
+    let (action_count, success_count) = run_checks(&checks, cli.fix);
+
+    log::warn!("{success_count} checks successful.");
     if action_count > 0 {
         // note: error level is used to always show this message, also with the lowest verbose level
-        log::error!("There are {} violations to fix.", action_count,);
+        log::error!("There are {action_count} violations to fix.",);
         ExitCode::from(ExitStatus::Failure)
     } else {
         // note: error level is used to always show this message, also with the lowest verbose level
         log::error!("No violations found.");
         ExitCode::from(ExitStatus::Success)
     }
+}
+
+pub(crate) fn run_checks(checks: &Vec<Box<dyn Check>>, fix: bool) -> (i32, i32) {
+    let mut action_count = 0;
+    let mut success_count = 0;
+
+    for check in checks {
+        let result = if fix { check.fix() } else { check.check() };
+        match result {
+            Err(_) => {
+                log::error!("There was an error fixing files.");
+                return (0, 0);
+            }
+            Ok(Action::None) => success_count += 1,
+            _ => action_count += 1,
+        };
+    }
+
+    (action_count, success_count)
 }

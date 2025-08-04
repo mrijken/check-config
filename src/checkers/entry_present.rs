@@ -1,7 +1,7 @@
-use crate::mapping::generic::Mapping;
+pub(crate) use crate::mapping::generic::Mapping;
 
 use super::{
-    base::{Action, Check, CheckError},
+    base::{Action, Check, CheckConstructor, CheckDefinitionError, CheckError},
     DefaultContent, GenericCheck,
 };
 
@@ -11,15 +11,18 @@ pub(crate) struct EntryPresent {
     value: toml::Table,
 }
 
-impl EntryPresent {
-    pub fn new(generic_check: GenericCheck, value: toml::Table) -> Self {
-        Self {
+impl CheckConstructor for EntryPresent {
+    type Output = Self;
+    fn from_check_table(
+        generic_check: GenericCheck,
+        value: toml::Table,
+    ) -> Result<Self::Output, CheckDefinitionError> {
+        Ok(Self {
             generic_check,
             value,
-        }
+        })
     }
 }
-
 impl Check for EntryPresent {
     fn check_type(&self) -> String {
         "entry_present".to_string()
@@ -94,8 +97,7 @@ mod tests {
             assert_eq!(
                 *test_expected_output,
                 test_input.to_string().unwrap(),
-                "test_path {} failed",
-                test_path
+                "test_path {test_path} failed"
             );
         }
     }

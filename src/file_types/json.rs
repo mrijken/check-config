@@ -1,13 +1,11 @@
 use crate::checkers::base::CheckError;
 
-
-use super::{FileType};
-
+use super::FileType;
 
 pub(crate) struct Json {}
 
 impl Json {
-    pub fn new() -> Json {
+    pub(crate) fn new() -> Json {
         Json {}
     }
 }

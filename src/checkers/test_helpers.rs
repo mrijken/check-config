@@ -2,15 +2,14 @@ use std::{fs, path::PathBuf, rc::Rc};
 
 use crate::mapping::{generic::Mapping, json};
 
+type TestFiles = Vec<(String, Box<dyn Mapping>, String, Rc<toml::Value>)>;
+
 #[allow(dead_code)]
-pub(crate) fn read_test_files(
-    check_type: &str,
-) -> Vec<(String, Box<dyn Mapping>, String, Rc<toml::Value>)> {
+pub(crate) fn read_test_files(check_type: &str) -> TestFiles {
     let mut test_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
     test_dir.push("tests/resources/checkers/".to_string() + check_type);
 
     let mut tests = vec![];
-    dbg!(&test_dir);
 
     for test in test_dir.read_dir().expect("read_dir call failed") {
         let test = test.unwrap().path();
@@ -19,7 +18,8 @@ pub(crate) fn read_test_files(
             Rc::new(toml::from_str::<toml::Value>(file_checker_content.as_str()).unwrap());
 
         let json_input = json::from_path(test.join("input.json")).unwrap();
-        let json_expected_output = fs::read_to_string(test.join("expected_output.json")).unwrap();
+        let json_expected_output =
+            fs::read_to_string(test.join("expected_output.json")).unwrap() + "\n";
 
         tests.push((
             test.join("input.json").to_string_lossy().to_string(),

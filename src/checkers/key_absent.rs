@@ -1,10 +1,9 @@
 use crate::mapping::generic::Mapping;
 
 use super::{
-    base::{Action, Check, CheckError},
+    base::{Action, Check, CheckConstructor, CheckError},
     DefaultContent, GenericCheck,
 };
-
 
 #[derive(Debug)]
 pub(crate) struct KeyAbsent {
@@ -12,15 +11,19 @@ pub(crate) struct KeyAbsent {
     value: toml::Table,
 }
 
-impl KeyAbsent {
-    pub fn new(generic_check: GenericCheck, value: toml::Table) -> Self {
-        Self {
+impl CheckConstructor for KeyAbsent {
+    type Output = Self;
+
+    fn from_check_table(
+        generic_check: GenericCheck,
+        value: toml::Table,
+    ) -> Result<Self::Output, super::base::CheckDefinitionError> {
+        Ok(Self {
             generic_check,
             value,
-        }
+        })
     }
 }
-
 impl Check for KeyAbsent {
     fn check_type(&self) -> String {
         "key_absent".to_string()
@@ -61,8 +64,7 @@ fn unset_key(doc: &mut dyn Mapping, table_to_unset: &toml::Table) {
                 unset_key(child_doc, child_table_to_unset);
             } else {
                 log::info!(
-                    "Key {} is not found in toml, so we can not remove that key",
-                    key_to_unset,
+                    "Key {key_to_unset} is not found in toml, so we can not remove that key",
                 );
             }
         }
@@ -85,8 +87,7 @@ mod tests {
             assert_eq!(
                 *test_expected_output,
                 test_input.to_string().unwrap(),
-                "test_path {} failed",
-                test_path
+                "test_path {test_path} failed"
             );
         }
     }

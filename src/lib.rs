@@ -1,5 +1,6 @@
 mod checkers;
 pub mod cli;
 mod file_types;
+mod integration_test;
 mod mapping;
-mod uri;
+pub mod uri;

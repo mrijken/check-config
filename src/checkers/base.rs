@@ -16,7 +16,15 @@ pub(crate) enum Action {
 }
 
 #[derive(Error, Debug)]
-pub enum CheckError {
+pub(crate) enum CheckDefinitionError {
+    #[error("invalid check definition")]
+    InvalidDefinition(String),
+    #[error("Unknown checktype")]
+    UnknownCheckType(String),
+}
+
+#[derive(Error, Debug)]
+pub(crate) enum CheckError {
     #[error("file can not be read")]
     FileCanNotBeRead(#[from] io::Error),
     #[error("unknown file type; do not know how to handle")]
@@ -31,6 +39,13 @@ pub enum CheckError {
     InvalidRegex(String),
 }
 
+pub(crate) trait CheckConstructor {
+    type Output;
+    fn from_check_table(
+        generic_check: GenericCheck,
+        value: toml::Table,
+    ) -> Result<Self::Output, CheckDefinitionError>;
+}
 pub(crate) trait Check: DebugTrait {
     fn check_type(&self) -> String;
     fn generic_check(&self) -> &GenericCheck;
@@ -39,9 +54,10 @@ pub(crate) trait Check: DebugTrait {
         std::process::exit(1);
     }
 
+    /// Log the action
     fn print(&self, is_ok: bool, key: Option<&str>, action_message: Option<&str>) {
         let key = match key {
-            Some(k) => format!(" - {}", k),
+            Some(k) => format!(" - {k}"),
             None => "".to_string(),
         };
         let ok = match is_ok {
@@ -49,7 +65,7 @@ pub(crate) trait Check: DebugTrait {
             false => "❌",
         };
         let action_message = match action_message {
-            Some(msg) => format!(" - {}", msg),
+            Some(msg) => format!(" - {msg}"),
             None => "".to_string(),
         };
         let msg = format!(
@@ -62,10 +78,12 @@ pub(crate) trait Check: DebugTrait {
             action_message
         );
         match is_ok {
-            true => log::info!("{}", msg),
-            false => log::error!("{}", msg),
+            true => log::info!("{msg}"),
+            false => log::warn!("{msg}"),
         }
     }
+
+    /// get the actions which are needed to comply to the check definitions
     fn check(&self) -> Result<Action, CheckError> {
         let action = match self.get_action() {
             Ok(ist_and_soll) => ist_and_soll,
@@ -102,14 +120,14 @@ pub(crate) trait Check: DebugTrait {
                 self.print(
                     false,
                     Some(&key),
-                    Some(&format!("Make sure value matches regex {}", regex)),
+                    Some(&format!("Make sure value matches regex {regex}")),
                 );
             }
             Action::MatchFileRegex { regex } => {
                 self.print(
                     false,
                     None,
-                    Some(&format!("Make sure value matches regex {}", regex)),
+                    Some(&format!("Make sure value matches regex {regex}")),
                 );
             }
         }
@@ -117,8 +135,9 @@ pub(crate) trait Check: DebugTrait {
         Ok(action)
     }
 
+    /// try to fix the checks which fails
     fn fix(&self) -> Result<Action, CheckError> {
-        log::info!(
+        log::warn!(
             "Fixing file {}",
             self.generic_check().file_to_check().to_string_lossy()
         );

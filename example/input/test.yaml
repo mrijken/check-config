@@ -4,4 +4,6 @@ to_be_kept:
 list:
   - to_be_kept
   - to_be_removed
+list2:
+  - already_present
 regex: matches

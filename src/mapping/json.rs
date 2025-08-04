@@ -25,12 +25,15 @@ pub(crate) fn from_string(doc: &str) -> Result<Box<dyn Mapping>, CheckError> {
 
 impl Mapping for serde_json::Map<String, serde_json::Value> {
     fn to_string(&self) -> Result<String, CheckError> {
+        if self.is_empty() {
+            return Ok("".to_string());
+        }
         let buf = Vec::new();
 
         let formatter = serde_json::ser::PrettyFormatter::with_indent(b"    ");
         let mut ser = serde_json::Serializer::with_formatter(buf, formatter);
         self.serialize(&mut ser).unwrap();
-        Ok(String::from_utf8(ser.into_inner()).unwrap())
+        Ok(String::from_utf8(ser.into_inner()).unwrap() + "\n")
     }
 
     fn contains_key(&self, key: &str) -> bool {
@@ -52,7 +55,7 @@ impl Mapping for serde_json::Map<String, serde_json::Value> {
         }
         let value = self.get_mut(key).unwrap();
         if !value.is_object() {
-            Err(MappingError::WrongType(format!("{} is not a mapping", key)))
+            Err(MappingError::WrongType(format!("{key} is not a mapping")))
         } else {
             Ok(value.as_object_mut().unwrap())
         }
@@ -70,7 +73,7 @@ impl Mapping for serde_json::Map<String, serde_json::Value> {
         }
         let value = self.get_mut(key).unwrap();
         if !value.is_array() {
-            Err(MappingError::WrongType(format!("{} is not an array", key)))
+            Err(MappingError::WrongType(format!("{key} is not an array")))
         } else {
             Ok(value)
         }
@@ -81,7 +84,7 @@ impl Mapping for serde_json::Map<String, serde_json::Value> {
         }
         let value = self.get(key).unwrap();
         if !value.is_string() {
-            Err(MappingError::WrongType(format!("{} is not a string", key)))
+            Err(MappingError::WrongType(format!("{key} is not a string")))
         } else {
             Ok(value.as_str().unwrap().to_string())
         }
@@ -147,5 +150,48 @@ impl Value for serde_json::Value {
                 serde_json::Value::Object(a)
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+
+    use serde_json::json;
+
+    use super::super::generic::tests::get_test_table;
+    use super::super::generic::tests::test_mapping;
+    use super::*;
+
+    #[test]
+    fn test_access_map() {
+        let table = get_test_table();
+        let binding = serde_json::Value::from_toml_value(&table);
+        let mut mapping_to_check = binding.as_object().unwrap().to_owned();
+
+        test_mapping(Box::new(mapping_to_check.clone()));
+
+        assert_eq!(
+            mapping_to_check
+                .get_mapping("dict", false)
+                .expect("")
+                .to_string()
+                .unwrap(),
+            "{\n    \"array\": [\n        1\n    ],\n    \"bool\": true,\n    \"float\": 1.1,\n    \"int\": 1,\n    \"str\": \"string\"\n}\n".to_string()
+        );
+    }
+
+    #[test]
+    fn test_from_toml_value() {
+        let table = get_test_table();
+
+        let json_table = serde_json::Value::from_toml_value(&table);
+
+        assert_eq!(
+            json_table,
+            json!({ "str": "string", "int": 1, "float": 1.1, "bool": true, "array": [1], "dict": {"str": "string", "int": 1, "float": 1.1, "bool": true, "array": [1],
+
+
+            }})
+        );
     }
 }

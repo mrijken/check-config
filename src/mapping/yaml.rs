@@ -26,6 +26,9 @@ pub(crate) fn from_string(
 
 impl Mapping for serde_yaml::Mapping {
     fn to_string(&self) -> Result<String, CheckError> {
+        if self.is_empty() {
+            return Ok("".to_string());
+        }
         Ok(serde_yaml::to_string(&self).unwrap())
     }
     fn contains_key(&self, key: &str) -> bool {
@@ -47,7 +50,7 @@ impl Mapping for serde_yaml::Mapping {
         }
         let value = self.get_mut(key).unwrap();
         if !value.is_mapping() {
-            Err(MappingError::WrongType(format!("{} is not a mapping", key)))
+            Err(MappingError::WrongType(format!("{key} is not a mapping")))
         } else {
             Ok(value.as_mapping_mut().unwrap())
         }
@@ -68,7 +71,7 @@ impl Mapping for serde_yaml::Mapping {
         }
         let value = self.get_mut(key).unwrap();
         if !value.is_sequence() {
-            Err(MappingError::WrongType(format!("{} is not an array", key)))
+            Err(MappingError::WrongType(format!("{key} is not an array")))
         } else {
             Ok(value.as_sequence_mut().unwrap())
         }
@@ -79,7 +82,7 @@ impl Mapping for serde_yaml::Mapping {
         }
         let value = self.get(key).unwrap();
         if !value.is_string() {
-            Err(MappingError::WrongType(format!("{} is not a string", key)))
+            Err(MappingError::WrongType(format!("{key} is not a string")))
         } else {
             Ok(value.as_str().unwrap().to_string())
         }
@@ -151,5 +154,41 @@ impl Value for serde_yaml::value::Value {
                 serde_yaml::value::Value::Mapping(a)
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+
+    use super::*;
+
+    use super::super::generic::tests::get_test_table;
+    use super::super::generic::tests::test_mapping;
+
+    #[test]
+    fn test_access_map() {
+        let table = get_test_table();
+        let binding = serde_yaml::Value::from_toml_value(&table);
+        let mut mapping_to_check = binding.as_mapping().unwrap().to_owned();
+
+        test_mapping(Box::new(mapping_to_check.clone()));
+
+        assert_eq!(
+            mapping_to_check
+                .get_mapping("dict", false)
+                .expect("")
+                .to_string()
+                .unwrap(),
+            "array:\n- 1\nbool: true\nfloat: 1.1\nint: 1\nstr: string\n".to_string()
+        );
+    }
+
+    #[test]
+    fn test_from_toml_value() {
+        let table = get_test_table();
+
+        let yaml_table = serde_yaml::Value::from_toml_value(&table);
+
+        assert_eq!(serde_yaml::to_string(&yaml_table).unwrap(), "array:\n- 1\nbool: true\ndict:\n  array:\n  - 1\n  bool: true\n  float: 1.1\n  int: 1\n  str: string\nfloat: 1.1\nint: 1\nstr: string\n");
     }
 }
