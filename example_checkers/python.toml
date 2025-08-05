@@ -1,4 +1,4 @@
-[check-config]
+[__config__]
 include = ["black.toml", "mypy.toml", "ruff.toml"]
 
 # Do not use setup.cfg

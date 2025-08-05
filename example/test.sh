@@ -2,7 +2,7 @@ SCRIPT_DIR=$(dirname "$BASH_SOURCE")
 cd $SCRIPT_DIR
 rm -r output
 cp -r input output
-cargo run -- --fix -p "$SCRIPT_DIR/checkers/check_config.toml"  -v
+cargo run -- --fix  -vv
 diff -w -B expected_output output
 if [ $? -eq 0 ]; then
     echo "Expected output matches actual output"

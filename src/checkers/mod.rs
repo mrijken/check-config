@@ -93,14 +93,12 @@ fn get_checks_from_config_table(
                 }
             }
             value => {
-                if !file_with_checks.path().ends_with("pyproject.toml") {
-                    log::error!(
-                        "Unexpected value type {} {}",
-                        value,
-                        file_with_checks.path()
-                    );
-                    std::process::exit(1);
-                }
+                log::error!(
+                    "Unexpected value type {} {}",
+                    value,
+                    file_with_checks.path()
+                );
+                std::process::exit(1);
             }
         };
     }
@@ -270,34 +268,32 @@ fn get_check_from_check_table(
             )?,
         )),
         _ => {
-            if !file_with_checks.path().ends_with("pyproject.toml") {
-                log::error!("unknown check {check_type} {check_table}");
+            log::error!("unknown check {check_type} {check_table}");
 
-                // exit can not be tested
-                #[cfg(test)]
-                core::panic!("unknown check");
+            // exit can not be tested
+            #[cfg(test)]
+            core::panic!("unknown check");
 
-                #[cfg(not(test))]
-                std::process::exit(1);
-            }
-            Err(CheckDefinitionError::UnknownCheckType(
-                check_type.to_string(),
-            ))
+            #[cfg(not(test))]
+            std::process::exit(1);
         }
     }
 }
 
-pub(crate) fn read_checks_from_path(file_with_checks: &url::Url) -> Vec<Box<dyn Check>> {
+pub(crate) fn read_checks_from_path(
+    file_with_checks: &url::Url,
+    top_level_keys: Vec<&str>,
+) -> Vec<Box<dyn Check>> {
     let mut checks: Vec<Box<dyn Check>> = vec![];
 
-    let checks_toml = match uri::read_to_string(file_with_checks) {
+    let checks_toml_str = match uri::read_to_string(file_with_checks) {
         Ok(checks_toml) => checks_toml,
         Err(_) => {
             log::error!("⚠ {file_with_checks} could not be read");
             return checks;
         }
     };
-    let checks_toml: toml::Table = match toml::from_str(checks_toml.as_str()) {
+    let mut checks_toml: toml::Table = match toml::from_str(checks_toml_str.as_str()) {
         Ok(checks_toml) => checks_toml,
         Err(e) => {
             log::error!("Invalid toml file {file_with_checks} {e}");
@@ -305,15 +301,26 @@ pub(crate) fn read_checks_from_path(file_with_checks: &url::Url) -> Vec<Box<dyn 
         }
     };
 
-    for (file_to_check, value) in checks_toml {
-        if file_to_check == "check-config" {
-            let include = if let Some(include) = value.get("include") {
-                Some(include)
-            } else {
-                // for backward compatibility
-                value.get("additional_checks")
-            };
-            if let Some(Value::Array(include_uris)) = include {
+    for key in top_level_keys {
+        checks_toml = match checks_toml.get(key) {
+            Some(toml) => match toml.as_table() {
+                Some(toml) => toml.clone(),
+                None => {
+                    log::error!("Top level key {key} in {file_with_checks} is not a table");
+                    return vec![];
+                }
+            },
+            None => {
+                log::error!("Top level key {key} is not found in {file_with_checks}");
+                return vec![];
+            }
+        }
+    }
+
+    for (key, value) in checks_toml {
+        if key == "__config__" {
+            let value = value.get("include");
+            if let Some(Value::Array(include_uris)) = value {
                 for include_uri in include_uris {
                     let include_path = match uri::parse_uri(
                         include_uri.as_str().expect("uri is a string"),
@@ -325,15 +332,12 @@ pub(crate) fn read_checks_from_path(file_with_checks: &url::Url) -> Vec<Box<dyn 
                             std::process::exit(1);
                         }
                     };
-
-                    checks.extend(read_checks_from_path(&include_path));
+                    checks.extend(read_checks_from_path(&include_path, vec![]));
                 }
             }
             continue;
         }
-        let file_to_check = env::current_dir()
-            .expect("current dir exists")
-            .join(file_to_check);
+        let file_to_check = env::current_dir().expect("current dir exists").join(key);
         match value {
             Value::Table(config_table) => {
                 checks.extend(get_checks_from_config_table(
@@ -412,7 +416,7 @@ __items__ = [1,2,3]
 
         let path_with_checkers =
             url::Url::parse(&format!("file://{}", path_with_checkers.to_str().unwrap())).unwrap();
-        let checks = read_checks_from_path(&path_with_checkers);
+        let checks = read_checks_from_path(&path_with_checkers, vec![]);
 
         assert_eq!(checks.len(), 9);
     }
@@ -435,7 +439,7 @@ __items__ = [1,2,3]
 
         let path_with_checkers =
             url::Url::parse(&format!("file://{}", path_with_checkers.to_str().unwrap())).unwrap();
-        let checks = read_checks_from_path(&path_with_checkers);
+        let checks = read_checks_from_path(&path_with_checkers, vec![]);
 
         assert_eq!(checks.len(), 0);
     }

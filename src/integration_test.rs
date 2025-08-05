@@ -5,12 +5,13 @@ mod tests {
     use dircpy::*;
 
     #[test]
+    // #[test_log::test]
     fn test_example() {
-        // copy_dir("example", "example2");
         CopyBuilder::new("example/input", "output").run().unwrap();
 
-        let file_with_checks = cli::parse_path("example/pyproject.toml").unwrap();
-        let checks = checkers::read_checks_from_path(&file_with_checks);
+        let file_with_checks = cli::parse_path_str_to_uri("example/pyproject.toml").unwrap();
+        let checks =
+            checkers::read_checks_from_path(&file_with_checks, vec!["tool", "check-config"]);
 
         let (action_count, success_count) = cli::run_checks(&checks, true);
 

@@ -2,6 +2,7 @@ use std::io::Write;
 use std::process::ExitCode;
 
 use clap::Parser;
+use regex::CaptureLocations;
 
 use crate::checkers::{
     base::{Action, Check},
@@ -36,8 +37,11 @@ impl From<ExitStatus> for ExitCode {
 #[command(author, version, about, long_about = None)]
 struct Cli {
     /// Path to the root checkers file in toml format
-    #[arg(short, long, default_value = "check_config.toml")]
-    path: String,
+    /// Defaults (in order of precedence)
+    /// - check_config.toml
+    /// - pyproject,toml with a tool.check-config key
+    #[arg(short, long)]
+    path: Option<String>,
 
     /// Try to fix the config
     #[arg(long, default_value = "false")]
@@ -53,7 +57,7 @@ struct Cli {
     verbose: clap_verbosity_flag::Verbosity,
 }
 
-pub(crate) fn parse_path(path: &str) -> Option<url::Url> {
+pub(crate) fn parse_path_str_to_uri(path: &str) -> Option<url::Url> {
     if path.starts_with("/") {
         super::uri::parse_uri(format!("file://{path}").as_str(), None).ok()
     } else {
@@ -65,51 +69,66 @@ pub(crate) fn parse_path(path: &str) -> Option<url::Url> {
             None,
         )
         .unwrap();
-        match super::uri::parse_uri(path, Some(&cwd)) {
-            Ok(uri) => Some(uri),
-            Err(_) => {
-                log::error!("Invalid path: {path}");
-                None
-            }
-        }
+        super::uri::parse_uri(path, Some(&cwd)).ok()
     }
 }
 pub fn cli() -> ExitCode {
     let cli = Cli::parse();
-    let mut file_with_checks = match parse_path(&cli.path) {
-        Some(uri) => uri,
+    log::info!("Starting check-config");
+    let checks = match cli.path {
+        Some(path_str) => match parse_path_str_to_uri(path_str.as_str()) {
+            Some(uri) => match std::path::Path::new(uri.path()).exists() {
+                true => {
+                    log::info!("Using checkers from {}", &uri);
+                    read_checks_from_path(&uri, vec![])
+                }
+                false => {
+                    log::error!(
+                        "Unable to load checkers. Path ({path_str}) as specified does not exist.",
+                    );
+                    return ExitCode::from(ExitStatus::Error);
+                }
+            },
+            None => {
+                log::error!(
+                    "Unable to load checkers. Path ({path_str}) specified is not a valid path.",
+                );
+                return ExitCode::from(ExitStatus::Error);
+            }
+        },
         None => {
-            log::error!("Unable to load checkers. Invalid path: {}", cli.path);
-            return ExitCode::from(ExitStatus::Error);
+            log::warn!("No path specified. Trying check_config.toml");
+            let uri = parse_path_str_to_uri("check_config.toml").expect("valid path");
+            match std::path::Path::new(uri.path()).exists() {
+                true => {
+                    log::info!("Using checkers from {}", &uri);
+                    read_checks_from_path(&uri, vec![])
+                }
+                false => {
+                    log::warn!("check_config.toml does not exists.");
+                    log::warn!("Trying pyproject.toml.");
+                    let uri = parse_path_str_to_uri("pyproject.toml").expect("valid path");
+                    match std::path::Path::new(uri.path()).exists() {
+                        true => {
+                            log::info!("Using checkers from {}", &uri);
+                            read_checks_from_path(&uri, vec!["tool", "check-config"])
+                        }
+                        false => {
+                            log::error!("No path specified and default paths are not found, so we ran out of options to load the config");
+                            return ExitCode::from(ExitStatus::Error);
+                        }
+                    }
+                }
+            }
         }
     };
-
-    if !std::path::Path::new(file_with_checks.path()).exists() {
-        if !std::path::Path::new("pyproject.toml").exists() {
-            log::error!(
-                "Path with checkers does not exist: {}",
-                file_with_checks.path()
-            );
-            return ExitCode::from(ExitStatus::Error);
-        }
-        log::error!(
-            "Path with checkers does not exist: {}",
-            file_with_checks.path()
-        );
-        log::error!("Using pyproject.toml as alternative");
-        file_with_checks = parse_path("pyproject.toml").unwrap();
-    }
 
     env_logger::Builder::new()
         .filter_level(cli.verbose.log_level_filter())
         .format(|buf, record| writeln!(buf, "{}", record.args()))
         .init();
-    log::info!("Starting check-config");
 
-    log::info!("Using checkers from {}", &file_with_checks);
     log::info!("Fix: {}", &cli.fix);
-
-    let checks = read_checks_from_path(&file_with_checks);
 
     if cli.list_checkers {
         log::error!("List of checks (type, location of definition, file to check)");
@@ -154,7 +173,9 @@ pub(crate) fn run_checks(checks: &Vec<Box<dyn Check>>, fix: bool) -> (i32, i32) 
                 return (0, 0);
             }
             Ok(Action::None) => success_count += 1,
-            _ => action_count += 1,
+            Ok(_action) => {
+                action_count += 1;
+            }
         };
     }
 
