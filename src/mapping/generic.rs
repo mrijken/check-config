@@ -23,19 +23,19 @@ pub(crate) trait Mapping: Send + Sync {
         create_missing: bool,
     ) -> Result<&mut dyn Array, MappingError>;
     fn get_string(&self, key: &str) -> Result<String, MappingError>;
-    fn insert(&mut self, key: &str, value: &toml::Value);
+    fn insert(&mut self, key: &str, value: &toml_edit::Item);
     fn remove(&mut self, key: &str);
 }
 
 pub(crate) trait Array {
-    fn insert_when_not_present(&mut self, value: &toml::Value);
+    fn insert_when_not_present(&mut self, value: &toml_edit::Item);
 
-    fn remove(&mut self, value: &toml::Value);
+    fn remove(&mut self, value: &toml_edit::Item);
 
-    fn contains_item(&self, value: &toml::Value) -> bool;
+    fn contains_item(&self, value: &toml_edit::Item) -> bool;
 }
 pub(crate) trait Value {
-    fn from_toml_value(value: &toml::Value) -> Self
+    fn from_toml_value(value: &toml_edit::Item) -> Self
     where
         Self: Sized;
 }
@@ -45,27 +45,40 @@ pub(crate) mod tests {
 
     use super::Mapping;
 
-    pub(crate) fn get_test_table() -> toml::Value {
-        let mut table = toml::Table::new();
-        table.insert("str".to_owned(), toml::Value::String("string".to_string()));
-        table.insert("int".to_owned(), toml::Value::Integer(1));
-        table.insert("float".to_owned(), toml::Value::Float(1.1));
-        table.insert("bool".to_owned(), toml::Value::Boolean(true));
+    pub(crate) fn get_test_table() -> toml_edit::Item {
+        let mut table = toml_edit::Table::new();
         table.insert(
-            "array".to_owned(),
-            toml::Value::Array(vec![toml::Value::Integer(1)]),
+            "str",
+            toml_edit::Item::Value(toml_edit::Value::from("string")),
         );
-        let nested_table = table.clone();
-        table.insert("dict".to_owned(), nested_table.into());
+        table.insert("int", toml_edit::Item::Value(toml_edit::Value::from(1)));
+        table.insert("float", toml_edit::Item::Value(toml_edit::Value::from(1.1)));
+        table.insert("bool", toml_edit::Item::Value(toml_edit::Value::from(true)));
+        table.insert(
+            "array",
+            toml_edit::Item::Value(toml_edit::Value::Array(toml_edit::Array::from_iter(vec![
+                1,
+            ]))),
+        );
+        let mut nested_table = toml_edit::InlineTable::new();
+        nested_table.insert("str", toml_edit::Value::from("string"));
+        nested_table.insert("int", toml_edit::Value::from(1));
+        nested_table.insert("float", toml_edit::Value::from(1.1));
+        nested_table.insert("bool", toml_edit::Value::from(true));
+        nested_table.insert(
+            "array",
+            toml_edit::Value::Array(toml_edit::Array::from_iter(vec![1])),
+        );
+        table.insert("dict", nested_table.into());
 
-        toml::Value::Table(table)
+        table.into()
     }
 
     pub(crate) fn test_mapping(mut mapping_to_check: Box<dyn Mapping>) {
         assert!(mapping_to_check
             .get_array("array", false)
             .expect("")
-            .contains_item(&toml::Value::Integer(1)));
+            .contains_item(&toml_edit::Item::from(toml_edit::Value::from(1))));
 
         assert_eq!(
             mapping_to_check.get_string("str").expect(""),
@@ -88,12 +101,15 @@ pub(crate) mod tests {
             .expect("")
             .get_array("array", false)
             .unwrap()
-            .contains_item(&toml::Value::Integer(1)),);
+            .contains_item(&toml_edit::Item::from(toml_edit::Value::from(1))));
 
         mapping_to_check
             .get_mapping("new_dict", true)
             .unwrap()
-            .insert("key", &toml::Value::String("new_dict_value".to_string()));
+            .insert(
+                "key",
+                &toml_edit::Item::Value(toml_edit::Value::from("new_dict_value")),
+            );
 
         assert_eq!(
             mapping_to_check
@@ -111,7 +127,7 @@ pub(crate) mod tests {
             .unwrap()
             .insert(
                 "key",
-                &toml::Value::String("new_nested_dict_value".to_string()),
+                &toml_edit::Item::Value(toml_edit::Value::from("new_nested_dict_value")),
             );
 
         assert_eq!(
@@ -128,25 +144,33 @@ pub(crate) mod tests {
         mapping_to_check
             .get_array("new_array", true)
             .unwrap()
-            .insert_when_not_present(&toml::Value::String("new_array_value".to_string()));
+            .insert_when_not_present(&toml_edit::Item::from(toml_edit::Value::from(
+                "new_array_value",
+            )));
 
         assert!(mapping_to_check
             .get_array("new_array", false)
             .unwrap()
-            .contains_item(&toml::Value::String("new_array_value".to_string())),);
+            .contains_item(&toml_edit::Item::from(toml_edit::Value::from(
+                "new_array_value"
+            ))));
 
         mapping_to_check
             .get_mapping("dict", false)
             .unwrap()
             .get_array("new_nested_array", true)
             .unwrap()
-            .insert_when_not_present(&toml::Value::String("new_nested_array_value".to_string()));
+            .insert_when_not_present(&toml_edit::Item::from(toml_edit::Value::from(
+                "new_nested_array_value",
+            )));
 
         assert!(mapping_to_check
             .get_mapping("dict", false)
             .unwrap()
             .get_array("new_nested_array", false)
             .unwrap()
-            .contains_item(&toml::Value::String("new_nested_array_value".to_string())),);
+            .contains_item(&toml_edit::Item::from(toml_edit::Value::from(
+                "new_nested_array_value"
+            ))));
     }
 }

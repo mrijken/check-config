@@ -11,7 +11,7 @@ impl CheckConstructor for FileAbsent {
 
     fn from_check_table(
         generic_check: GenericCheck,
-        _value: toml::Table,
+        _value: toml_edit::Table,
     ) -> Result<Self::Output, CheckDefinitionError> {
         Ok(Self { generic_check })
     }
@@ -54,7 +54,7 @@ mod tests {
         };
 
         let file_absent_check =
-            FileAbsent::from_check_table(generic_check, toml::Table::new()).unwrap();
+            FileAbsent::from_check_table(generic_check, toml_edit::Table::new()).unwrap();
 
         assert_eq!(file_absent_check.check().unwrap(), Action::None);
 

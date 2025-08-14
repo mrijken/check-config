@@ -2,10 +2,11 @@ use std::{
     env,
     fs::{self},
     path::PathBuf,
+    str::FromStr,
 };
 
 use base::CheckConstructor;
-use toml::Value;
+use toml_edit::Value;
 
 use crate::{
     file_types::{self, FileType},
@@ -56,13 +57,13 @@ impl RelativeUrl for url::Url {
 fn get_checks_from_config_table(
     file_with_checks: &url::Url,
     file_to_check: PathBuf,
-    config_table: &toml::Table,
+    config_table: &toml_edit::Table,
 ) -> Vec<Box<dyn Check>> {
     let mut checks = vec![];
 
     for (check_type, check_table) in config_table {
         match check_table {
-            Value::Table(check_table) => {
+            toml_edit::Item::Table(check_table) => {
                 match get_check_from_check_table(
                     file_with_checks,
                     file_to_check.clone(),
@@ -75,27 +76,25 @@ fn get_checks_from_config_table(
                     }
                 }
             }
-            Value::Array(array) => {
-                for table in array {
-                    if let Some(check_table) = table.as_table() {
-                        match get_check_from_check_table(
-                            file_with_checks,
-                            file_to_check.clone(),
-                            check_type,
-                            check_table,
-                        ) {
-                            Ok(check) => checks.push(check),
-                            Err(err) => log::error!(
-                                "Checkfile {file_with_checks}:{check_type} has errors: {err}"
-                            ),
-                        }
+            toml_edit::Item::ArrayOfTables(array) => {
+                for check_table in array {
+                    match get_check_from_check_table(
+                        file_with_checks,
+                        file_to_check.clone(),
+                        check_type,
+                        check_table,
+                    ) {
+                        Ok(check) => checks.push(check),
+                        Err(err) => log::error!(
+                            "Checkfile {file_with_checks}:{check_type} has errors: {err}"
+                        ),
                     }
                 }
             }
             value => {
                 log::error!(
                     "Unexpected value type {} {}",
-                    value,
+                    value.type_name(),
                     file_with_checks.path()
                 );
                 std::process::exit(1);
@@ -199,7 +198,7 @@ impl GenericCheck {
     }
 }
 
-fn determine_filetype_from_config_table(config_table: &mut toml::Table) -> Option<String> {
+fn determine_filetype_from_config_table(config_table: &mut toml_edit::Table) -> Option<String> {
     Some(
         config_table
             .remove("__filetype__")?
@@ -213,7 +212,7 @@ fn get_check_from_check_table(
     file_with_checks: &url::Url,
     file_to_check: PathBuf,
     check_type: &str,
-    check_table: &toml::Table,
+    check_table: &toml_edit::Table,
 ) -> Result<Box<dyn Check>, CheckDefinitionError> {
     let mut check_table = check_table.clone();
 
@@ -272,7 +271,7 @@ fn get_check_from_check_table(
 
             // exit can not be tested
             #[cfg(test)]
-            core::panic!("unknown check");
+            core::panic!("unknown check {check_type} {check_table}");
 
             #[cfg(not(test))]
             std::process::exit(1);
@@ -293,13 +292,14 @@ pub(crate) fn read_checks_from_path(
             return checks;
         }
     };
-    let mut checks_toml: toml::Table = match toml::from_str(checks_toml_str.as_str()) {
-        Ok(checks_toml) => checks_toml,
-        Err(e) => {
-            log::error!("Invalid toml file {file_with_checks} {e}");
-            return checks;
-        }
-    };
+    let mut checks_toml: toml_edit::Table =
+        match toml_edit::DocumentMut::from_str(checks_toml_str.as_str()) {
+            Ok(checks_toml) => checks_toml.as_table().to_owned(),
+            Err(e) => {
+                log::error!("Invalid toml file {file_with_checks} {e}");
+                return checks;
+            }
+        };
 
     for key in top_level_keys {
         checks_toml = match checks_toml.get(key) {
@@ -318,9 +318,10 @@ pub(crate) fn read_checks_from_path(
     }
 
     for (key, value) in checks_toml {
+        // todo: is include possible as top level? So, without __config__ level
         if key == "__config__" {
             let value = value.get("include");
-            if let Some(Value::Array(include_uris)) = value {
+            if let Some(toml_edit::Item::Value(toml_edit::Value::Array(include_uris))) = value {
                 for include_uri in include_uris {
                     let include_path = match uri::parse_uri(
                         include_uri.as_str().expect("uri is a string"),
@@ -339,22 +340,20 @@ pub(crate) fn read_checks_from_path(
         }
         let file_to_check = env::current_dir().expect("current dir exists").join(key);
         match value {
-            Value::Table(config_table) => {
+            toml_edit::Item::Table(config_table) => {
                 checks.extend(get_checks_from_config_table(
                     file_with_checks,
                     file_to_check.clone(),
                     &config_table,
                 ));
             }
-            Value::Array(array) => {
+            toml_edit::Item::ArrayOfTables(array) => {
                 for element in array {
-                    if let Some(config_table) = element.as_table() {
-                        checks.extend(get_checks_from_config_table(
-                            file_with_checks,
-                            file_to_check.clone(),
-                            config_table,
-                        ));
-                    }
+                    checks.extend(get_checks_from_config_table(
+                        file_with_checks,
+                        file_to_check.clone(),
+                        &element,
+                    ));
                 }
             }
             _ => {}
@@ -379,7 +378,7 @@ mod test {
         writeln!(
             file_with_checkers,
             r#"
-[check-config]
+[__config__]
 include = []  # optional list of toml files with additional checks
 
 ["test/absent_file".file_absent]
@@ -434,8 +433,7 @@ __items__ = [1,2,3]
 ["test/absent_file".fileXabsent]
 
         "#
-        )
-        .unwrap();
+        );
 
         let path_with_checkers =
             url::Url::parse(&format!("file://{}", path_with_checkers.to_str().unwrap())).unwrap();

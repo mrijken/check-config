@@ -8,7 +8,7 @@ use super::{
 #[derive(Debug)]
 pub(crate) struct KeyValuePresent {
     generic_check: GenericCheck,
-    value: toml::Table,
+    value: toml_edit::Table,
 }
 
 impl CheckConstructor for KeyValuePresent {
@@ -16,7 +16,7 @@ impl CheckConstructor for KeyValuePresent {
 
     fn from_check_table(
         generic_check: GenericCheck,
-        value: toml::Table,
+        value: toml_edit::Table,
     ) -> Result<Self::Output, super::base::CheckDefinitionError> {
         Ok(Self {
             generic_check,
@@ -51,12 +51,13 @@ impl Check for KeyValuePresent {
     }
 }
 
-fn set_key_value(doc: &mut dyn Mapping, table_to_set: &toml::Table) {
-    for (k, v) in table_to_set {
-        if !v.is_table() {
-            doc.insert(k, v);
+fn set_key_value(doc: &mut dyn Mapping, table_to_set: &impl toml_edit::TableLike) {
+    for (k, v) in table_to_set.iter() {
+        if !v.is_table_like() {
+            doc.insert(k, &toml_edit::Item::Value(v.as_value().unwrap().to_owned()));
             continue;
         }
+
         let child_doc = doc.get_mapping(k, true).expect("key exists or is added");
         set_key_value(child_doc, v.as_table().expect("value is a table"));
     }
@@ -74,7 +75,7 @@ mod tests {
             read_test_files("key_value_present")
         {
             let mut test_input = test_input;
-            set_key_value(test_input.as_mut(), checker.as_table().unwrap());
+            set_key_value(test_input.as_mut(), &checker);
 
             assert_eq!(
                 *test_expected_output,

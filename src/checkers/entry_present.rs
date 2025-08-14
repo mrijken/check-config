@@ -8,14 +8,14 @@ use super::{
 #[derive(Debug)]
 pub(crate) struct EntryPresent {
     generic_check: GenericCheck,
-    value: toml::Table,
+    value: toml_edit::Table,
 }
 
 impl CheckConstructor for EntryPresent {
     type Output = Self;
     fn from_check_table(
         generic_check: GenericCheck,
-        value: toml::Table,
+        value: toml_edit::Table,
     ) -> Result<Self::Output, CheckDefinitionError> {
         Ok(Self {
             generic_check,
@@ -50,9 +50,9 @@ impl Check for EntryPresent {
     }
 }
 
-fn add_entries(doc: &mut dyn Mapping, entries_to_add: &toml::map::Map<String, toml::Value>) {
+fn add_entries(doc: &mut dyn Mapping, entries_to_add: &toml_edit::Table) {
     for (key_to_add, value_to_add) in entries_to_add {
-        if !value_to_add.is_table() {
+        if !value_to_add.is_table_like() {
             log::error!("Unexpected value type");
             std::process::exit(1);
         }
@@ -68,7 +68,7 @@ fn add_entries(doc: &mut dyn Mapping, entries_to_add: &toml::map::Map<String, to
                 .as_array()
                 .expect("__items__ is an array")
             {
-                doc_array.insert_when_not_present(item)
+                doc_array.insert_when_not_present(&toml_edit::Item::Value(item.to_owned()))
             }
             continue;
         }
@@ -92,7 +92,7 @@ mod tests {
             read_test_files("entry_present")
         {
             let mut test_input = test_input;
-            add_entries(test_input.as_mut(), checker.as_table().unwrap());
+            add_entries(test_input.as_mut(), &checker);
 
             assert_eq!(
                 *test_expected_output,

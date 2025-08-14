@@ -5,8 +5,9 @@ mod tests {
     use dircpy::*;
 
     #[test]
-    // #[test_log::test]
     fn test_example() {
+        let _ = std::fs::remove_dir_all("output");
+
         CopyBuilder::new("example/input", "output").run().unwrap();
 
         let file_with_checks = cli::parse_path_str_to_uri("example/pyproject.toml").unwrap();
@@ -19,6 +20,6 @@ mod tests {
         assert_eq!(success_count, 25);
         assert!(!dir_diff::is_different("output", "example/expected_output").unwrap());
 
-        std::fs::remove_dir_all("output").unwrap();
+        // std::fs::remove_dir_all("output").unwrap();
     }
 }

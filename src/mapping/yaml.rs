@@ -87,7 +87,7 @@ impl Mapping for serde_yaml::Mapping {
             Ok(value.as_str().unwrap().to_string())
         }
     }
-    fn insert(&mut self, key: &str, value: &toml::Value) {
+    fn insert(&mut self, key: &str, value: &toml_edit::Item) {
         self.insert(
             serde_yaml::value::Value::String(key.to_string()),
             serde_yaml::Value::from_toml_value(value),
@@ -101,14 +101,14 @@ impl Mapping for serde_yaml::Mapping {
 }
 
 impl Array for serde_yaml::value::Sequence {
-    fn insert_when_not_present(&mut self, value: &toml::Value) {
+    fn insert_when_not_present(&mut self, value: &toml_edit::Item) {
         let value = serde_yaml::value::Value::from_toml_value(value);
         if !self.contains(&value) {
             self.push(value);
         }
     }
 
-    fn remove(&mut self, value: &toml::Value) {
+    fn remove(&mut self, value: &toml_edit::Item) {
         let value = serde_yaml::value::Value::from_toml_value(value);
         let array = self;
         for (idx, array_item) in array.iter().enumerate() {
@@ -119,40 +119,73 @@ impl Array for serde_yaml::value::Sequence {
         }
     }
 
-    fn contains_item(&self, value: &toml::Value) -> bool {
+    fn contains_item(&self, value: &toml_edit::Item) -> bool {
         let value = serde_yaml::value::Value::from_toml_value(value);
         self.contains(&value)
     }
 }
 
 impl Value for serde_yaml::value::Value {
-    fn from_toml_value(value: &toml::Value) -> serde_yaml::value::Value {
+    fn from_toml_value(value: &toml_edit::Item) -> serde_yaml::value::Value {
         match value {
-            toml::Value::String(v) => serde_yaml::value::Value::String(v.clone()),
-            toml::Value::Integer(v) => {
-                serde_yaml::value::Value::Number(serde_yaml::Number::from(*v))
+            toml_edit::Item::Value(toml_edit::Value::String(v)) => {
+                serde_yaml::value::Value::String(v.value().to_owned())
             }
-            toml::Value::Float(v) => serde_yaml::value::Value::Number(serde_yaml::Number::from(*v)),
-            toml::Value::Boolean(v) => serde_yaml::value::Value::Bool(*v),
-            toml::Value::Datetime(v) => serde_yaml::value::Value::String(v.to_string()),
-            toml::Value::Array(v) => {
+            toml_edit::Item::Value(toml_edit::Value::Integer(v)) => {
+                serde_yaml::value::Value::Number(serde_yaml::Number::from(v.value().to_owned()))
+            }
+            toml_edit::Item::Value(toml_edit::Value::Float(v)) => {
+                serde_yaml::value::Value::Number(serde_yaml::Number::from(v.value().to_owned()))
+            }
+            toml_edit::Item::Value(toml_edit::Value::Boolean(v)) => {
+                serde_yaml::value::Value::Bool(v.value().to_owned())
+            }
+            toml_edit::Item::Value(toml_edit::Value::Datetime(v)) => {
+                serde_yaml::value::Value::String(v.to_string())
+            }
+            toml_edit::Item::Value(toml_edit::Value::Array(v)) => {
                 let mut a = vec![];
                 for v_item in v {
-                    a.push(serde_yaml::value::Value::from_toml_value(v_item))
+                    a.push(serde_yaml::value::Value::from_toml_value(
+                        &toml_edit::Item::Value(v_item.to_owned()),
+                    ))
                 }
                 serde_yaml::value::Value::Sequence(a)
             }
-            toml::Value::Table(v) => {
+            toml_edit::Item::Table(v) => {
                 let mut a: serde_yaml::value::Mapping = serde_yaml::value::Mapping::new();
                 for (k, v_item) in v {
                     a.insert(
-                        serde_yaml::value::Value::String(k.clone()),
+                        serde_yaml::value::Value::String(k.to_owned()),
                         serde_yaml::value::Value::from_toml_value(v_item),
                     );
                 }
 
                 serde_yaml::value::Value::Mapping(a)
             }
+            toml_edit::Item::Value(toml_edit::Value::InlineTable(v)) => {
+                let mut a: serde_yaml::value::Mapping = serde_yaml::value::Mapping::new();
+                for (k, v_item) in v {
+                    a.insert(
+                        serde_yaml::value::Value::String(k.to_owned()),
+                        serde_yaml::value::Value::from_toml_value(&toml_edit::Item::Value(
+                            v_item.to_owned(),
+                        )),
+                    );
+                }
+
+                serde_yaml::value::Value::Mapping(a)
+            }
+            toml_edit::Item::ArrayOfTables(v) => {
+                let mut a = vec![];
+                for v_item in v {
+                    a.push(serde_yaml::value::Value::from_toml_value(
+                        &toml_edit::Item::Table(v_item.to_owned()),
+                    ))
+                }
+                serde_yaml::value::Value::Sequence(a)
+            }
+            _ => serde_yaml::value::Value::Null,
         }
     }
 }
@@ -179,7 +212,7 @@ mod tests {
                 .expect("")
                 .to_string()
                 .unwrap(),
-            "array:\n- 1\nbool: true\nfloat: 1.1\nint: 1\nstr: string\n".to_string()
+            "str: string\nint: 1\nfloat: 1.1\nbool: true\narray:\n- 1\n".to_string()
         );
     }
 
@@ -189,6 +222,8 @@ mod tests {
 
         let yaml_table = serde_yaml::Value::from_toml_value(&table);
 
-        assert_eq!(serde_yaml::to_string(&yaml_table).unwrap(), "array:\n- 1\nbool: true\ndict:\n  array:\n  - 1\n  bool: true\n  float: 1.1\n  int: 1\n  str: string\nfloat: 1.1\nint: 1\nstr: string\n");
+        assert_eq!(serde_yaml::to_string(&yaml_table).unwrap(), "str: string\nint: 1\nfloat: 1.1\nbool: true\narray:\n- 1\ndict:\n  str: string\n  int: 1\n  float: 1.1\n  bool: true\n  array:\n  - 1\n"
+
+        );
     }
 }
