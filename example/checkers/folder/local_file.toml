@@ -1,4 +1,4 @@
-[check-config]
+[__config__]
 include = [
         "relative_local_file.toml"
 ]

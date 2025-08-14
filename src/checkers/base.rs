@@ -43,7 +43,7 @@ pub(crate) trait CheckConstructor {
     type Output;
     fn from_check_table(
         generic_check: GenericCheck,
-        value: toml::Table,
+        value: toml_edit::Table,
     ) -> Result<Self::Output, CheckDefinitionError>;
 }
 pub(crate) trait Check: DebugTrait {

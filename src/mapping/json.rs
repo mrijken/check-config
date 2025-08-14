@@ -89,7 +89,7 @@ impl Mapping for serde_json::Map<String, serde_json::Value> {
             Ok(value.as_str().unwrap().to_string())
         }
     }
-    fn insert(&mut self, key: &str, value: &toml::Value) {
+    fn insert(&mut self, key: &str, value: &toml_edit::Item) {
         self.insert(key.to_string(), serde_json::Value::from_toml_value(value));
     }
     fn remove(&mut self, key: &str) {
@@ -100,14 +100,14 @@ impl Mapping for serde_json::Map<String, serde_json::Value> {
 }
 
 impl Array for serde_json::Value {
-    fn insert_when_not_present(&mut self, value: &toml::Value) {
+    fn insert_when_not_present(&mut self, value: &toml_edit::Item) {
         let value = serde_json::Value::from_toml_value(value);
         if !self.as_array().unwrap().contains(&value) {
             self.as_array_mut().unwrap().push(value);
         }
     }
 
-    fn remove(&mut self, value: &toml::Value) {
+    fn remove(&mut self, value: &toml_edit::Item) {
         let value = serde_json::Value::from_toml_value(value);
         let array = self.as_array_mut().unwrap();
         for (idx, array_item) in array.iter().enumerate() {
@@ -118,37 +118,70 @@ impl Array for serde_json::Value {
         }
     }
 
-    fn contains_item(&self, value: &toml::Value) -> bool {
+    fn contains_item(&self, value: &toml_edit::Item) -> bool {
         let value = serde_json::Value::from_toml_value(value);
         self.as_array().unwrap().contains(&value)
     }
 }
 
 impl Value for serde_json::Value {
-    fn from_toml_value(value: &toml::Value) -> serde_json::Value {
+    fn from_toml_value(value: &toml_edit::Item) -> serde_json::Value {
         match value {
-            toml::Value::String(v) => serde_json::Value::String(v.clone()),
-            toml::Value::Integer(v) => serde_json::Value::Number(serde_json::Number::from(*v)),
-            toml::Value::Float(v) => {
-                serde_json::Value::Number(serde_json::Number::from_f64(*v).unwrap())
+            toml_edit::Item::Value(toml_edit::Value::String(v)) => {
+                serde_json::Value::String(v.value().to_owned())
             }
-            toml::Value::Boolean(v) => serde_json::Value::Bool(*v),
-            toml::Value::Datetime(v) => serde_json::Value::String(v.to_string()),
-            toml::Value::Array(v) => {
+            toml_edit::Item::Value(toml_edit::Value::Integer(v)) => {
+                serde_json::Value::Number(serde_json::Number::from(*v.value()))
+            }
+            toml_edit::Item::Value(toml_edit::Value::Float(v)) => {
+                serde_json::Value::Number(serde_json::Number::from_f64(*v.value()).unwrap())
+            }
+            toml_edit::Item::Value(toml_edit::Value::Boolean(v)) => {
+                serde_json::Value::Bool(*v.value())
+            }
+            toml_edit::Item::Value(toml_edit::Value::Datetime(v)) => {
+                serde_json::Value::String(v.value().to_string())
+            }
+            toml_edit::Item::Value(toml_edit::Value::Array(v)) => {
                 let mut a = vec![];
                 for v_item in v {
-                    a.push(serde_json::Value::from_toml_value(v_item))
+                    a.push(serde_json::Value::from_toml_value(&toml_edit::Item::Value(
+                        v_item.to_owned(),
+                    )))
                 }
                 serde_json::Value::Array(a)
             }
-            toml::Value::Table(v) => {
+            toml_edit::Item::Table(v) => {
                 let mut a: serde_json::Map<String, serde_json::Value> = serde_json::Map::new();
                 for (k, v_item) in v {
-                    a.insert(k.clone(), serde_json::Value::from_toml_value(v_item));
+                    a.insert(k.to_string(), serde_json::Value::from_toml_value(v_item));
                 }
 
                 serde_json::Value::Object(a)
             }
+            toml_edit::Item::Value(toml_edit::Value::InlineTable(v)) => {
+                let mut a: serde_json::Map<String, serde_json::Value> = serde_json::Map::new();
+                for (k, v_item) in v {
+                    a.insert(
+                        k.to_string(),
+                        serde_json::Value::from_toml_value(&toml_edit::Item::Value(
+                            v_item.to_owned(),
+                        )),
+                    );
+                }
+
+                serde_json::Value::Object(a)
+            }
+            toml_edit::Item::ArrayOfTables(v) => {
+                let mut a = vec![];
+                for v_item in v {
+                    a.push(serde_json::Value::from_toml_value(&toml_edit::Item::Table(
+                        v_item.to_owned(),
+                    )))
+                }
+                serde_json::Value::Array(a)
+            }
+            _ => serde_json::Value::Null,
         }
     }
 }

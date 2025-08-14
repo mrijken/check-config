@@ -2,7 +2,7 @@
 name = "example"
 version = "0.1.0"
 
-[check-config]
+[tool.check-config.__config__]
 include = ["checkers/check_config.toml"]
 
 [tool.ruff]

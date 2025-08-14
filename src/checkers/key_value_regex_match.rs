@@ -10,7 +10,7 @@ use super::{
 #[derive(Debug)]
 pub(crate) struct EntryRegexMatch {
     generic_check: GenericCheck,
-    value: toml::Table,
+    value: toml_edit::Table,
 }
 
 impl CheckConstructor for EntryRegexMatch {
@@ -18,7 +18,7 @@ impl CheckConstructor for EntryRegexMatch {
 
     fn from_check_table(
         generic_check: GenericCheck,
-        value: toml::Table,
+        value: toml_edit::Table,
     ) -> Result<Self::Output, super::base::CheckDefinitionError> {
         Ok(Self {
             generic_check,
@@ -60,36 +60,38 @@ fn make_key_path(parent: &str, key: &str) -> String {
 
 fn validate_key_value_regex(
     doc: &mut dyn Mapping,
-    table_with_regex: &toml::Table,
+    table_with_regex: &toml_edit::Table,
     key_path: String,
 ) -> Result<RegexValidateResult, CheckError> {
     for (key, value) in table_with_regex {
         match value {
-            toml::Value::String(raw_regex) => match doc.get_string(key) {
-                Ok(string_to_match) => {
-                    let regex = match Regex::new(raw_regex) {
-                        Ok(regex) => regex,
-                        Err(s) => return Err(CheckError::InvalidRegex(s.to_string())),
-                    };
-                    if regex.is_match(string_to_match.as_str()) {
-                        return Ok(RegexValidateResult::Valid);
-                    } else {
+            toml_edit::Item::Value(toml_edit::Value::String(raw_regex)) => {
+                match doc.get_string(key) {
+                    Ok(string_to_match) => {
+                        let regex = match Regex::new(raw_regex.value()) {
+                            Ok(regex) => regex,
+                            Err(s) => return Err(CheckError::InvalidRegex(s.to_string())),
+                        };
+                        if regex.is_match(string_to_match.as_str()) {
+                            return Ok(RegexValidateResult::Valid);
+                        } else {
+                            return Ok(RegexValidateResult::Invalid {
+                                key: make_key_path(&key_path, key),
+                                regex: raw_regex.value().to_owned(),
+                                found: string_to_match.clone(),
+                            });
+                        }
+                    }
+                    _ => {
                         return Ok(RegexValidateResult::Invalid {
                             key: make_key_path(&key_path, key),
-                            regex: raw_regex.clone(),
-                            found: string_to_match.clone(),
-                        });
+                            regex: raw_regex.value().to_owned(),
+                            found: "".to_string(),
+                        })
                     }
                 }
-                _ => {
-                    return Ok(RegexValidateResult::Invalid {
-                        key: make_key_path(&key_path, key),
-                        regex: raw_regex.clone(),
-                        found: "".to_string(),
-                    })
-                }
-            },
-            toml::Value::Table(t) => match doc.get_mapping(key, false) {
+            }
+            toml_edit::Item::Table(t) => match doc.get_mapping(key, false) {
                 Ok(child_doc) => {
                     return validate_key_value_regex(child_doc, t, make_key_path(&key_path, key))
                 }
@@ -120,12 +122,8 @@ mod tests {
             read_test_files("key_value_regex_match")
         {
             let mut test_input = test_input;
-            let result = validate_key_value_regex(
-                test_input.as_mut(),
-                checker.as_table().unwrap(),
-                "".to_string(),
-            )
-            .unwrap();
+            let result =
+                validate_key_value_regex(test_input.as_mut(), &checker, "".to_string()).unwrap();
 
             if test_expected_output.contains("true") {
                 assert_eq!(

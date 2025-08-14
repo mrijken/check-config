@@ -46,11 +46,9 @@ impl Mapping for toml_edit::DocumentMut {
         self.as_table().get_string(key)
     }
 
-    fn insert(&mut self, key: &str, value: &toml::Value) {
-        self.as_table_mut().insert(
-            key,
-            toml_edit::Item::Value(toml_edit::Value::from_toml_value(value)),
-        );
+    fn insert(&mut self, key: &str, value: &toml_edit::Item) {
+        self.as_table_mut()
+            .insert(key, toml_edit::Item::from_toml_value(value));
     }
     fn remove(&mut self, key: &str) {
         if self.as_table().contains_key(key) {
@@ -122,10 +120,10 @@ impl Mapping for toml_edit::Table {
             Ok(value.as_str().unwrap().to_string())
         }
     }
-    fn insert(&mut self, key: &str, value: &toml::Value) {
+    fn insert(&mut self, key: &str, value: &toml_edit::Item) {
         self.insert(
-            key,
-            toml_edit::Item::Value(toml_edit::Value::from_toml_value(value)),
+            &toml_edit::Key::from(key),
+            toml_edit::Item::from_toml_value(value),
         );
     }
     fn remove(&mut self, key: &str) {
@@ -195,8 +193,14 @@ impl Mapping for toml_edit::InlineTable {
             Ok(value.as_str().unwrap().to_string())
         }
     }
-    fn insert(&mut self, key: &str, value: &toml::Value) {
-        self.insert(key, toml_edit::Value::from_toml_value(value));
+    fn insert(&mut self, key: &str, value: &toml_edit::Item) {
+        self.insert(
+            key,
+            toml_edit::Item::from_toml_value(value)
+                .as_value()
+                .expect("expect value, no table")
+                .to_owned(),
+        );
     }
     fn remove(&mut self, key: &str) {
         if self.contains_key(key) {
@@ -206,24 +210,26 @@ impl Mapping for toml_edit::InlineTable {
 }
 
 impl Array for toml_edit::Array {
-    fn insert_when_not_present(&mut self, value: &toml::Value) {
-        let value = toml_edit::Value::from_toml_value(value);
-        if toml_edit_array_index(self, &value).is_none() {
-            self.push(value);
+    fn insert_when_not_present(&mut self, value: &toml_edit::Item) {
+        let value = toml_edit::Item::from_toml_value(value);
+
+        if toml_array_index_equal_without_formatting(self, &value).is_none() {
+            self.push(value.as_value().expect("expect value, no table").to_owned());
         }
+        self.fmt();
     }
 
-    fn remove(&mut self, value: &toml::Value) {
-        let value = toml_edit::Value::from_toml_value(value);
-        if let Some(idx) = toml_edit_array_index(self, &value) {
+    fn remove(&mut self, value: &toml_edit::Item) {
+        let value = toml_edit::Item::from_toml_value(value);
+        if let Some(idx) = toml_array_index_equal_without_formatting(self, &value) {
             self.remove(idx);
-            self.fmt(); // make sure spaces around removed item are removed also
         }
+        self.fmt();
     }
 
-    fn contains_item(&self, value: &toml::Value) -> bool {
-        let value = toml_edit::Value::from_toml_value(value);
-        toml_edit_array_index(self, &value).is_some()
+    fn contains_item(&self, value: &toml_edit::Item) -> bool {
+        let value = toml_edit::Item::from_toml_value(value);
+        toml_array_index_equal_without_formatting(self, &value).is_some()
     }
 }
 
@@ -267,41 +273,21 @@ fn item_value_equals(item: &toml_edit::Value, value: &toml_edit::Value) -> bool 
     }
 }
 
-fn toml_edit_array_index(array: &toml_edit::Array, item: &toml_edit::Value) -> Option<usize> {
+fn toml_array_index_equal_without_formatting(
+    array: &toml_edit::Array,
+    item: &toml_edit::Item,
+) -> Option<usize> {
     for (idx, array_item) in array.iter().enumerate() {
-        if item_value_equals(array_item, item) {
+        if item_value_equals(array_item, item.as_value().unwrap()) {
             return Some(idx);
         }
     }
     None
 }
 
-impl Value for toml_edit::Value {
-    fn from_toml_value(value: &toml::Value) -> Self {
-        match value {
-            toml::Value::String(v) => {
-                toml_edit::Value::String(toml_edit::Formatted::new(v.clone()))
-            }
-            toml::Value::Integer(v) => toml_edit::Value::Integer(toml_edit::Formatted::new(*v)),
-            toml::Value::Float(v) => toml_edit::Value::Float(toml_edit::Formatted::new(*v)),
-            toml::Value::Boolean(v) => toml_edit::Value::Boolean(toml_edit::Formatted::new(*v)),
-            toml::Value::Datetime(v) => toml_edit::Value::Datetime(toml_edit::Formatted::new(*v)),
-            toml::Value::Array(v) => {
-                let mut a = toml_edit::Array::new();
-                for v_item in v {
-                    a.push_formatted(toml_edit::Value::from_toml_value(v_item))
-                }
-                toml_edit::Value::Array(a)
-            }
-            toml::Value::Table(v) => {
-                let mut a = toml_edit::InlineTable::new();
-                for (k, v_item) in v {
-                    a.insert(k, toml_edit::Value::from_toml_value(v_item));
-                }
-
-                toml_edit::Value::InlineTable(a)
-            }
-        }
+impl Value for toml_edit::Item {
+    fn from_toml_value(value: &toml_edit::Item) -> Self {
+        value.clone()
     }
 }
 #[cfg(test)]
@@ -313,25 +299,20 @@ mod tests {
 
     #[test]
     fn test_access_map() {
-        let table = get_test_table();
-        let mapping_to_check = toml_edit::Value::from_toml_value(&table)
-            .as_inline_table()
-            .unwrap()
-            .clone()
-            .into_table();
+        let table = get_test_table().into_table().unwrap();
 
-        test_mapping(Box::new(mapping_to_check.clone()));
+        test_mapping(Box::new(table.clone()));
     }
 
     #[test]
     fn test_from_toml_value() {
         let table = get_test_table();
 
-        let toml_table = toml_edit::Value::from_toml_value(&table);
+        let toml_table = toml_edit::Item::from_toml_value(&table);
 
         assert_eq!(
             toml_table.to_string(),
-            "{ array = [1], bool = true, dict = { array = [1], bool = true, float = 1.1, int = 1, str = \"string\" }, float = 1.1, int = 1, str = \"string\" }"
+            "str = \"string\"\nint = 1\nfloat = 1.1\nbool = true\narray = [1]\ndict = { str = \"string\", int = 1, float = 1.1, bool = true, array = [1] }\n" 
 
 
         );

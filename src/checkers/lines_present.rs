@@ -14,7 +14,7 @@ impl CheckConstructor for LinesPresent {
     type Output = Self;
     fn from_check_table(
         generic_check: GenericCheck,
-        value: toml::Table,
+        value: toml_edit::Table,
     ) -> Result<Self::Output, CheckDefinitionError> {
         let lines = match value.get("__lines__") {
             None => {
@@ -91,22 +91,22 @@ mod tests {
             file_with_checks,
         };
 
-        let mut check_table = toml::Table::new();
-        check_table.insert("__lines__".to_string(), "".into());
+        let mut check_table = toml_edit::Table::new();
+        check_table.insert("__lines__", "".into());
 
         let lines_present_checker =
             LinesPresent::from_check_table(generic_check.clone(), check_table).unwrap();
         assert_eq!(lines_present_checker.lines, "\n".to_string());
 
-        let mut check_table = toml::Table::new();
-        check_table.insert("__lines__".to_string(), "1".into());
+        let mut check_table = toml_edit::Table::new();
+        check_table.insert("__lines__", "1".into());
 
         let lines_present_checker =
             LinesPresent::from_check_table(generic_check.clone(), check_table).unwrap();
         assert_eq!(lines_present_checker.lines, "1\n".to_string());
 
-        let mut check_table = toml::Table::new();
-        check_table.insert("__lines__".to_string(), "2\n".into());
+        let mut check_table = toml_edit::Table::new();
+        check_table.insert("__lines__", "2\n".into());
 
         let lines_present_checker =
             LinesPresent::from_check_table(generic_check.clone(), check_table).unwrap();
@@ -125,8 +125,8 @@ mod tests {
             file_with_checks,
         };
 
-        let mut check_table = toml::Table::new();
-        check_table.insert("__lines__".to_string(), "1\n2\n".into());
+        let mut check_table = toml_edit::Table::new();
+        check_table.insert("__lines__", "1\n2\n".into());
 
         let lines_present_check =
             LinesPresent::from_check_table(generic_check, check_table).unwrap();

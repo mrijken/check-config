@@ -3,7 +3,7 @@ use std::path::{Path, PathBuf};
 use crate::{Check, Entry, FilePresent};
 
 impl Entry for IniEntryPresent {
-    fn new(path: PathBuf, table: toml::Table) -> Self {
+    fn new(path: PathBuf, table: toml_edit::Table) -> Self {
         Self { path, table }
     }
 
@@ -11,7 +11,7 @@ impl Entry for IniEntryPresent {
         &self.path
     }
 
-    fn table(&self) -> &toml::Table {
+    fn table(&self) -> &toml_edit::Table {
         &self.table
     }
 }
@@ -37,7 +37,7 @@ impl Check for IniEntryPresent {
 #[derive(Debug)]
 pub(crate) struct IniEntryAbsent {
     path: PathBuf,
-    table: toml::Table,
+    table: toml_edit::Table,
 }
 impl Check for IniEntryAbsent {
     fn check(&self) -> Result<(), String> {
