@@ -8,7 +8,7 @@ use super::{
 #[derive(Debug)]
 pub(crate) struct KeyAbsent {
     generic_check: GenericCheck,
-    value: toml::Table,
+    value: toml_edit::Table,
 }
 
 impl CheckConstructor for KeyAbsent {
@@ -16,7 +16,7 @@ impl CheckConstructor for KeyAbsent {
 
     fn from_check_table(
         generic_check: GenericCheck,
-        value: toml::Table,
+        value: toml_edit::Table,
     ) -> Result<Self::Output, super::base::CheckDefinitionError> {
         Ok(Self {
             generic_check,
@@ -55,9 +55,9 @@ impl Check for KeyAbsent {
     }
 }
 
-fn unset_key(doc: &mut dyn Mapping, table_to_unset: &toml::Table) {
+fn unset_key(doc: &mut dyn Mapping, table_to_unset: &toml_edit::Table) {
     for (key_to_unset, value_to_unset) in table_to_unset {
-        if let toml::Value::Table(child_table_to_unset) = value_to_unset {
+        if let Some(child_table_to_unset) = value_to_unset.as_table() {
             if child_table_to_unset.is_empty() {
                 doc.remove(key_to_unset);
             } else if let Ok(child_doc) = doc.get_mapping(key_to_unset, false) {
@@ -82,7 +82,7 @@ mod tests {
         for (test_path, test_input, test_expected_output, checker) in read_test_files("key_absent")
         {
             let mut test_input = test_input;
-            unset_key(test_input.as_mut(), checker.as_table().unwrap());
+            unset_key(test_input.as_mut(), &checker);
 
             assert_eq!(
                 *test_expected_output,

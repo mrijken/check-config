@@ -1,8 +1,8 @@
-use std::{fs, path::PathBuf, rc::Rc};
+use std::{fs, path::PathBuf, str::FromStr};
 
 use crate::mapping::{generic::Mapping, json};
 
-type TestFiles = Vec<(String, Box<dyn Mapping>, String, Rc<toml::Value>)>;
+type TestFiles = Vec<(String, Box<dyn Mapping>, String, toml_edit::Table)>;
 
 #[allow(dead_code)]
 pub(crate) fn read_test_files(check_type: &str) -> TestFiles {
@@ -14,8 +14,10 @@ pub(crate) fn read_test_files(check_type: &str) -> TestFiles {
     for test in test_dir.read_dir().expect("read_dir call failed") {
         let test = test.unwrap().path();
         let file_checker_content = fs::read_to_string(test.join("checker.toml")).unwrap();
-        let file_checker =
-            Rc::new(toml::from_str::<toml::Value>(file_checker_content.as_str()).unwrap());
+        let file_checker = toml_edit::DocumentMut::from_str(file_checker_content.as_str())
+            .unwrap()
+            .as_table()
+            .clone();
 
         let json_input = json::from_path(test.join("input.json")).unwrap();
         let json_expected_output =

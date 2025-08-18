@@ -1,0 +1,9 @@
+regex: matches
+to_be_kept:
+  key: value
+list:
+- to_be_kept
+- to_be_added
+list2:
+- already_present
+to_be_added: value

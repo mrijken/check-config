@@ -14,7 +14,7 @@ impl CheckConstructor for FilePresent {
 
     fn from_check_table(
         generic_check: GenericCheck,
-        value: toml::Table,
+        value: toml_edit::Table,
     ) -> Result<Self::Output, CheckDefinitionError> {
         let placeholder = match value.get("__placeholder__") {
             None => "",
@@ -72,7 +72,7 @@ mod tests {
         };
 
         let file_present_check =
-            FilePresent::from_check_table(generic_check, toml::Table::new()).unwrap();
+            FilePresent::from_check_table(generic_check, toml_edit::Table::new()).unwrap();
 
         assert_eq!(
             file_present_check.check().unwrap(),
@@ -94,7 +94,7 @@ mod tests {
         };
 
         let file_present_check =
-            FilePresent::from_check_table(generic_check, toml::Table::new()).unwrap();
+            FilePresent::from_check_table(generic_check, toml_edit::Table::new()).unwrap();
 
         assert_eq!(file_present_check.check().unwrap(), Action::None);
     }
@@ -111,8 +111,8 @@ mod tests {
             file_with_checks,
         };
 
-        let mut placeholder_table = toml::Table::new();
-        placeholder_table.insert("__placeholder__".to_string(), "placeholder".into());
+        let mut placeholder_table = toml_edit::Table::new();
+        placeholder_table.insert("__placeholder__", "placeholder".into());
 
         let file_present_check =
             FilePresent::from_check_table(generic_check, placeholder_table).unwrap();
@@ -136,8 +136,8 @@ mod tests {
             file_with_checks,
         };
 
-        let mut placeholder_table = toml::Table::new();
-        placeholder_table.insert("__placeholder__".to_string(), "placeholder".into());
+        let mut placeholder_table = toml_edit::Table::new();
+        placeholder_table.insert("__placeholder__", "placeholder".into());
 
         let file_present_check =
             FilePresent::from_check_table(generic_check, placeholder_table).unwrap();

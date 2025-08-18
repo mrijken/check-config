@@ -8,14 +8,14 @@ use super::{
 #[derive(Debug)]
 pub(crate) struct EntryAbsent {
     generic_check: GenericCheck,
-    value: toml::Table,
+    value: toml_edit::Table,
 }
 
 impl CheckConstructor for EntryAbsent {
     type Output = Self;
     fn from_check_table(
         generic_check: GenericCheck,
-        value: toml::Table,
+        value: toml_edit::Table,
     ) -> Result<Self::Output, CheckDefinitionError> {
         Ok(Self {
             generic_check,
@@ -50,7 +50,7 @@ impl Check for EntryAbsent {
     }
 }
 
-fn remove_entries(doc: &mut dyn Mapping, entries_to_remove: &toml::Table) {
+fn remove_entries(doc: &mut dyn Mapping, entries_to_remove: &toml_edit::Table) {
     for (key_to_remove, value_to_remove) in entries_to_remove {
         if !doc.contains_key(key_to_remove) {
             // key_to_remove does not exists, so no need to remove value_to_remove
@@ -77,8 +77,9 @@ fn remove_entries(doc: &mut dyn Mapping, entries_to_remove: &toml::Table) {
                 .expect("__items__ is present")
                 .as_array()
                 .expect("__items__ is an array")
+                .iter()
             {
-                doc_array.remove(item)
+                doc_array.remove(&toml_edit::Item::Value(item.to_owned()))
             }
             continue;
         }
@@ -91,6 +92,8 @@ fn remove_entries(doc: &mut dyn Mapping, entries_to_remove: &toml::Table) {
 
 #[cfg(test)]
 mod tests {
+    use std::str::FromStr;
+
     use crate::checkers::test_helpers::read_test_files;
     use crate::file_types::{self, FileType};
 
@@ -102,7 +105,7 @@ mod tests {
             read_test_files("entry_absent")
         {
             let mut test_input = test_input;
-            remove_entries(test_input.as_mut(), checker.as_table().unwrap());
+            remove_entries(test_input.as_mut(), &checker);
 
             assert_eq!(
                 *test_expected_output,
@@ -113,16 +116,13 @@ mod tests {
     }
 
     #[test]
-    fn test_get_action() {}
-
-    #[test]
     fn test_remove_entries_with_tables() {
         let entries_to_remove = r#"
 [key.list]
 __items__ = [{key = "3"}, {key = "2"}, {key = "4"}]
 "#;
-        let entries_to_remove = toml::from_str::<toml::Value>(entries_to_remove).unwrap();
-        let entries_to_remove = entries_to_remove.as_table().unwrap();
+        let entries_to_remove = toml_edit::DocumentMut::from_str(entries_to_remove).unwrap();
+        let entries_to_remove = entries_to_remove.as_table();
 
         let toml_contents = r#"[key]
 list = [{key = "1"}, {key = "2"}]

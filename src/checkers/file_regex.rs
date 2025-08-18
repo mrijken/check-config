@@ -17,7 +17,7 @@ impl CheckConstructor for FileRegexMatch {
 
     fn from_check_table(
         generic_check: GenericCheck,
-        value: toml::Table,
+        value: toml_edit::Table,
     ) -> Result<Self::Output, CheckDefinitionError> {
         let placeholder = match value.get("__placeholder__") {
             None => None,
@@ -111,8 +111,8 @@ mod tests {
             file_with_checks,
         };
 
-        let mut check_table = toml::Table::new();
-        check_table.insert("__regex__".to_string(), "export KEY=.*".into());
+        let mut check_table = toml_edit::Table::new();
+        check_table.insert("__regex__", "export KEY=.*".into());
 
         let regex_check = FileRegexMatch::from_check_table(generic_check, check_table).unwrap();
 
@@ -152,9 +152,9 @@ mod tests {
             file_with_checks,
         };
 
-        let mut check_table = toml::Table::new();
-        check_table.insert("__regex__".to_string(), "export KEY=.*".into());
-        check_table.insert("__placeholder__".to_string(), "export KEY=value".into());
+        let mut check_table = toml_edit::Table::new();
+        check_table.insert("__regex__", "export KEY=.*".into());
+        check_table.insert("__placeholder__", "export KEY=value".into());
 
         let regex_check = FileRegexMatch::from_check_table(generic_check, check_table).unwrap();
 
