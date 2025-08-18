@@ -61,7 +61,7 @@ fn unset_key(doc: &mut dyn Mapping, table_to_unset: &toml_edit::Table) {
             if child_table_to_unset.is_empty() {
                 doc.remove(key_to_unset);
             } else if let Ok(child_doc) = doc.get_mapping(key_to_unset, false) {
-                unset_key(child_doc, &child_table_to_unset);
+                unset_key(child_doc, child_table_to_unset);
             } else {
                 log::info!(
                     "Key {key_to_unset} is not found in toml, so we can not remove that key",

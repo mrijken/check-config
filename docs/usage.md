@@ -3,13 +3,13 @@
 After installation, with the next command you can check your configuration files
 
 ```shell
-check_config
+check-config
 ```
 
 Note: with [uvx](https://docs.astral.sh/uv/guides/tools/) it is also possible to run it without installation:
 
 ```shell
-uvx check_config
+uvx check-config
 ```
 
 It will output whether the check is succeeded:
@@ -41,13 +41,13 @@ it will use `pyproject.toml` if it is present.
 Optionally you can specify another path to a toml file with checkers:
 
 ```shell
-check_config -p <path>
+check-config -p <path>
 ```
 
 Optionally you can not just check your files, but also try to fix them:
 
 ```shell
-check_config --fix
+check-config --fix
 ```
 
 ## Pre-commit

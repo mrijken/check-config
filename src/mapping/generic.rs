@@ -23,7 +23,7 @@ pub(crate) trait Mapping: Send + Sync {
         create_missing: bool,
     ) -> Result<&mut dyn Array, MappingError>;
     fn get_string(&self, key: &str) -> Result<String, MappingError>;
-    fn insert(&mut self, key: &str, value: &toml_edit::Item);
+    fn insert(&mut self, key: &toml_edit::Key, value: &toml_edit::Item);
     fn remove(&mut self, key: &str);
 }
 
@@ -46,32 +46,23 @@ pub(crate) mod tests {
     use super::Mapping;
 
     pub(crate) fn get_test_table() -> toml_edit::Item {
-        let mut table = toml_edit::Table::new();
-        table.insert(
-            "str",
-            toml_edit::Item::Value(toml_edit::Value::from("string")),
-        );
-        table.insert("int", toml_edit::Item::Value(toml_edit::Value::from(1)));
-        table.insert("float", toml_edit::Item::Value(toml_edit::Value::from(1.1)));
-        table.insert("bool", toml_edit::Item::Value(toml_edit::Value::from(true)));
-        table.insert(
-            "array",
-            toml_edit::Item::Value(toml_edit::Value::Array(toml_edit::Array::from_iter(vec![
-                1,
-            ]))),
-        );
-        let mut nested_table = toml_edit::InlineTable::new();
-        nested_table.insert("str", toml_edit::Value::from("string"));
-        nested_table.insert("int", toml_edit::Value::from(1));
-        nested_table.insert("float", toml_edit::Value::from(1.1));
-        nested_table.insert("bool", toml_edit::Value::from(true));
-        nested_table.insert(
-            "array",
-            toml_edit::Value::Array(toml_edit::Array::from_iter(vec![1])),
-        );
-        table.insert("dict", nested_table.into());
-
-        table.into()
+        let toml = r#"str = "string"
+# comment for int
+int = 1
+float = 1.1
+bool = true
+array = [
+  # comment for item 1
+  1,
+  # comment for item 2
+  2
+]
+dict = { str = "string", int = 1, float = 1.1, bool = true, array = [1, 2] }
+"#;
+        toml.parse::<toml_edit::DocumentMut>()
+            .expect("invalid doc")
+            .as_item()
+            .to_owned()
     }
 
     pub(crate) fn test_mapping(mut mapping_to_check: Box<dyn Mapping>) {
@@ -107,7 +98,7 @@ pub(crate) mod tests {
             .get_mapping("new_dict", true)
             .unwrap()
             .insert(
-                "key",
+                &toml_edit::Key::new("key"),
                 &toml_edit::Item::Value(toml_edit::Value::from("new_dict_value")),
             );
 
@@ -126,7 +117,7 @@ pub(crate) mod tests {
             .get_mapping("new_nested_dict", true)
             .unwrap()
             .insert(
-                "key",
+                &toml_edit::Key::new("key"),
                 &toml_edit::Item::Value(toml_edit::Value::from("new_nested_dict_value")),
             );
 

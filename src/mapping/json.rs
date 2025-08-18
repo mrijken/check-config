@@ -89,7 +89,7 @@ impl Mapping for serde_json::Map<String, serde_json::Value> {
             Ok(value.as_str().unwrap().to_string())
         }
     }
-    fn insert(&mut self, key: &str, value: &toml_edit::Item) {
+    fn insert(&mut self, key: &toml_edit::Key, value: &toml_edit::Item) {
         self.insert(key.to_string(), serde_json::Value::from_toml_value(value));
     }
     fn remove(&mut self, key: &str) {
@@ -209,7 +209,7 @@ mod tests {
                 .expect("")
                 .to_string()
                 .unwrap(),
-            "{\n    \"array\": [\n        1\n    ],\n    \"bool\": true,\n    \"float\": 1.1,\n    \"int\": 1,\n    \"str\": \"string\"\n}\n".to_string()
+            "{\n    \"array\": [\n        1,\n        2\n    ],\n    \"bool\": true,\n    \"float\": 1.1,\n    \"int\": 1,\n    \"str\": \"string\"\n}\n".to_string()
         );
     }
 
@@ -221,7 +221,7 @@ mod tests {
 
         assert_eq!(
             json_table,
-            json!({ "str": "string", "int": 1, "float": 1.1, "bool": true, "array": [1], "dict": {"str": "string", "int": 1, "float": 1.1, "bool": true, "array": [1],
+            json!({ "str": "string", "int": 1, "float": 1.1, "bool": true, "array": [1, 2], "dict": {"str": "string", "int": 1, "float": 1.1, "bool": true, "array": [1, 2],
 
 
             }})

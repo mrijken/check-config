@@ -51,15 +51,19 @@ impl Check for KeyValuePresent {
     }
 }
 
-fn set_key_value(doc: &mut dyn Mapping, table_to_set: &impl toml_edit::TableLike) {
+fn set_key_value(doc: &mut dyn Mapping, table_to_set: &toml_edit::Table) {
     for (k, v) in table_to_set.iter() {
-        if !v.is_table_like() {
-            doc.insert(k, &toml_edit::Item::Value(v.as_value().unwrap().to_owned()));
+        if v.is_table() {
+            set_key_value(
+                doc.get_mapping(k, true).expect("key exists"),
+                v.as_table().expect("value is a table"),
+            );
             continue;
         }
-
-        let child_doc = doc.get_mapping(k, true).expect("key exists or is added");
-        set_key_value(child_doc, v.as_table().expect("value is a table"));
+        doc.insert(
+            table_to_set.key(k).expect("key exists"),
+            &toml_edit::Item::Value(v.as_value().unwrap().to_owned()),
+        );
     }
 }
 

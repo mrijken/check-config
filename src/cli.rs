@@ -2,7 +2,6 @@ use std::io::Write;
 use std::process::ExitCode;
 
 use clap::Parser;
-use regex::CaptureLocations;
 
 use crate::checkers::{
     base::{Action, Check},
@@ -74,6 +73,11 @@ pub(crate) fn parse_path_str_to_uri(path: &str) -> Option<url::Url> {
 }
 pub fn cli() -> ExitCode {
     let cli = Cli::parse();
+    env_logger::Builder::new()
+        .filter_level(cli.verbose.log_level_filter())
+        .format(|buf, record| writeln!(buf, "{}", record.args()))
+        .init();
+
     log::info!("Starting check-config");
     let checks = match cli.path {
         Some(path_str) => match parse_path_str_to_uri(path_str.as_str()) {
@@ -122,11 +126,6 @@ pub fn cli() -> ExitCode {
             }
         }
     };
-
-    env_logger::Builder::new()
-        .filter_level(cli.verbose.log_level_filter())
-        .format(|buf, record| writeln!(buf, "{}", record.args()))
-        .init();
 
     log::info!("Fix: {}", &cli.fix);
 

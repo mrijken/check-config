@@ -46,9 +46,9 @@ impl Mapping for toml_edit::DocumentMut {
         self.as_table().get_string(key)
     }
 
-    fn insert(&mut self, key: &str, value: &toml_edit::Item) {
+    fn insert(&mut self, key: &toml_edit::Key, value: &toml_edit::Item) {
         self.as_table_mut()
-            .insert(key, toml_edit::Item::from_toml_value(value));
+            .insert_formatted(key, toml_edit::Item::from_toml_value(value));
     }
     fn remove(&mut self, key: &str) {
         if self.as_table().contains_key(key) {
@@ -75,7 +75,10 @@ impl Mapping for toml_edit::Table {
             if !create_missing {
                 return Err(MappingError::MissingKey(key.to_string()));
             }
-            self.insert(key, toml_edit::Item::Table(toml_edit::Table::new()));
+            self.insert_formatted(
+                &toml_edit::Key::new(key),
+                toml_edit::Item::Table(toml_edit::Table::new()),
+            );
         }
         let value = self.get_mut(key).unwrap();
         if !value.is_table_like() {
@@ -97,8 +100,8 @@ impl Mapping for toml_edit::Table {
             if !create_missing {
                 return Err(MappingError::MissingKey(key.to_string()));
             }
-            self.insert(
-                key,
+            self.insert_formatted(
+                &toml_edit::Key::new(key),
                 toml_edit::Item::Value(toml_edit::Value::Array(toml_edit::Array::new())),
             );
         }
@@ -120,11 +123,8 @@ impl Mapping for toml_edit::Table {
             Ok(value.as_str().unwrap().to_string())
         }
     }
-    fn insert(&mut self, key: &str, value: &toml_edit::Item) {
-        self.insert(
-            &toml_edit::Key::from(key),
-            toml_edit::Item::from_toml_value(value),
-        );
+    fn insert(&mut self, key: &toml_edit::Key, value: &toml_edit::Item) {
+        self.insert_formatted(key, toml_edit::Item::from_toml_value(value));
     }
     fn remove(&mut self, key: &str) {
         if self.contains_key(key) {
@@ -151,8 +151,8 @@ impl Mapping for toml_edit::InlineTable {
             if !create_missing {
                 return Err(MappingError::MissingKey(key.to_string()));
             }
-            self.insert(
-                key,
+            self.insert_formatted(
+                &toml_edit::Key::new(key),
                 toml_edit::Value::InlineTable(toml_edit::InlineTable::new()),
             );
         }
@@ -173,7 +173,10 @@ impl Mapping for toml_edit::InlineTable {
             if !create_missing {
                 return Err(MappingError::MissingKey(key.to_string()));
             }
-            self.insert(key, toml_edit::Value::Array(toml_edit::Array::new()));
+            self.insert_formatted(
+                &toml_edit::Key::new(key),
+                toml_edit::Value::Array(toml_edit::Array::new()),
+            );
         }
         let value = self.get_mut(key).unwrap();
         if !value.is_array() {
@@ -193,8 +196,8 @@ impl Mapping for toml_edit::InlineTable {
             Ok(value.as_str().unwrap().to_string())
         }
     }
-    fn insert(&mut self, key: &str, value: &toml_edit::Item) {
-        self.insert(
+    fn insert(&mut self, key: &toml_edit::Key, value: &toml_edit::Item) {
+        self.insert_formatted(
             key,
             toml_edit::Item::from_toml_value(value)
                 .as_value()
@@ -214,9 +217,8 @@ impl Array for toml_edit::Array {
         let value = toml_edit::Item::from_toml_value(value);
 
         if toml_array_index_equal_without_formatting(self, &value).is_none() {
-            self.push(value.as_value().expect("expect value, no table").to_owned());
+            self.push_formatted(value.as_value().expect("expect value, no table").to_owned());
         }
-        self.fmt();
     }
 
     fn remove(&mut self, value: &toml_edit::Item) {
@@ -224,7 +226,6 @@ impl Array for toml_edit::Array {
         if let Some(idx) = toml_array_index_equal_without_formatting(self, &value) {
             self.remove(idx);
         }
-        self.fmt();
     }
 
     fn contains_item(&self, value: &toml_edit::Item) -> bool {
@@ -312,9 +313,103 @@ mod tests {
 
         assert_eq!(
             toml_table.to_string(),
-            "str = \"string\"\nint = 1\nfloat = 1.1\nbool = true\narray = [1]\ndict = { str = \"string\", int = 1, float = 1.1, bool = true, array = [1] }\n" 
+            r#"str = "string"
+# comment for int
+int = 1
+float = 1.1
+bool = true
+array = [
+  # comment for item 1
+  1,
+  # comment for item 2
+  2
+]
+dict = { str = "string", int = 1, float = 1.1, bool = true, array = [1, 2] }
+"#
+        );
+    }
 
+    #[test]
+    fn test_insert_and_remove_with_comments() {
+        let old_doc = "
+[table]
+# prefix comment Key \"keep_int\" 
+keep_int = 2  # suffix comment Value 2
+# prefix comment Key \"remove_int\"
+remove_int = 3  # suffix comment Value 3
+keep_array = [ # prefix comment Value \"keep_item_1\"
+    \"keep_item_1\", # prefix comment remove_item_2
+    \"remove_item_2\"  # suffix comment remove_item_2
+    ,
+    # prefix comment item keep_item_3
+    \"keep_item_3\" # suffix comment item keep_item_3
+] # suffix comment Array \"keep_array\"
+        "
+        .parse::<toml_edit::DocumentMut>()
+        .unwrap();
 
+        let items_to_add = "
+[table]
+# prefix comment Key \"add_int\" 
+add_int = 2  # suffix comment Value 2
+keep_array = [ # prefix comment \"add_item_4\"
+    \"add_item_4\" # suffix comment \"add_item_4\"
+]
+"
+        .parse::<toml_edit::DocumentMut>()
+        .unwrap()["table"]
+            .as_table()
+            .unwrap()
+            .clone();
+
+        let items_to_remove = "
+[table]
+remove_int = 2
+keep_array = [
+    \"remove_item_2\"
+]
+"
+        .parse::<toml_edit::DocumentMut>()
+        .unwrap()["table"]
+            .as_table()
+            .unwrap()
+            .clone();
+
+        let mut new_doc = old_doc.clone();
+
+        let (key, value) = items_to_add.get_key_value("add_int").unwrap();
+        Mapping::insert(new_doc["table"].as_table_mut().unwrap(), key, value);
+
+        let item = items_to_add["keep_array"]
+            .as_array()
+            .unwrap()
+            .get(0)
+            .unwrap();
+        Array::insert_when_not_present(
+            new_doc["table"]["keep_array"].as_array_mut().unwrap(),
+            &toml_edit::Item::Value(item.clone()),
+        );
+
+        let (key, _value) = items_to_remove.get_key_value("remove_int").unwrap();
+        Mapping::remove(new_doc["table"].as_table_mut().unwrap(), key);
+
+        let item = items_to_remove["keep_array"]
+            .as_array()
+            .unwrap()
+            .get(0)
+            .unwrap();
+        Array::remove(
+            new_doc["table"].as_table_mut().unwrap()["keep_array"]
+                .as_array_mut()
+                .unwrap(),
+            &toml_edit::Item::Value(item.clone()),
+        );
+
+        new_doc.fmt();
+
+        assert_eq!(
+            Mapping::to_string(&new_doc).unwrap(),
+            "\n[table]\n# prefix comment Key \"keep_int\" \nkeep_int = 2  # suffix comment Value 2\nkeep_array = [ # prefix comment Value \"keep_item_1\"\n    \"keep_item_1\",\n    # prefix comment item keep_item_3\n    \"keep_item_3\" # suffix comment item keep_item_3\n, # prefix comment \"add_item_4\"\n    \"add_item_4\" # suffix comment \"add_item_4\"\n] # suffix comment Array \"keep_array\"\n# prefix comment Key \"add_int\" \nadd_int = 2  # suffix comment Value 2\n        "
         );
     }
 }

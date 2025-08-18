@@ -6,7 +6,6 @@ use std::{
 };
 
 use base::CheckConstructor;
-use toml_edit::Value;
 
 use crate::{
     file_types::{self, FileType},
@@ -268,13 +267,9 @@ fn get_check_from_check_table(
         )),
         _ => {
             log::error!("unknown check {check_type} {check_table}");
-
-            // exit can not be tested
-            #[cfg(test)]
-            core::panic!("unknown check {check_type} {check_table}");
-
-            #[cfg(not(test))]
-            std::process::exit(1);
+            Err(CheckDefinitionError::UnknownCheckType(
+                check_type.to_string(),
+            ))
         }
     }
 }
@@ -372,7 +367,7 @@ mod test {
     #[test]
     fn test_read_checks_from_path() {
         let dir = tempdir().unwrap();
-        let path_with_checkers = dir.path().join("check_config.toml");
+        let path_with_checkers = dir.path().join("check-config.toml");
         let mut file_with_checkers = File::create(&path_with_checkers).unwrap();
 
         writeln!(
@@ -421,10 +416,9 @@ __items__ = [1,2,3]
     }
 
     #[test]
-    #[should_panic]
     fn test_read_invalid_checks_from_path() {
         let dir = tempdir().unwrap();
-        let path_with_checkers = dir.path().join("check_config.toml");
+        let path_with_checkers = dir.path().join("check-config.toml");
         let mut file_with_checkers = File::create(&path_with_checkers).unwrap();
 
         writeln!(
@@ -433,7 +427,8 @@ __items__ = [1,2,3]
 ["test/absent_file".fileXabsent]
 
         "#
-        );
+        )
+        .expect("write is succsful");
 
         let path_with_checkers =
             url::Url::parse(&format!("file://{}", path_with_checkers.to_str().unwrap())).unwrap();
