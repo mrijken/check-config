@@ -1,5 +1,15 @@
 # CHANGES
 
+## 0.8.0
+
+- Add __replacements_regex in lines_present
+- BREAKING: use [__config__] in stead of [check-config] as config table
+- BREAKING: use `check-config.toml` as default name
+- preserve formatting of toml files, including comments
+- fix several small bugs and command output
+- fix usage of relative urls and home dir (ie " ~/.bashrc")
+- add list-checkers option
+
 ## 0.7.1
 
 - fix reading python paths
