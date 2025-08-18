@@ -50,6 +50,12 @@ Optionally you can not just check your files, but also try to fix them:
 check-config --fix
 ```
 
+Or just view the checkers without executing them
+
+```shell
+check-config --list-checkers
+```
+
 ## Pre-commit
 
 [pre-commit](https://pre-commit.com/) helps checking your code before committing git, so you can catch errors

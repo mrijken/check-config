@@ -37,8 +37,8 @@ impl From<ExitStatus> for ExitCode {
 struct Cli {
     /// Path to the root checkers file in toml format
     /// Defaults (in order of precedence)
-    /// - check_config.toml
-    /// - pyproject,toml with a tool.check-config key
+    /// - check-config.toml
+    /// - pyproject.toml with a tool.check-config key
     #[arg(short, long)]
     path: Option<String>,
 

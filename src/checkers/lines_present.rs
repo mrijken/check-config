@@ -1,3 +1,5 @@
+use regex::Regex;
+
 use super::base::CheckConstructor;
 pub(crate) use super::{
     base::{Action, Check, CheckDefinitionError, CheckError},
@@ -8,6 +10,7 @@ pub(crate) use super::{
 pub(crate) struct LinesPresent {
     generic_check: GenericCheck,
     lines: String,
+    replacement_regex: Option<Regex>,
 }
 
 impl CheckConstructor for LinesPresent {
@@ -36,9 +39,29 @@ impl CheckConstructor for LinesPresent {
         } else {
             lines
         };
+
+        let replacement_regex = match value.get("__replacement_regex__") {
+            None => None,
+            Some(regex) => match regex.as_str() {
+                None => {
+                    return Err(CheckDefinitionError::InvalidDefinition(format!(
+                        "__replacement_regex__ ({regex}) is not a string"
+                    )))
+                }
+                Some(s) => match Regex::new(s) {
+                    Ok(r) => Some(r),
+                    Err(_) => {
+                        return Err(CheckDefinitionError::InvalidDefinition(format!(
+                            "__replacement_regex__ ({regex}) is not a valid regex"
+                        )))
+                    }
+                },
+            },
+        };
         Ok(Self {
             generic_check,
             lines,
+            replacement_regex,
         })
     }
 }
@@ -60,12 +83,25 @@ impl Check for LinesPresent {
             // TODO: check that the content start at the beginning of line
             Ok(Action::None)
         } else {
-            let mut new_contents = contents.clone();
-            if !new_contents.ends_with('\n') && !new_contents.is_empty() {
-                new_contents += "\n";
+            let contains_regex = match self.replacement_regex.as_ref() {
+                None => false,
+                Some(regex) => dbg!(Regex::is_match(regex, contents.as_str())),
+            };
+            match contains_regex {
+                false => {
+                    let mut new_contents = contents.clone();
+                    if !new_contents.ends_with('\n') && !new_contents.is_empty() {
+                        new_contents += "\n";
+                    }
+                    new_contents += &self.lines.clone();
+                    Ok(Action::SetContents(new_contents))
+                }
+                true => {
+                    let regex = self.replacement_regex.as_ref().expect("contains regex");
+                    let new_contents = Regex::replace(regex, &contents, &self.lines);
+                    Ok(dbg!(Action::SetContents(new_contents.to_string())))
+                }
             }
-            new_contents += &self.lines.clone();
-            Ok(Action::SetContents(new_contents))
         }
     }
 }
@@ -129,7 +165,7 @@ mod tests {
         check_table.insert("__lines__", "1\n2\n".into());
 
         let lines_present_check =
-            LinesPresent::from_check_table(generic_check, check_table).unwrap();
+            LinesPresent::from_check_table(generic_check.clone(), check_table).unwrap();
 
         // not existing file
         assert_eq!(
@@ -156,5 +192,34 @@ mod tests {
         let mut file = File::create(lines_present_check.generic_check().file_to_check()).unwrap();
         write!(file, "1\n2\nb\n").unwrap();
         assert_eq!(lines_present_check.check().unwrap(), Action::None);
+
+        // use replacement_regex
+        let mut check_table = toml_edit::Table::new();
+        check_table.insert("__lines__", "export EDITOR=hx".into());
+        check_table.insert("__replacement_regex__", "(?m)^export EDITOR=.*$".into());
+
+        let lines_present_check =
+            LinesPresent::from_check_table(generic_check, check_table).unwrap();
+
+        // file with replacement regex and lines already present
+        let mut file = File::create(lines_present_check.generic_check().file_to_check()).unwrap();
+        write!(file, "export SHELL=/bin/bash\nexport EDITOR=hx\n").unwrap();
+        assert_eq!(lines_present_check.check().unwrap(), Action::None);
+
+        // file with replacement regex and replacement lines present
+        let mut file = File::create(lines_present_check.generic_check().file_to_check()).unwrap();
+        write!(file, "export SHELL=/bin/bash\nexport EDITOR=vi").unwrap();
+        assert_eq!(
+            lines_present_check.check().unwrap(),
+            Action::SetContents("export SHELL=/bin/bash\nexport EDITOR=hx\n".to_string())
+        );
+
+        // file with replacement regex and lines absent
+        let mut file = File::create(lines_present_check.generic_check().file_to_check()).unwrap();
+        write!(file, "export SHELL=/bin/bash").unwrap();
+        assert_eq!(
+            lines_present_check.check().unwrap(),
+            Action::SetContents("export SHELL=/bin/bash\nexport EDITOR=hx\n".to_string())
+        );
     }
 }

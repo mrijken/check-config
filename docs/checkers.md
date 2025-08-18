@@ -21,7 +21,7 @@ checker types (and more to come):
 The `check_config.toml` consist of zero or one `check-config` tables with configuration for check-config itself:
 
 ```toml
-[check-config]
+[__config__]
 include = [  # optional list of toml files with additional checks
     "/home/me/.checkers/check.toml",  # absolute path
     "~/.checkers/check.toml",  # relative to home dir of current user
@@ -128,7 +128,7 @@ __regex__ = 'export KEY=.*'
 __placeholder__ = "export KEY=value"
 ```
 
-Note: specify the regex as a raw string (single quotes) to be prevent escaping.
+Note: specify the regex as a raw toml string (single quotes) to prevent escaping.
 
 This checker type can handle any text file.
 
@@ -209,7 +209,7 @@ __lines__ = """single line"""
 
 ## Lines Present
 
-`lines_present` will check that the file does not contain the lines as specified.
+`lines_present` will check that the file does contain the lines as specified.
 
 ```toml
 ["test/present.txt".lines_present]
@@ -221,6 +221,14 @@ line"""
 ```toml
 ["test/present.txt".lines_present]
 __lines__ = """single line"""
+```
+
+Optionnally it can replace strings by regex, ie if you want to replace an export with a new value:
+
+```toml
+["~/.bahsrc".lines_present]
+__lines__ = "export EDITOR=hx"
+__replacement_regex = "(?m)^export EDITOR=.*$"
 ```
 
 ## Mapping File Types
