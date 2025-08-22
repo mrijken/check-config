@@ -1,4 +1,6 @@
 use derive_more::{Display, From};
+use dirs;
+use std::path::PathBuf;
 
 #[derive(Debug, From, Display)]
 pub enum Error {
@@ -86,6 +88,22 @@ fn py_url_to_url(package_uri: url::Url) -> Result<url::Url, Error> {
         .1;
 
     Ok(module_url.join(path_inside_package_without_leading_slash)?)
+}
+
+pub fn expand_to_absolute(path_str: &str) -> std::io::Result<PathBuf> {
+    if path_str.starts_with("~") {
+        if let Some(home) = dirs::home_dir() {
+            let without_tilde = path_str.trim_start_matches("~");
+            Ok(home.join(without_tilde.strip_prefix('/').unwrap_or(without_tilde)))
+        } else {
+            Err(std::io::Error::new(
+                std::io::ErrorKind::NotFound,
+                "Homedir can not be found",
+            ))
+        }
+    } else {
+        Ok(PathBuf::from(path_str))
+    }
 }
 
 #[cfg(test)]

@@ -10,7 +10,7 @@ use base::CheckConstructor;
 use crate::{
     file_types::{self, FileType},
     mapping::generic::Mapping,
-    uri,
+    uri::{self, expand_to_absolute},
 };
 
 use self::base::{Check, CheckDefinitionError, CheckError};
@@ -333,7 +333,14 @@ pub(crate) fn read_checks_from_path(
             }
             continue;
         }
-        let file_to_check = env::current_dir().expect("current dir exists").join(key);
+
+        let file_to_check = match expand_to_absolute(key.as_str()) {
+            Ok(file) => file,
+            Err(_) => {
+                log::error!("path {key} can not be resolved");
+                std::process::exit(1);
+            }
+        };
         match value {
             toml_edit::Item::Table(config_table) => {
                 checks.extend(get_checks_from_config_table(

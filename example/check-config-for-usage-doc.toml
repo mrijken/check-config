@@ -1,0 +1,5 @@
+[["~/.bashrc".lines_present]]
+__lines__ = "export SHELL=/bin/bash"
+
+[["~/.bashrc".lines_present]]
+__lines__ = "export EDITOR=hx"

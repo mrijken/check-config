@@ -4,6 +4,8 @@ use core::fmt::Debug as DebugTrait;
 use std::io;
 use thiserror::Error;
 
+use crate::checkers::RelativeUrl;
+
 use super::GenericCheck;
 
 #[derive(Clone, Debug, PartialEq)]
@@ -71,7 +73,7 @@ pub(crate) trait Check: DebugTrait {
         let msg = format!(
             "{} {} - {} - {}{}{}",
             ok,
-            self.generic_check().file_with_checks(),
+            self.generic_check().file_with_checks().short_url_str(),
             self.generic_check().file_to_check().to_string_lossy(),
             self.check_type(),
             key,
