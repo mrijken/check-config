@@ -1,5 +1,10 @@
 # CHANGES
 
+## 0.8.1
+
+- fix using `check-config` as command name
+- fix usage of relative paths
+
 ## 0.8.0
 
 - Add __replacements_regex in lines_present

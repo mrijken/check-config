@@ -83,12 +83,12 @@ pub fn cli() -> ExitCode {
         Some(path_str) => match parse_path_str_to_uri(path_str.as_str()) {
             Some(uri) => match std::path::Path::new(uri.path()).exists() {
                 true => {
-                    log::info!("Using checkers from {}", &uri);
+                    log::info!("Using checkers from {}", &uri.short_url_str());
                     read_checks_from_path(&uri, vec![])
                 }
                 false => {
                     log::error!(
-                        "Unable to load checkers. Path ({path_str}) as specified does not exist.",
+                        "⚠  Unable to load checkers. Path ({path_str}) as specified does not exist.",
                     );
                     return ExitCode::from(ExitStatus::Error);
                 }
@@ -101,15 +101,15 @@ pub fn cli() -> ExitCode {
             }
         },
         None => {
-            log::warn!("No path specified. Trying check_config.toml");
-            let uri = parse_path_str_to_uri("check_config.toml").expect("valid path");
+            log::warn!("⚠️ No path specified. Trying check-config.toml");
+            let uri = parse_path_str_to_uri("check-config.toml").expect("valid path");
             match std::path::Path::new(uri.path()).exists() {
                 true => {
                     log::info!("Using checkers from {}", &uri);
                     read_checks_from_path(&uri, vec![])
                 }
                 false => {
-                    log::warn!("check_config.toml does not exists.");
+                    log::warn!("check-config.toml does not exists.");
                     log::warn!("Trying pyproject.toml.");
                     let uri = parse_path_str_to_uri("pyproject.toml").expect("valid path");
                     match std::path::Path::new(uri.path()).exists() {
@@ -118,7 +118,7 @@ pub fn cli() -> ExitCode {
                             read_checks_from_path(&uri, vec!["tool", "check-config"])
                         }
                         false => {
-                            log::error!("No path specified and default paths are not found, so we ran out of options to load the config");
+                            log::error!("⚠️ No path specified and default paths are not found, so we ran out of options to load the config");
                             return ExitCode::from(ExitStatus::Error);
                         }
                     }
@@ -133,14 +133,14 @@ pub fn cli() -> ExitCode {
         log::error!("List of checks (type, location of definition, file to check)");
         checks.iter().for_each(|check| {
             log::error!(
-                "Check: {} {} {:}",
-                check.check_type(),
+                "⬜ {} - {} - {}",
                 check.generic_check().file_with_checks.short_url_str(),
                 check
                     .generic_check()
                     .file_to_check
                     .as_os_str()
-                    .to_string_lossy()
+                    .to_string_lossy(),
+                check.check_type(),
             )
         });
         return ExitCode::from(ExitStatus::Success);
@@ -151,11 +151,15 @@ pub fn cli() -> ExitCode {
     log::warn!("{success_count} checks successful.");
     if action_count > 0 {
         // note: error level is used to always show this message, also with the lowest verbose level
-        log::error!("There are {action_count} violations to fix.",);
+        if action_count == 1 {
+            log::error!("🪛  There is 1 violation to fix.",);
+        } else {
+            log::error!("🪛  There are {action_count} violations to fix.",);
+        }
         ExitCode::from(ExitStatus::Failure)
     } else {
         // note: error level is used to always show this message, also with the lowest verbose level
-        log::error!("No violations found.");
+        log::error!("🥇 No violations found.");
         ExitCode::from(ExitStatus::Success)
     }
 }
@@ -168,7 +172,7 @@ pub(crate) fn run_checks(checks: &Vec<Box<dyn Check>>, fix: bool) -> (i32, i32) 
         let result = if fix { check.fix() } else { check.check() };
         match result {
             Err(_) => {
-                log::error!("There was an error fixing files.");
+                log::error!("⚠ There was an error fixing files.");
                 return (0, 0);
             }
             Ok(Action::None) => success_count += 1,

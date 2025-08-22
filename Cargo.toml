@@ -1,6 +1,6 @@
 [package]
 name = "check-config"
-version = "0.8.0"
+version = "0.8.1"
 edition = "2021"
 license = "MIT"
 homepage = "https://pypi.org/project/check-config/"
@@ -15,7 +15,7 @@ exclude = [".github/*", "videos/*"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [[bin]]
-name = "check_config"
+name = "check-config"
 
 [dependencies]
 toml = { version = "0.9.5", features = [] }
@@ -38,6 +38,7 @@ openssl = { version = "0.10.73", features = ["vendored"] }
 dir-diff = "0.3.3"
 dircpy = "0.3.19"
 test-log = "0.2.18"
+dirs = "6.0.0"
 
 [profile.release]
 panic = "abort"
