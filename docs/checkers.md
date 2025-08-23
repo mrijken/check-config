@@ -207,6 +207,30 @@ line"""
 __lines__ = """single line"""
 ```
 
+You can also remove text between markers which removes the markers also
+
+```toml
+["test/present.txt".lines_absent]
+__marker_ = "# marker""
+```
+
+This will change the next text:
+
+```text
+Bla
+# marker (check-config start)
+Bla Bla
+# marker (check-config end)
+Bla
+```
+
+into
+
+```text
+Bla
+Bla
+```
+
 ## Lines Present
 
 `lines_present` will check that the file does contain the lines as specified.
@@ -230,6 +254,38 @@ Optionnally it can replace strings by regex, ie if you want to replace an export
 __lines__ = "export EDITOR=hx"
 __replacement_regex = "(?m)^export EDITOR=.*$"
 ```
+
+Or you can use marker lines:
+
+
+```toml
+["~/.bahsrc".lines_present]
+__lines__ = "export EDITOR=hx"
+__marker = "# marker"
+```
+
+Which replaces text from
+
+```shell
+alias ll='ls -alF'
+# marker (check-config start)
+export EDITOR=vi
+# marker (check-config end)
+```
+
+into
+
+```shell
+alias ll='ls -alF'
+# marker (check-config start)
+export EDITOR=hx
+# marker (check-config end)
+```
+
+When one of the markers is not present, the markers and the lines will be appended to the text.
+
+Note: because the checkers are executed in sequence, one can add markers in one checker, which are replaced by
+a next checker.
 
 ## Mapping File Types
 
