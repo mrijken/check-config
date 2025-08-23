@@ -6,6 +6,7 @@ use std::{
 };
 
 use base::CheckConstructor;
+use similar::DiffableStr;
 
 use crate::{
     file_types::{self, FileType},
@@ -27,6 +28,7 @@ pub(crate) mod key_value_regex_match;
 pub(crate) mod lines_absent;
 pub(crate) mod lines_present;
 pub(crate) mod test_helpers;
+pub(crate) mod utils;
 
 pub(crate) trait RelativeUrl {
     fn short_url_str(&self) -> String;
@@ -128,7 +130,14 @@ impl GenericCheck {
 
     fn get_file_contents(&self, default_content: DefaultContent) -> Result<String, CheckError> {
         match fs::read_to_string(self.file_to_check()) {
-            Ok(contents) => Ok(contents),
+            Ok(contents) => {
+                let contents = if contents.ends_with_newline() {
+                    contents
+                } else {
+                    format!("{contents}\n")
+                };
+                Ok(contents)
+            }
             Err(e) => match default_content {
                 DefaultContent::None => Err(CheckError::FileCanNotBeRead(e)),
                 DefaultContent::EmptyString => Ok("".to_string()),

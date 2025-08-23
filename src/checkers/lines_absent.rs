@@ -1,3 +1,5 @@
+use crate::checkers::utils::{parse_lines, parse_marker_lines, remove_between_markers};
+
 use super::base::CheckConstructor;
 pub(super) use super::{
     base::{Action, Check, CheckDefinitionError, CheckError},
@@ -8,6 +10,7 @@ pub(super) use super::{
 pub(crate) struct LinesAbsent {
     generic_check: GenericCheck,
     lines: String,
+    marker_lines: Option<(String, String)>,
 }
 
 impl CheckConstructor for LinesAbsent {
@@ -16,29 +19,19 @@ impl CheckConstructor for LinesAbsent {
         generic_check: GenericCheck,
         value: toml_edit::Table,
     ) -> Result<Self::Output, CheckDefinitionError> {
-        let lines = match value.get("__lines__") {
-            None => {
-                return Err(CheckDefinitionError::InvalidDefinition(
-                    "__lines__ is not present".to_string(),
-                ))
-            }
-            Some(lines) => match lines.as_str() {
-                None => {
-                    return Err(CheckDefinitionError::InvalidDefinition(
-                        "__lines__ is not a string".to_string(),
-                    ))
-                }
-                Some(lines) => lines.to_string(),
+        let marker_lines = parse_marker_lines(&value)?;
+        let lines = parse_lines(
+            &value,
+            if marker_lines.is_none() {
+                None
+            } else {
+                Some("".to_string())
             },
-        };
-        let lines = if !lines.ends_with('\n') {
-            lines + "\n"
-        } else {
-            lines
-        };
+        )?;
         Ok(Self {
             generic_check,
             lines,
+            marker_lines,
         })
     }
 }
@@ -59,8 +52,15 @@ impl Check for LinesAbsent {
         let contents = self
             .generic_check()
             .get_file_contents(super::DefaultContent::None)?;
-        if contents.contains(&self.lines) {
-            // TODO: check that the content start at the beginning of line
+
+        if let Some((start_marker, end_marker)) = self.marker_lines.as_ref() {
+            let new_contents = dbg!(remove_between_markers(&contents, start_marker, end_marker));
+            if new_contents == contents {
+                Ok(Action::None)
+            } else {
+                Ok(Action::SetContents(new_contents))
+            }
+        } else if contents.contains(&self.lines) {
             let new_contents = contents.replace(&self.lines, "");
             Ok(Action::SetContents(new_contents))
         } else {
@@ -95,7 +95,7 @@ mod tests {
 
         let lines_absent_checker =
             LinesAbsent::from_check_table(generic_check.clone(), check_table).unwrap();
-        assert_eq!(lines_absent_checker.lines, "\n".to_string());
+        assert_eq!(lines_absent_checker.lines, "".to_string());
 
         let mut check_table = toml_edit::Table::new();
         check_table.insert("__lines__", "1".into());
@@ -113,7 +113,7 @@ mod tests {
     }
 
     #[test]
-    fn test_lines_present() {
+    fn test_lines_absent() {
         let dir = tempdir().unwrap();
         let file_to_check = dir.path().join("file_to_check");
         let file_with_checks =
@@ -149,6 +149,50 @@ mod tests {
         assert_eq!(
             lines_absent_check.check().unwrap(),
             Action::SetContents("b\n".to_string())
+        );
+    }
+
+    #[test]
+    fn test_lines_absent_with_marker() {
+        let dir = tempdir().unwrap();
+        let file_to_check = dir.path().join("file_to_check");
+        let file_with_checks =
+            url::Url::from_file_path(dir.path().join("file_with_checks")).unwrap();
+        let generic_check = GenericCheck {
+            file_to_check,
+            file_type_override: None,
+            file_with_checks,
+        };
+
+        let mut check_table = toml_edit::Table::new();
+        check_table.insert("__marker__", "# marker".into());
+
+        let lines_absent_check = LinesAbsent::from_check_table(generic_check, check_table).unwrap();
+
+        // not existing file
+        assert_eq!(lines_absent_check.check().unwrap(), Action::None);
+
+        // empty file
+        File::create(lines_absent_check.generic_check().file_to_check()).unwrap();
+        assert_eq!(lines_absent_check.check().unwrap(), Action::None);
+
+        // file with other contents
+        let mut file: File =
+            File::create(lines_absent_check.generic_check().file_to_check()).unwrap();
+        writeln!(file, "a").unwrap();
+        assert_eq!(lines_absent_check.check().unwrap(), Action::None);
+
+        // file with markers
+        let mut file: File =
+            File::create(lines_absent_check.generic_check().file_to_check()).unwrap();
+        write!(
+            file,
+            "1\n# marker (check-config start)\nblabla\n# marker (check-config end)"
+        )
+        .unwrap();
+        assert_eq!(
+            lines_absent_check.check().unwrap(),
+            Action::SetContents("1\n".to_string())
         );
     }
 }

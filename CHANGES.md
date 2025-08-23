@@ -1,5 +1,10 @@
 # CHANGES
 
+## 0.8.2
+
+- Add marker to lines_present checktype
+- Add marker to lines_absent checktype
+
 ## 0.8.1
 
 - fix using `check-config` as command name
