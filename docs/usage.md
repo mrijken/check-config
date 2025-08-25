@@ -84,6 +84,12 @@ Optionally you can specify another path to a toml file with checkers:
 check-config -p <path>
 ```
 
+You can submit the path also via an environment variable:
+
+```shell
+export CHECK_CONFIG_PATH=<path>
+```
+
 Optionally you can not just check your files, but also try to fix them:
 
 ```shell
