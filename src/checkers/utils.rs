@@ -64,13 +64,13 @@ pub(crate) fn replace_between_markers(
 ) -> String {
     if let (Some(start_pos), Some(end_pos)) =
         (contents.find(start_marker), contents.find(end_marker))
+        && start_pos < end_pos
     {
-        if start_pos < end_pos {
-            let before = &contents[..start_pos + start_marker.len()];
-            let after = &contents[end_pos..];
-            return format!("{}{}{}", before, replacement, after);
-        }
+        let before = &contents[..start_pos + start_marker.len()];
+        let after = &contents[end_pos..];
+        return format!("{}{}{}", before, replacement, after);
     }
+
     append_str(
         contents,
         format!("{}{}{}", start_marker, replacement, end_marker).as_str(),
@@ -85,14 +85,14 @@ pub(crate) fn remove_between_markers(
     end_marker: &str,
 ) -> String {
     if let (Some(start_pos), Some(end_pos)) =
-        dbg!((contents.find(start_marker), contents.find(end_marker)))
+        (contents.find(start_marker), contents.find(end_marker))
+        && start_pos < end_pos
     {
-        if start_pos < end_pos {
-            let before = &contents[..start_pos];
-            let after = &contents[end_pos + end_marker.len()..];
-            return dbg!(format!("{}{}", before, after));
-        }
+        let before = &contents[..start_pos];
+        let after = &contents[end_pos + end_marker.len()..];
+        return dbg!(format!("{}{}", before, after));
     }
+
     contents.to_string()
 }
 

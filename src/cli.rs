@@ -55,14 +55,13 @@ struct Cli {
     #[clap(flatten)]
     verbose: clap_verbosity_flag::Verbosity,
 
-<<<<<<< HEAD
+    /// Tags in which the tags of the checks must be present
     #[arg(short, long, value_delimiter = ',')]
     tags: Vec<String>,
-=======
+
     /// Create missing directories
     #[arg(short, long, default_value = "false", env = "CHECK_CONFIG_CREATE_DIRS")]
     create_missing_directories: bool,
->>>>>>> main
 }
 
 pub(crate) fn parse_path_str_to_uri(path: &str) -> Option<url::Url> {
