@@ -39,7 +39,7 @@ struct Cli {
     /// Defaults (in order of precedence)
     /// - check-config.toml
     /// - pyproject.toml with a tool.check-config key
-    #[arg(short, long)]
+    #[arg(short, long, env = "CHECK_CONFIG_PATH")]
     path: Option<String>,
 
     /// Try to fix the config

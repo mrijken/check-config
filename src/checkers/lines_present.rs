@@ -8,7 +8,6 @@ pub(crate) use super::{
     GenericCheck,
 };
 use regex::Regex;
-use similar::DiffableStr;
 
 #[derive(Debug)]
 pub(crate) struct LinesPresent {
