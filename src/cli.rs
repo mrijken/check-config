@@ -54,6 +54,10 @@ struct Cli {
     // -vv show all
     #[clap(flatten)]
     verbose: clap_verbosity_flag::Verbosity,
+
+    /// Create missing directories
+    #[arg(long, default_value = "false")]
+    create_missing_directories: bool,
 }
 
 pub(crate) fn parse_path_str_to_uri(path: &str) -> Option<url::Url> {
@@ -146,7 +150,8 @@ pub fn cli() -> ExitCode {
         return ExitCode::from(ExitStatus::Success);
     }
 
-    let (action_count, success_count) = run_checks(&checks, cli.fix);
+    let (action_count, success_count) =
+        run_checks(&checks, cli.fix, cli.create_missing_directories);
 
     log::warn!("{success_count} checks successful.");
     if action_count > 0 {
@@ -164,12 +169,20 @@ pub fn cli() -> ExitCode {
     }
 }
 
-pub(crate) fn run_checks(checks: &Vec<Box<dyn Check>>, fix: bool) -> (i32, i32) {
+pub(crate) fn run_checks(
+    checks: &Vec<Box<dyn Check>>,
+    fix: bool,
+    create_missing_directories: bool,
+) -> (i32, i32) {
     let mut action_count = 0;
     let mut success_count = 0;
 
     for check in checks {
-        let result = if fix { check.fix() } else { check.check() };
+        let result = if fix {
+            check.fix(create_missing_directories)
+        } else {
+            check.check()
+        };
         match result {
             Err(_) => {
                 log::error!("⚠ There was an error fixing files.");
