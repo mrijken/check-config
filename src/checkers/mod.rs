@@ -145,16 +145,34 @@ impl GenericCheck {
         }
     }
 
-    fn set_file_contents(&self, contents: String) -> Result<(), CheckError> {
+    fn set_file_contents(
+        &self,
+        contents: String,
+        create_missing_directories: bool,
+    ) -> Result<(), CheckError> {
         if fs::exists(self.file_to_check()).expect("no error checking existance of path")
             && contents.is_empty()
         {
             return Ok(());
         }
 
+        if let Some(parent) = self.file_to_check().parent()
+            && !parent.exists()
+        {
+            if create_missing_directories {
+                fs::create_dir_all(parent)?;
+            } else {
+                log::error!(
+                    "⚠  Intermediate directories of {} does not exists",
+                    self.file_to_check().to_string_lossy(),
+                );
+                return Err(CheckError::FileCanNotBeWritten);
+            }
+        }
+
         if let Err(e) = fs::write(self.file_to_check(), contents) {
             log::error!(
-                "⚠ Cannot write file {} {}",
+                "⚠  Cannot write file {} {}",
                 self.file_to_check().to_string_lossy(),
                 e
             );

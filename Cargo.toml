@@ -1,7 +1,7 @@
 [package]
 name = "check-config"
 version = "0.8.2"
-edition = "2021"
+edition = "2024"
 license = "MIT"
 homepage = "https://pypi.org/project/check-config/"
 documentation = "https://check-config.readthedocs.io"

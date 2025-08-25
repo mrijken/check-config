@@ -47,13 +47,17 @@ struct Cli {
     fix: bool,
 
     /// List all checks. Checks are not executed.
-    #[arg(long, default_value = "false")]
+    #[arg(short, long, default_value = "false")]
     list_checkers: bool,
 
     // -v s
     // -vv show all
     #[clap(flatten)]
     verbose: clap_verbosity_flag::Verbosity,
+
+    /// Create missing directories
+    #[arg(short, long, default_value = "false", env = "CHECK_CONFIG_CREATE_DIRS")]
+    create_missing_directories: bool,
 }
 
 pub(crate) fn parse_path_str_to_uri(path: &str) -> Option<url::Url> {
@@ -146,7 +150,8 @@ pub fn cli() -> ExitCode {
         return ExitCode::from(ExitStatus::Success);
     }
 
-    let (action_count, success_count) = run_checks(&checks, cli.fix);
+    let (action_count, success_count) =
+        run_checks(&checks, cli.fix, cli.create_missing_directories);
 
     log::warn!("{success_count} checks successful.");
     if action_count > 0 {
@@ -164,15 +169,23 @@ pub fn cli() -> ExitCode {
     }
 }
 
-pub(crate) fn run_checks(checks: &Vec<Box<dyn Check>>, fix: bool) -> (i32, i32) {
+pub(crate) fn run_checks(
+    checks: &Vec<Box<dyn Check>>,
+    fix: bool,
+    create_missing_directories: bool,
+) -> (i32, i32) {
     let mut action_count = 0;
     let mut success_count = 0;
 
     for check in checks {
-        let result = if fix { check.fix() } else { check.check() };
+        let result = if fix {
+            check.fix(create_missing_directories)
+        } else {
+            check.check()
+        };
         match result {
             Err(_) => {
-                log::error!("⚠ There was an error fixing files.");
+                log::error!("⚠  There was an error fixing files.");
                 return (0, 0);
             }
             Ok(Action::None) => success_count += 1,

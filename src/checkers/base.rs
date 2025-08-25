@@ -138,7 +138,7 @@ pub(crate) trait Check: DebugTrait {
     }
 
     /// try to fix the checks which fails
-    fn fix(&self) -> Result<Action, CheckError> {
+    fn fix(&self, create_missing_directories: bool) -> Result<Action, CheckError> {
         log::warn!(
             "Fixing file {}",
             self.generic_check().file_to_check().to_string_lossy()
@@ -150,7 +150,8 @@ pub(crate) trait Check: DebugTrait {
                 Ok(Action::None)
             }
             Action::SetContents(new_contents) => {
-                self.generic_check().set_file_contents(new_contents)?;
+                self.generic_check()
+                    .set_file_contents(new_contents, create_missing_directories)?;
                 Ok(Action::None)
             }
             action => Ok(action),
