@@ -81,7 +81,13 @@ it will use `pyproject.toml` if it is present.
 Optionally you can specify another path to a toml file with checkers:
 
 ```shell
-check-config -p <path>
+check-config -p <path>  # or --path <path>
+```
+
+You can submit the path also via an environment variable:
+
+```shell
+export CHECK_CONFIG_PATH=<path>
 ```
 
 Optionally you can not just check your files, but also try to fix them:
@@ -93,7 +99,20 @@ check-config --fix
 Or just view the checkers without executing them
 
 ```shell
-check-config --list-checkers
+check-config --list-checkers # or -l
+```
+
+When fixing files, files will be created, modified or deleted. No intermediate directories
+will be created, unless you ask to do so:
+
+```shell
+check-config -c # or --create-missing-directories
+```
+
+This can also be enabled via an environment variable:
+
+```shell
+export CHECK_CONFIG_CREATE_DIRS=true
 ```
 
 ## Pre-commit

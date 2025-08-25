@@ -14,7 +14,7 @@ mod tests {
         let checks =
             checkers::read_checks_from_path(&file_with_checks, vec!["tool", "check-config"]);
 
-        let (action_count, success_count) = cli::run_checks(&checks, true);
+        let (action_count, success_count) = cli::run_checks(&checks, true, true);
 
         assert_eq!(action_count, 0);
         assert_eq!(success_count, 25);

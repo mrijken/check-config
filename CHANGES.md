@@ -1,5 +1,10 @@
 # CHANGES
 
+## not-released-yet
+
+- Pass some cli options via env variables
+- Add option to enable creation of intermediate directories
+
 ## 0.8.2
 
 - Add marker to lines_present checktype
