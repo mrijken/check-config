@@ -47,7 +47,7 @@ struct Cli {
     fix: bool,
 
     /// List all checks. Checks are not executed.
-    #[arg(long, default_value = "false")]
+    #[arg(short, long, default_value = "false")]
     list_checkers: bool,
 
     // -v s
@@ -56,7 +56,7 @@ struct Cli {
     verbose: clap_verbosity_flag::Verbosity,
 
     /// Create missing directories
-    #[arg(long, default_value = "false")]
+    #[arg(short, long, default_value = "false", env = "CHECK_CONFIG_CREATE_DIRS")]
     create_missing_directories: bool,
 }
 
