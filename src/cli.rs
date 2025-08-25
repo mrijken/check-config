@@ -1,5 +1,5 @@
-use std::io::Write;
 use std::process::ExitCode;
+use std::{collections::HashSet, io::Write};
 
 use clap::Parser;
 
@@ -54,6 +54,9 @@ struct Cli {
     // -vv show all
     #[clap(flatten)]
     verbose: clap_verbosity_flag::Verbosity,
+
+    #[arg(short, long, value_delimiter = ',')]
+    tags: Vec<String>,
 }
 
 pub(crate) fn parse_path_str_to_uri(path: &str) -> Option<url::Url> {
@@ -79,7 +82,8 @@ pub fn cli() -> ExitCode {
         .init();
 
     log::info!("Starting check-config");
-    let checks = match cli.path {
+
+    let mut checks = match cli.path {
         Some(path_str) => match parse_path_str_to_uri(path_str.as_str()) {
             Some(uri) => match std::path::Path::new(uri.path()).exists() {
                 true => {
@@ -128,6 +132,17 @@ pub fn cli() -> ExitCode {
     };
 
     log::info!("Fix: {}", &cli.fix);
+
+    let restricted_tags: HashSet<String> = cli.tags.into_iter().collect();
+
+    if !restricted_tags.is_empty() {
+        log::info!(
+            "☰ Restricting checkers which have __tags__ which all are part of: {:?}",
+            restricted_tags,
+        );
+
+        checks.retain(|check| check.generic_check().tags.is_subset(&restricted_tags));
+    }
 
     if cli.list_checkers {
         log::error!("List of checks (type, location of definition, file to check)");

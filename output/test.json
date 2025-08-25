@@ -9,6 +9,7 @@
     "regex": "matches",
     "to_be_added": "value",
     "to_be_kept": {
+        "added": "1",
         "key": "value"
     }
 }

@@ -3,3 +3,7 @@ __lines__ = "export SHELL=/bin/bash"
 
 [["~/.bashrc".lines_present]]
 __lines__ = "export EDITOR=hx"
+
+
+["test.json".key_value_present]
+key1.key2.key3="value"
