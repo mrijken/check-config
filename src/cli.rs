@@ -185,7 +185,7 @@ pub(crate) fn run_checks(
         };
         match result {
             Err(_) => {
-                log::error!("⚠ There was an error fixing files.");
+                log::error!("⚠  There was an error fixing files.");
                 return (0, 0);
             }
             Ok(Action::None) => success_count += 1,

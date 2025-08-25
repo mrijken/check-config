@@ -156,7 +156,9 @@ impl GenericCheck {
             return Ok(());
         }
 
-        if let Some(parent) = self.file_to_check().parent() {
+        if let Some(parent) = self.file_to_check().parent()
+            && !parent.exists()
+        {
             if create_missing_directories {
                 fs::create_dir_all(parent)?;
             } else {
