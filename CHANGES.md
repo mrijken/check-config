@@ -1,5 +1,9 @@
 # CHANGES
 
+## not-releaser-yet
+
+- Pass some cli options via env variables
+
 ## 0.8.2
 
 - Add marker to lines_present checktype
