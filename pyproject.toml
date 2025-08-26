@@ -5,7 +5,7 @@ build-backend = "maturin"
 
 [project]
 name = "check-config"
-version = "0.8.2"
+version = "0.8.3"
 description = "Check configuration files."
 authors = [{ name = "Marc Rijken", email = "marc@rijken.org" }]
 maintainers = [{ name = "Marc Rijken", email = "marc@rijken.org" }]
