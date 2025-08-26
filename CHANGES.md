@@ -1,5 +1,9 @@
 # CHANGES
 
+## 0.8.4
+
+- Improve readme
+
 ## 0.8.3
 
 - Pass some cli options via env variables
