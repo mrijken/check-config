@@ -3,8 +3,7 @@
 ## Python
 
 ```toml
-[check-config]
-include = ["black.toml", "mypy.toml", "tuff.toml"]
+__include__ = ["black.toml", "mypy.toml", "tuff.toml"]
 
 # Do not use setup.cfg
 ["setup.cfg".file_absent]

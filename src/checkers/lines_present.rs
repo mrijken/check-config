@@ -108,7 +108,6 @@ impl Check for LinesPresent {
 
 #[cfg(test)]
 mod tests {
-    use std::collections::HashSet;
     use std::fs::File;
     use std::io::Write;
 
@@ -126,7 +125,7 @@ mod tests {
             file_to_check,
             file_type_override: None,
             file_with_checks,
-            tags: HashSet::new(),
+            tags: Vec::new(),
         };
 
         let mut check_table = toml_edit::Table::new();
@@ -161,7 +160,7 @@ mod tests {
             file_to_check,
             file_type_override: None,
             file_with_checks,
-            tags: HashSet::new(),
+            tags: Vec::new(),
         };
 
         let mut check_table = toml_edit::Table::new();
@@ -207,7 +206,7 @@ mod tests {
             file_to_check,
             file_type_override: None,
             file_with_checks,
-            tags: HashSet::new(),
+            tags: Vec::new(),
         };
 
         let mut check_table = toml_edit::Table::new();
@@ -249,7 +248,7 @@ mod tests {
             file_to_check,
             file_type_override: None,
             file_with_checks,
-            tags: HashSet::new(),
+            tags: Vec::new(),
         };
 
         let mut check_table = toml_edit::Table::new();
@@ -270,7 +269,7 @@ mod tests {
             file_to_check,
             file_type_override: None,
             file_with_checks,
-            tags: HashSet::new(),
+            tags: Vec::new(),
         };
 
         let mut check_table = toml_edit::Table::new();

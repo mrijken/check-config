@@ -1,5 +1,5 @@
+use std::io::Write;
 use std::process::ExitCode;
-use std::{collections::HashSet, io::Write};
 
 use clap::Parser;
 
@@ -36,10 +36,10 @@ impl From<ExitStatus> for ExitCode {
 #[command(author, version, about, long_about = None)]
 struct Cli {
     /// Path to the root checkers file in toml format
-    /// Defaults (in order of precedence)
+    /// Defaults (in order of precedence):
     /// - check-config.toml
     /// - pyproject.toml with a tool.check-config key
-    #[arg(short, long, env = "CHECK_CONFIG_PATH")]
+    #[arg(short, long, env = "CHECK_CONFIG_PATH", verbatim_doc_comment)]
     path: Option<String>,
 
     /// Try to fix the config
@@ -50,18 +50,50 @@ struct Cli {
     #[arg(short, long, default_value = "false")]
     list_checkers: bool,
 
-    // -v s
-    // -vv show all
-    #[clap(flatten)]
-    verbose: clap_verbosity_flag::Verbosity,
+    /// Execute the checkers with one of the specified tags
+    #[arg(long, value_delimiter = ',', env = "CHECK_CONFIG_ANY_TAGS")]
+    any_tags: Vec<String>,
 
-    /// Tags in which the tags of the checks must be present
-    #[arg(short, long, value_delimiter = ',')]
-    tags: Vec<String>,
+    /// Execute the checkers with all of the specified tags
+    #[arg(long, value_delimiter = ',', env = "CHECK_CONFIG_ALL_TAGS")]
+    all_tags: Vec<String>,
+
+    /// Do not execute the checkers with any of the specified tags.
+    #[arg(long, value_delimiter = ',', env = "CHECK_CONFIG_SKIP_TAGS")]
+    skip_tags: Vec<String>,
 
     /// Create missing directories
     #[arg(short, long, default_value = "false", env = "CHECK_CONFIG_CREATE_DIRS")]
     create_missing_directories: bool,
+
+    // -v s
+    // -vv show all
+    #[clap(flatten)]
+    verbose: clap_verbosity_flag::Verbosity,
+}
+
+pub(crate) fn filter_checks(
+    checker_tags: &[String],
+    any_tags: &[String],
+    all_tags: &[String],
+    skip_tags: &[String],
+) -> bool {
+    // At least one must match
+    if !any_tags.is_empty() && !any_tags.iter().any(|t| checker_tags.contains(t)) {
+        return false;
+    }
+
+    // All must match
+    if !all_tags.is_empty() && !all_tags.iter().all(|t| checker_tags.contains(t)) {
+        return false;
+    }
+
+    // None must match
+    if !skip_tags.is_empty() && skip_tags.iter().any(|t| checker_tags.contains(t)) {
+        return false;
+    }
+
+    true
 }
 
 pub(crate) fn parse_path_str_to_uri(path: &str) -> Option<url::Url> {
@@ -138,16 +170,18 @@ pub fn cli() -> ExitCode {
 
     log::info!("Fix: {}", &cli.fix);
 
-    let restricted_tags: HashSet<String> = cli.tags.into_iter().collect();
-
     if cli.list_checkers {
-        log::error!("List of checks (type, location of definition, file to check)");
+        log::error!("List of checks (type, location of definition, file to check, tags)");
         checks.iter().for_each(|check| {
-            let enabled = restricted_tags.is_empty()
-                || check.generic_check().tags.is_subset(&restricted_tags);
+            let enabled = filter_checks(
+                &check.generic_check().tags,
+                &cli.any_tags,
+                &cli.all_tags,
+                &cli.skip_tags,
+            );
 
             log::error!(
-                "{} {} - {} - {}",
+                "{} {} - {} - {} - {:?}",
                 if enabled { "⬜" } else { " ✖️" },
                 check.generic_check().file_with_checks.short_url_str(),
                 check
@@ -156,19 +190,27 @@ pub fn cli() -> ExitCode {
                     .as_os_str()
                     .to_string_lossy(),
                 check.check_type(),
+                check.generic_check().tags
             )
         });
         return ExitCode::from(ExitStatus::Success);
     }
 
-    if !restricted_tags.is_empty() {
-        log::info!(
-            "☰ Rstricting checkers which have __tags__ which all are part of: {:?}",
-            restricted_tags,
-        );
+    // log::info!(
+    //     "☰ Restricting checkers which have __tags__ which all are part of: {:?}",
+    //     restricted_tags,
+    // );
 
-        checks.retain(|check| check.generic_check().tags.is_subset(&restricted_tags));
-    }
+    checks.retain(|check| {
+        filter_checks(
+            &check.generic_check().tags,
+            &cli.any_tags,
+            &cli.all_tags,
+            &cli.skip_tags,
+        )
+    });
+
+    dbg!(checks.len());
 
     let (action_count, success_count) =
         run_checks(&checks, cli.fix, cli.create_missing_directories);

@@ -18,11 +18,10 @@ checker types (and more to come):
 
 ## Checker.toml
 
-The `check_config.toml` consist of zero or one `check-config` tables with configuration for check-config itself:
+The `check-config.toml` consist of an optional toplevel keys with configuration for check-config itself:
 
 ```toml
-[__config__]
-include = [  # optional list of toml files with additional checks
+__include__ = [  # optional list of toml files with additional checks
     "/home/me/.checkers/check.toml",  # absolute path
     "~/.checkers/check.toml",  # relative to home dir of current user
     "check.toml", # relative to this parent toml, indifferent if it is a filesystem path or a webserver path
@@ -51,6 +50,17 @@ __lines__ = ".cache"
 ```
 
 When using a path to a Python package to include checkers, the activated Python (virtual) environment will be used.
+
+## Tags
+
+All checkers can have a `__tags__` key to make it possible to exclude or include this checker from the execution.
+See [cli tags options](usage#Tags) for more information.
+
+```toml
+[[".gitignore".lines_present]]
+__tags__ = ["linux"]
+__lines__ = ".cache"
+```
 
 ## File Absent
 

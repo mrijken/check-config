@@ -115,6 +115,19 @@ This can also be enabled via an environment variable:
 export CHECK_CONFIG_CREATE_DIRS=true
 ```
 
+## Tags
+
+When tags are specified in the checkers, it is possible restrict the executing to
+tags.
+
+```shell
+check-config --any-tags tag1,tag2 --all-tags tag3,tag4 --skip-tags tag5,tag6
+```
+
+This invocation call checkers which has one of [tag1, tag2], all of [tag3, tag4] and not one of [tag5, tag6]
+specified in their `__tags__` key.
+
+
 ## Pre-commit
 
 [pre-commit](https://pre-commit.com/) helps checking your code before committing git, so you can catch errors
@@ -126,7 +139,7 @@ you want to use:
 ```yaml
 repos:
   - repo: https://github.com/mrijken/check-config
-    rev: v0.8.4
+    rev: v0.8.5
     hooks:
       # Install via Cargo and execute `check-config --fix`
       - id: check_config_fix_install_via_rust

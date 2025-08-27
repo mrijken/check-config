@@ -35,7 +35,7 @@ impl Check for FileAbsent {
 
 #[cfg(test)]
 mod tests {
-    use std::{collections::HashSet, fs::File};
+    use std::fs::File;
 
     use super::*;
 
@@ -51,7 +51,7 @@ mod tests {
             file_to_check,
             file_type_override: None,
             file_with_checks,
-            tags: HashSet::new(),
+            tags: Vec::new(),
         };
 
         let file_absent_check =

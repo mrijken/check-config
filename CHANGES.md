@@ -1,5 +1,10 @@
 # CHANGES
 
+## 0.8.5
+
+- Add tags to select checkers
+- BREAKING: Remove `__config__` tag. Use `__include__` as top level key
+
 ## 0.8.4
 
 - Improve readme
