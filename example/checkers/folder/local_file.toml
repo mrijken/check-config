@@ -1,5 +1,4 @@
-[__config__]
-include = [
+__include__ = [
         "relative_local_file.toml"
 ]
 

@@ -88,6 +88,7 @@ mod tests {
             file_to_check,
             file_type_override: None,
             file_with_checks,
+            tags: Vec::new(),
         };
 
         let mut check_table = toml_edit::Table::new();
@@ -122,6 +123,7 @@ mod tests {
             file_to_check,
             file_type_override: None,
             file_with_checks,
+            tags: Vec::new(),
         };
 
         let mut check_table = toml_edit::Table::new();
@@ -162,6 +164,7 @@ mod tests {
             file_to_check,
             file_type_override: None,
             file_with_checks,
+            tags: Vec::new(),
         };
 
         let mut check_table = toml_edit::Table::new();

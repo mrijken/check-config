@@ -51,6 +51,7 @@ mod tests {
             file_to_check,
             file_type_override: None,
             file_with_checks,
+            tags: Vec::new(),
         };
 
         let file_absent_check =

@@ -113,6 +113,7 @@ pub(crate) struct GenericCheck {
     pub(crate) file_to_check: PathBuf,
     // overridden file type
     pub(crate) file_type_override: Option<String>,
+    pub(crate) tags: Vec<String>,
 }
 
 pub(crate) enum DefaultContent {
@@ -234,6 +235,34 @@ fn determine_filetype_from_config_table(config_table: &mut toml_edit::Table) -> 
     )
 }
 
+fn read_tags_from_table(
+    check_table: &toml_edit::Table,
+) -> Result<Vec<String>, CheckDefinitionError> {
+    let mut tags = Vec::new();
+    match check_table.get("__tags__") {
+        None => Ok(tags),
+        Some(item) => {
+            if !item.is_array() {
+                Err(CheckDefinitionError::InvalidDefinition(
+                    "__tags__ is not an array".into(),
+                ))
+            } else {
+                for i in item.as_array().unwrap() {
+                    if let Some(value) = i.as_str() {
+                        tags.push(value.into());
+                    } else {
+                        return Err(CheckDefinitionError::InvalidDefinition(
+                            " __tags__ contains a value which is not a string".to_string(),
+                        ));
+                    };
+                }
+
+                Ok(tags)
+            }
+        }
+    }
+}
+
 fn get_check_from_check_table(
     file_with_checks: &url::Url,
     file_to_check: PathBuf,
@@ -242,10 +271,13 @@ fn get_check_from_check_table(
 ) -> Result<Box<dyn Check>, CheckDefinitionError> {
     let mut check_table = check_table.clone();
 
+    let tags = read_tags_from_table(&check_table)?;
+
     let generic_check = GenericCheck {
         file_with_checks: file_with_checks.clone(),
         file_to_check: file_to_check.clone(),
         file_type_override: determine_filetype_from_config_table(&mut check_table),
+        tags,
     };
     match check_type {
         "entry_absent" => Ok(Box::new(entry_absent::EntryAbsent::from_check_table(
@@ -340,10 +372,8 @@ pub(crate) fn read_checks_from_path(
     }
 
     for (key, value) in checks_toml {
-        // todo: is include possible as top level? So, without __config__ level
-        if key == "__config__" {
-            let value = value.get("include");
-            if let Some(toml_edit::Item::Value(toml_edit::Value::Array(include_uris))) = value {
+        if key == "__include__" {
+            if let toml_edit::Item::Value(toml_edit::Value::Array(include_uris)) = value {
                 for include_uri in include_uris {
                     let include_path = match uri::parse_uri(
                         include_uri.as_str().expect("uri is a string"),
@@ -358,6 +388,7 @@ pub(crate) fn read_checks_from_path(
                     checks.extend(read_checks_from_path(&include_path, vec![]));
                 }
             }
+
             continue;
         }
 
@@ -407,8 +438,7 @@ mod test {
         writeln!(
             file_with_checkers,
             r#"
-[__config__]
-include = []  # optional list of toml files with additional checks
+__include__ = []  # optional list of toml files with additional checks
 
 ["test/absent_file".file_absent]
 

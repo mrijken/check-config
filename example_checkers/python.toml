@@ -1,5 +1,4 @@
-[__config__]
-include = ["black.toml", "mypy.toml", "ruff.toml"]
+__include__ = ["black.toml", "mypy.toml", "ruff.toml"]
 
 # Do not use setup.cfg
 ["setup.cfg".file_absent]

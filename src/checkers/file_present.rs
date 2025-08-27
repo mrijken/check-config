@@ -69,6 +69,7 @@ mod tests {
             file_to_check,
             file_type_override: None,
             file_with_checks,
+            tags: Vec::new(),
         };
 
         let file_present_check =
@@ -91,6 +92,7 @@ mod tests {
             file_to_check,
             file_type_override: None,
             file_with_checks,
+            tags: Vec::new(),
         };
 
         let file_present_check =
@@ -109,6 +111,7 @@ mod tests {
             file_to_check,
             file_type_override: None,
             file_with_checks,
+            tags: Vec::new(),
         };
 
         let mut placeholder_table = toml_edit::Table::new();
@@ -134,6 +137,7 @@ mod tests {
             file_to_check,
             file_type_override: None,
             file_with_checks,
+            tags: Vec::new(),
         };
 
         let mut placeholder_table = toml_edit::Table::new();

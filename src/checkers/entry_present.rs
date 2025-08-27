@@ -52,8 +52,11 @@ impl Check for EntryPresent {
 
 fn add_entries(doc: &mut dyn Mapping, entries_to_add: &toml_edit::Table) {
     for (key_to_add, value_to_add) in entries_to_add {
+        if key_to_add == "__tags__" {
+            continue;
+        }
         if !value_to_add.is_table_like() {
-            log::error!("Unexpected value type");
+            log::error!("Unexpected value type {key_to_add}:{value_to_add}");
             std::process::exit(1);
         }
         let table_to_add = value_to_add.as_table().expect("value is a table");

@@ -1,6 +1,6 @@
-[__config__]
-include = [
-        "https://raw.githubusercontent.com/mrijken/check-config/refs/heads/main/example/checkers/http_check_config.toml",
+__include__ = [
+        #"https://raw.githubusercontent.com/mrijken/check-config/refs/heads/main/example/checkers/http_check_config.toml",
+        "http_check_config.toml",
         "folder/local_file.toml"
 ]
 
@@ -30,23 +30,25 @@ __lines__ = "alias to_be_removed='ls'"
 
 ["output/test.yaml".key_absent.to_be_removed]
 
-["output/test.json".key_value_present]
+[["output/test.json".key_value_present]]
 to_be_added = "value"
 
-["output/test.toml".key_value_present]
+[["output/test.toml".key_value_present]]
 to_be_added = "value"
 
-["output/test.yaml".key_value_present]
+[["output/test.yaml".key_value_present]]
 to_be_added = "value"
 
-["output/test.json".key_value_present.to_be_kept]
-key = "value"
+[["output/test.json".key_value_present]]
+to_be_kept.key = "value"
+added.key = "1"
 
-["output/test.toml".key_value_present.to_be_kept]
-key = "value"
+[["output/test.toml".key_value_present]]
+to_be_kept.key = "value"
+added.key = "value"
 
-["output/test.yaml".key_value_present.to_be_kept]
-key = "value"
+[["output/test.yaml".key_value_present]]
+to_be_kept.key = "value"
 
 ["output/test.json".entry_absent.list2]
 __items__ = ["already_absent"]
@@ -87,9 +89,13 @@ __items__ = ["to_be_added", "to_be_kept"]
 ["output/test.toml".entry_present.list2]
 __items__ = ["already_present"]
 
-["output/test.yaml".entry_present.list]
-__items__ = ["to_be_added", "to_be_kept"]
+[["output/test.yaml".entry_present]]
+list.__items__ = ["to_be_added", "to_be_kept"]
 
-["output/test.yaml".entry_present.list2]
-__items__ = ["already_present"]
+[["output/test.yaml".entry_present]]
+__tags__ = ["selected"]
+list2.__items__ = ["already_present"]
 
+[["output/test.yaml".entry_present]]
+__tags__ = ["not_selected"]
+list3.__items__ = ["not added"]
