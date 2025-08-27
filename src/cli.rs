@@ -140,20 +140,15 @@ pub fn cli() -> ExitCode {
 
     let restricted_tags: HashSet<String> = cli.tags.into_iter().collect();
 
-    if !restricted_tags.is_empty() {
-        log::info!(
-            "☰ Restricting checkers which have __tags__ which all are part of: {:?}",
-            restricted_tags,
-        );
-
-        checks.retain(|check| check.generic_check().tags.is_subset(&restricted_tags));
-    }
-
     if cli.list_checkers {
         log::error!("List of checks (type, location of definition, file to check)");
         checks.iter().for_each(|check| {
+            let enabled = restricted_tags.is_empty()
+                || check.generic_check().tags.is_subset(&restricted_tags);
+
             log::error!(
-                "⬜ {} - {} - {}",
+                "{} {} - {} - {}",
+                if enabled { "⬜" } else { " ✖️" },
                 check.generic_check().file_with_checks.short_url_str(),
                 check
                     .generic_check()
@@ -164,6 +159,15 @@ pub fn cli() -> ExitCode {
             )
         });
         return ExitCode::from(ExitStatus::Success);
+    }
+
+    if !restricted_tags.is_empty() {
+        log::info!(
+            "☰ Rstricting checkers which have __tags__ which all are part of: {:?}",
+            restricted_tags,
+        );
+
+        checks.retain(|check| check.generic_check().tags.is_subset(&restricted_tags));
     }
 
     let (action_count, success_count) =

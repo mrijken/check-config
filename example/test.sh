@@ -1,4 +1,4 @@
-SCRIPT_DIRSCRIPT_DIR=$(dirname "$BASH_SOURCE")
+SCRIPT_DIR=$(dirname "$BASH_SOURCE")
 cd $SCRIPT_DIR
 rm -r output
 cp -r input output
