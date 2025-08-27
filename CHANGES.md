@@ -1,6 +1,10 @@
 # CHANGES
 
-## not-released-yet
+## 0.8.4
+
+- Improve readme
+
+## 0.8.3
 
 - Pass some cli options via env variables
 - Add option to enable creation of intermediate directories
