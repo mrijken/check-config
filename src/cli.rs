@@ -35,7 +35,7 @@ impl From<ExitStatus> for ExitCode {
 #[derive(Parser)]
 #[command(author, version, about, long_about = None)]
 struct Cli {
-    /// Path to the root checkers file in toml format
+    /// Path or URL to the root checkers file in toml format
     /// Defaults (in order of precedence):
     /// - check-config.toml
     /// - pyproject.toml with a tool.check-config key
@@ -122,18 +122,10 @@ pub fn cli() -> ExitCode {
 
     let mut checks = match cli.path {
         Some(path_str) => match parse_path_str_to_uri(path_str.as_str()) {
-            Some(uri) => match std::path::Path::new(uri.path()).exists() {
-                true => {
-                    log::info!("Using checkers from {}", &uri.short_url_str());
-                    read_checks_from_path(&uri, vec![])
-                }
-                false => {
-                    log::error!(
-                        "⚠  Unable to load checkers. Path ({path_str}) as specified does not exist.",
-                    );
-                    return ExitCode::from(ExitStatus::Error);
-                }
-            },
+            Some(uri) => {
+                log::info!("Using checkers from {}", &uri.short_url_str());
+                read_checks_from_path(&uri, vec![])
+            }
             None => {
                 log::error!(
                     "Unable to load checkers. Path ({path_str}) specified is not a valid path.",
