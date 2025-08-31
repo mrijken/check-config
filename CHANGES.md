@@ -1,5 +1,9 @@
 # CHANGES
 
+## 0.8.6
+
+- The path specified on the cli with, can also be a URL.
+
 ## 0.8.5
 
 - Add tags to select checkers
