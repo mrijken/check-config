@@ -125,7 +125,7 @@ pub fn cli() -> ExitCode {
             Some(uri) => match std::path::Path::new(uri.path()).exists() {
                 true => {
                     log::info!("Using checkers from {}", &uri.short_url_str());
-                    read_checks_from_path(&uri, vec![])
+                    read_checks_from_path(&uri, vec![], &vec![])
                 }
                 false => {
                     log::error!(
@@ -147,7 +147,7 @@ pub fn cli() -> ExitCode {
             match std::path::Path::new(uri.path()).exists() {
                 true => {
                     log::info!("Using checkers from {}", &uri);
-                    read_checks_from_path(&uri, vec![])
+                    read_checks_from_path(&uri, vec![], &vec![])
                 }
                 false => {
                     log::warn!("check-config.toml does not exists.");
@@ -156,7 +156,7 @@ pub fn cli() -> ExitCode {
                     match std::path::Path::new(uri.path()).exists() {
                         true => {
                             log::info!("Using checkers from {}", &uri);
-                            read_checks_from_path(&uri, vec!["tool", "check-config"])
+                            read_checks_from_path(&uri, vec!["tool", "check-config"], &vec![])
                         }
                         false => {
                             log::error!("⚠️ No path specified and default paths are not found, so we ran out of options to load the config");
