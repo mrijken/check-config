@@ -1,0 +1,40 @@
+layout {
+    cwd "/home/ubuntu/repos"
+    tab name="check-config" focus=true {
+        pane size=1 borderless=true {
+            plugin location="zellij:tab-bar"
+        }
+        pane split_direction="vertical" {
+            pane command="gitui" cwd="check-config" size="50%" {
+                start_suspended true
+            }
+            pane command="/usr/lib/helix/hx" cwd="check-config" size="50%" {
+                start_suspended true
+            }
+        }
+        pane size=1 borderless=true {
+            plugin location="zellij:status-bar"
+        }
+    }
+    tab name="checks" {
+        pane size=1 borderless=true {
+            plugin location="zellij:tab-bar"
+        }
+        pane command="/usr/lib/helix/hx" cwd="checks" {
+            start_suspended true
+        }
+        pane size=1 borderless=true {
+            plugin location="zellij:status-bar"
+        }
+    }
+    new_tab_template {
+        pane size=1 borderless=true {
+            plugin location="zellij:tab-bar"
+        }
+        pane cwd="/home/ubuntu/repos/check-config"
+        pane size=1 borderless=true {
+            plugin location="zellij:status-bar"
+        }
+    }
+}
+
