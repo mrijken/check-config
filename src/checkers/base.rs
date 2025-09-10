@@ -1,23 +1,20 @@
-use similar::TextDiff;
-
 use core::fmt::Debug as DebugTrait;
 use std::io;
 use thiserror::Error;
 
 use crate::checkers::RelativeUrl;
 
-use super::GenericCheck;
+use super::GenericChecker;
 
 #[derive(Clone, Debug, PartialEq)]
-pub(crate) enum Action {
-    RemoveFile,
-    SetContents(String),
-    MatchKeyRegex { key: String, regex: String },
-    MatchFileRegex { regex: String },
-    None,
+pub enum CheckResult {
+    NoFixNeeded,
+    FixNeeded(String),
+    FixExecuted(String),
+    // Error(String),
 }
 
-#[derive(Error, Debug)]
+#[derive(Error, Debug, PartialEq)]
 pub(crate) enum CheckDefinitionError {
     #[error("invalid check definition")]
     InvalidDefinition(String),
@@ -39,122 +36,54 @@ pub(crate) enum CheckError {
     InvalidFileFormat(String),
     #[error("invalid regex format")]
     InvalidRegex(String),
+    #[error("permission not available on this system")]
+    PermissionsNotAccessable,
 }
 
 pub(crate) trait CheckConstructor {
     type Output;
     fn from_check_table(
-        generic_check: GenericCheck,
+        generic_check: GenericChecker,
         value: toml_edit::Table,
     ) -> Result<Self::Output, CheckDefinitionError>;
 }
-pub(crate) trait Check: DebugTrait {
-    fn check_type(&self) -> String;
-    fn generic_check(&self) -> &GenericCheck;
-    fn get_action(&self) -> Result<Action, CheckError> {
-        log::error!("Function is not implemented");
-        std::process::exit(1);
-    }
+pub(crate) trait Checker: DebugTrait {
+    fn checker_type(&self) -> String;
+    fn generic_checker(&self) -> &GenericChecker;
+    fn checker_object(&self) -> String;
 
-    /// Log the action
-    fn print(&self, is_ok: bool, key: Option<&str>, action_message: Option<&str>) {
-        let key = match key {
-            Some(k) => format!(" - {k}"),
-            None => "".to_string(),
-        };
-        let ok = match is_ok {
-            true => "✅",
-            false => "❌",
-        };
-        let action_message = match action_message {
-            Some(msg) => format!(" - {msg}"),
-            None => "".to_string(),
+    fn list_checker(&self, enabled: bool) {
+        log::error!(
+            "{} {} - {} - {} - {:?}",
+            if enabled { "⬜" } else { " ✖️" },
+            self.generic_checker().file_with_checks.short_url_str(),
+            self.checker_type(),
+            self.checker_object(),
+            self.generic_checker().tags
+        )
+    }
+    fn print(&self, check_result: &CheckResult) {
+        let (check_result_str, action_message) = match check_result {
+            CheckResult::NoFixNeeded => ("✅", "".to_string()),
+            CheckResult::FixNeeded(action) => ("❌", format!(" - {action}")),
+            CheckResult::FixExecuted(action) => ("🔧", format!(" - {action}")),
+            // CheckResult::Error(_) => ("⚠️", "".to_string()),
         };
         let msg = format!(
-            "{} {} - {} - {}{}{}",
-            ok,
-            self.generic_check().file_with_checks().short_url_str(),
-            self.generic_check().file_to_check().to_string_lossy(),
-            self.check_type(),
-            key,
+            "{} {} - {} - {}{}",
+            check_result_str,
+            self.generic_checker().file_with_checks().short_url_str(),
+            self.checker_type(),
+            self.checker_object(),
             action_message
         );
-        match is_ok {
-            true => log::info!("{msg}"),
-            false => log::warn!("{msg}"),
+        match check_result {
+            CheckResult::NoFixNeeded => log::info!("{msg}"),
+            CheckResult::FixExecuted(_) => log::info!("{msg}"),
+            CheckResult::FixNeeded(_) => log::warn!("{msg}"),
+            // CheckResult::Error(_) => log::error!("{msg}"),
         }
     }
 
-    /// get the actions which are needed to comply to the check definitions
-    fn check(&self) -> Result<Action, CheckError> {
-        let action = match self.get_action() {
-            Ok(ist_and_soll) => ist_and_soll,
-            Err(e) => {
-                self.print(false, None, Some(&e.to_string()));
-                return Err(e);
-            }
-        };
-        match action.clone() {
-            Action::None => {
-                self.print(true, None, None);
-            }
-            Action::RemoveFile => {
-                self.print(false, None, Some("remove file"));
-            }
-            Action::SetContents(new_contents) => {
-                self.print(
-                    false,
-                    None,
-                    Some(&format!(
-                        "Set file contents to: \n{}",
-                        TextDiff::from_lines(
-                            self.generic_check()
-                                .get_file_contents(super::DefaultContent::EmptyString)
-                                .unwrap_or("".to_string())
-                                .as_str(),
-                            new_contents.as_str()
-                        )
-                        .unified_diff()
-                    )),
-                );
-            }
-            Action::MatchKeyRegex { key, regex } => {
-                self.print(
-                    false,
-                    Some(&key),
-                    Some(&format!("Make sure value matches regex {regex}")),
-                );
-            }
-            Action::MatchFileRegex { regex } => {
-                self.print(
-                    false,
-                    None,
-                    Some(&format!("Make sure value matches regex {regex}")),
-                );
-            }
-        }
-
-        Ok(action)
-    }
-
-    /// try to fix the checks which fails
-    fn fix(&self, create_missing_directories: bool) -> Result<Action, CheckError> {
-        log::warn!(
-            "Fixing file {}",
-            self.generic_check().file_to_check().to_string_lossy()
-        );
-        let action = self.check()?;
-        match action {
-            Action::RemoveFile => {
-                self.generic_check().remove_file()?;
-                Ok(Action::None)
-            }
-            Action::SetContents(new_contents) => {
-                self.generic_check()
-                    .set_file_contents(new_contents, create_missing_directories)?;
-                Ok(Action::None)
-            }
-            action => Ok(action),
-        }
-    }
+    fn check(&self, fix: bool) -> Result<CheckResult, CheckError>;
 }

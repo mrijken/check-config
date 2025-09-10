@@ -16,7 +16,7 @@ mod tests {
                 .into_iter()
                 .filter(|c| {
                     cli::filter_checks(
-                        &c.generic_check().tags,
+                        &c.generic_checker().tags,
                         &[],
                         &[],
                         &["not_selected".to_string()],
@@ -24,10 +24,8 @@ mod tests {
                 })
                 .collect();
 
-        let (action_count, success_count) = cli::run_checks(&checks, true, true);
+        assert_eq!(cli::run_checks(&checks, true), cli::ExitStatus::Success);
 
-        assert_eq!(action_count, 0);
-        assert_eq!(success_count, 29);
         assert!(!dir_diff::is_different("output", "example/expected_output").unwrap());
 
         std::fs::remove_dir_all("output").unwrap();

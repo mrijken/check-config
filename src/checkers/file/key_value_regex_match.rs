@@ -1,50 +1,91 @@
 use regex::Regex;
 
-use crate::{file_types::RegexValidateResult, mapping::generic::Mapping};
+use crate::{
+    checkers::{base::CheckDefinitionError, file::FileCheck},
+    file_types::RegexValidateResult,
+    mapping::generic::Mapping,
+};
 
-use super::{
-    base::{Action, Check, CheckConstructor, CheckError},
-    GenericCheck,
+use super::super::{
+    base::{Checker, CheckConstructor, CheckError},
+    GenericChecker,
 };
 
 #[derive(Debug)]
 pub(crate) struct EntryRegexMatch {
-    generic_check: GenericCheck,
+    file_check: FileCheck,
     value: toml_edit::Table,
 }
 
+// [key_value_regex_match]
+// file = "file"
+// key.key = "regex"
 impl CheckConstructor for EntryRegexMatch {
     type Output = Self;
 
     fn from_check_table(
-        generic_check: GenericCheck,
-        value: toml_edit::Table,
-    ) -> Result<Self::Output, super::base::CheckDefinitionError> {
+        generic_check: GenericChecker,
+        check_table: toml_edit::Table,
+    ) -> Result<Self::Output, CheckDefinitionError> {
+        let file_check = FileCheck::from_check_table(generic_check, &check_table)?;
+
+        let key_value_regex = match check_table.get("key") {
+            None => {
+                return Err(CheckDefinitionError::InvalidDefinition(
+                    "`key` key is not present".into(),
+                ))
+            }
+            Some(absent) => match absent.as_table() {
+                None => {
+                    return Err(CheckDefinitionError::InvalidDefinition(
+                        "`key` is not a table".into(),
+                    ))
+                }
+                Some(absent) => {
+                    // todo: check if there is an array in absent
+                    absent.clone()
+                }
+            },
+        };
+
         Ok(Self {
-            generic_check,
-            value,
+            file_check,
+            value: key_value_regex,
         })
     }
 }
-impl Check for EntryRegexMatch {
-    fn check_type(&self) -> String {
+impl Checker for EntryRegexMatch {
+    fn checker_type(&self) -> String {
         "key_value_regex_match".to_string()
     }
 
-    fn generic_check(&self) -> &GenericCheck {
-        &self.generic_check
+    fn checker_object(&self) -> String {
+        self.file_check.check_object()
     }
 
-    fn get_action(&self) -> Result<Action, CheckError> {
-        let mut doc = self.generic_check().get_mapping()?;
+    fn generic_checker(&self) -> &GenericChecker {
+        &self.file_check.generic_check
+    }
+
+    fn check(&self, fix: bool) -> Result<crate::checkers::base::CheckResult, CheckError> {
+        let mut doc = self.file_check.get_mapping()?;
 
         match validate_key_value_regex(doc.as_mut(), &self.value, "".to_string()) {
-            Ok(RegexValidateResult::Valid) => Ok(Action::None),
+            Ok(RegexValidateResult::Valid) => Ok(crate::checkers::base::CheckResult::NoFixNeeded),
             Ok(RegexValidateResult::Invalid {
                 key,
                 regex,
                 found: _,
-            }) => Ok(Action::MatchKeyRegex { key, regex }),
+            }) => {
+                let mut action_message =
+                    format!("content of {} does not match regex {:?}", key, regex);
+                if fix {
+                    action_message += " (not fixable via --fix)";
+                }
+                Ok(crate::checkers::base::CheckResult::FixNeeded(
+                    action_message,
+                ))
+            }
             Err(e) => Err(CheckError::InvalidRegex(e.to_string())),
         }
     }

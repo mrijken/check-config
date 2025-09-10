@@ -1,32 +1,14 @@
-use std::{
-    env,
-    fs::{self},
-    path::PathBuf,
-    str::FromStr,
-};
+use std::{env, str::FromStr};
 
 use base::CheckConstructor;
-use similar::DiffableStr;
 
-use crate::{
-    file_types::{self, FileType},
-    mapping::generic::Mapping,
-    uri::{self, expand_to_absolute},
-};
+use crate::uri::{self};
 
-use self::base::{Check, CheckDefinitionError, CheckError};
+use self::base::{Checker, CheckDefinitionError};
 
 pub(crate) mod base;
-pub(crate) mod entry_absent;
-pub(crate) mod entry_present;
-pub(crate) mod file_absent;
-pub(crate) mod file_present;
-pub(crate) mod file_regex;
-pub(crate) mod key_absent;
-pub(crate) mod key_value_present;
-pub(crate) mod key_value_regex_match;
-pub(crate) mod lines_absent;
-pub(crate) mod lines_present;
+pub(crate) mod file;
+// pub(crate) mod package;
 pub(crate) mod test_helpers;
 pub(crate) mod utils;
 
@@ -52,199 +34,30 @@ impl RelativeUrl for url::Url {
     }
 }
 
-/// get the valid checks
-/// invalid check are logged with error level and passed silently
-/// todo: do not perform checks when at least one check has a definition error
-fn get_checks_from_config_table(
-    file_with_checks: &url::Url,
-    file_to_check: PathBuf,
-    config_table: &toml_edit::Table,
-) -> Vec<Box<dyn Check>> {
-    let mut checks = vec![];
-
-    for (check_type, check_table) in config_table {
-        match check_table {
-            toml_edit::Item::Table(check_table) => {
-                match get_check_from_check_table(
-                    file_with_checks,
-                    file_to_check.clone(),
-                    check_type,
-                    check_table,
-                ) {
-                    Ok(check) => checks.push(check),
-                    Err(err) => {
-                        log::error!("Checkfile {file_with_checks}:{check_type} has errors: {err}")
-                    }
-                }
-            }
-            toml_edit::Item::ArrayOfTables(array) => {
-                for check_table in array {
-                    match get_check_from_check_table(
-                        file_with_checks,
-                        file_to_check.clone(),
-                        check_type,
-                        check_table,
-                    ) {
-                        Ok(check) => checks.push(check),
-                        Err(err) => log::error!(
-                            "Checkfile {file_with_checks}:{check_type} has errors: {err}"
-                        ),
-                    }
-                }
-            }
-            value => {
-                log::error!(
-                    "Unexpected value type {} {}",
-                    value.type_name(),
-                    file_with_checks.path()
-                );
-                std::process::exit(1);
-            }
-        };
-    }
-    checks
-}
-
 #[derive(Debug, Clone)]
-pub(crate) struct GenericCheck {
+pub(crate) struct GenericChecker {
     // path to the file where the checkers are defined
     pub(crate) file_with_checks: url::Url,
-    // path to the file which needs to be checked
-    pub(crate) file_to_check: PathBuf,
     // overridden file type
-    pub(crate) file_type_override: Option<String>,
     pub(crate) tags: Vec<String>,
 }
 
-pub(crate) enum DefaultContent {
-    None,
-    EmptyString,
-}
-impl GenericCheck {
+impl GenericChecker {
     fn file_with_checks(&self) -> &url::Url {
         &self.file_with_checks
     }
-
-    fn file_to_check(&self) -> &PathBuf {
-        &self.file_to_check
-    }
-
-    fn get_file_contents(&self, default_content: DefaultContent) -> Result<String, CheckError> {
-        match fs::read_to_string(self.file_to_check()) {
-            Ok(contents) => {
-                let contents = if contents.ends_with_newline() {
-                    contents
-                } else {
-                    format!("{contents}\n")
-                };
-                Ok(contents)
-            }
-            Err(e) => match default_content {
-                DefaultContent::None => Err(CheckError::FileCanNotBeRead(e)),
-                DefaultContent::EmptyString => Ok("".to_string()),
-            },
-        }
-    }
-
-    fn set_file_contents(
-        &self,
-        contents: String,
-        create_missing_directories: bool,
-    ) -> Result<(), CheckError> {
-        if fs::exists(self.file_to_check()).expect("no error checking existance of path")
-            && contents.is_empty()
-        {
-            return Ok(());
-        }
-
-        if let Some(parent) = self.file_to_check().parent()
-            && !parent.exists()
-        {
-            if create_missing_directories {
-                fs::create_dir_all(parent)?;
-            } else {
-                log::error!(
-                    "⚠  Intermediate directories of {} does not exists",
-                    self.file_to_check().to_string_lossy(),
-                );
-                return Err(CheckError::FileCanNotBeWritten);
-            }
-        }
-
-        if let Err(e) = fs::write(self.file_to_check(), contents) {
-            log::error!(
-                "⚠  Cannot write file {} {}",
-                self.file_to_check().to_string_lossy(),
-                e
-            );
-            Err(CheckError::FileCanNotBeWritten)
-        } else {
-            Ok(())
-        }
-    }
-
-    fn remove_file(&self) -> Result<(), CheckError> {
-        if let Err(e) = fs::remove_file(self.file_to_check()) {
-            log::error!(
-                "⚠ Cannot remove file {} {}",
-                self.file_to_check().to_string_lossy(),
-                e
-            );
-            Err(CheckError::FileCanNotBeRemoved)
-        } else {
-            Ok(())
-        }
-    }
-
-    fn get_mapping(&self) -> Result<Box<dyn Mapping>, CheckError> {
-        let extension = self.file_to_check().extension();
-        if extension.is_none() && self.file_type_override.is_none() {
-            return Err(CheckError::UnknownFileType(
-                "No extension found".to_string(),
-            ));
-        };
-
-        let contents = self.get_file_contents(DefaultContent::EmptyString)?;
-
-        let extension = self.file_type_override.clone().unwrap_or(
-            extension
-                .expect("file has an extension")
-                .to_str()
-                .expect("extension is a string")
-                .to_string(),
-        );
-
-        if extension == "toml" {
-            return file_types::toml::Toml::new().to_mapping(&contents);
-        } else if extension == "json" {
-            return file_types::json::Json::new().to_mapping(&contents);
-        } else if extension == "yaml" || extension == "yml" {
-            return file_types::yaml::Yaml::new().to_mapping(&contents);
-        }
-        Err(CheckError::UnknownFileType(extension))
-    }
-}
-
-fn determine_filetype_from_config_table(config_table: &mut toml_edit::Table) -> Option<String> {
-    Some(
-        config_table
-            .remove("__filetype__")?
-            .as_str()
-            .expect("__filetype__ is a string")
-            .to_string(),
-    )
 }
 
 fn read_tags_from_table(
     check_table: &toml_edit::Table,
 ) -> Result<Vec<String>, CheckDefinitionError> {
     let mut tags = Vec::new();
-    match check_table.get("__tags__") {
+    match check_table.get("tags") {
         None => Ok(tags),
         Some(item) => {
             if !item.is_array() {
                 Err(CheckDefinitionError::InvalidDefinition(
-                    "__tags__ is not an array".into(),
+                    "`tags` is not an array".into(),
                 ))
             } else {
                 for i in item.as_array().unwrap() {
@@ -252,7 +65,7 @@ fn read_tags_from_table(
                         tags.push(value.into());
                     } else {
                         return Err(CheckDefinitionError::InvalidDefinition(
-                            " __tags__ contains a value which is not a string".to_string(),
+                            "`tags` contains a value which is not a string".to_string(),
                         ));
                     };
                 }
@@ -265,61 +78,58 @@ fn read_tags_from_table(
 
 fn get_check_from_check_table(
     file_with_checks: &url::Url,
-    file_to_check: PathBuf,
     check_type: &str,
     check_table: &toml_edit::Table,
-) -> Result<Box<dyn Check>, CheckDefinitionError> {
-    let mut check_table = check_table.clone();
+) -> Result<Box<dyn Checker>, CheckDefinitionError> {
+    let check_table = check_table.clone();
 
     let tags = read_tags_from_table(&check_table)?;
 
-    let generic_check = GenericCheck {
+    let generic_check = GenericChecker {
         file_with_checks: file_with_checks.clone(),
-        file_to_check: file_to_check.clone(),
-        file_type_override: determine_filetype_from_config_table(&mut check_table),
         tags,
     };
     match check_type {
-        "entry_absent" => Ok(Box::new(entry_absent::EntryAbsent::from_check_table(
+        "entry_absent" => Ok(Box::new(file::entry_absent::EntryAbsent::from_check_table(
             generic_check,
             check_table,
         )?)),
-        "entry_present" => Ok(Box::new(entry_present::EntryPresent::from_check_table(
+        "entry_present" => Ok(Box::new(
+            file::entry_present::EntryPresent::from_check_table(generic_check, check_table)?,
+        )),
+        "file_absent" => Ok(Box::new(file::file_absent::FileAbsent::from_check_table(
             generic_check,
             check_table,
         )?)),
-        "file_absent" => Ok(Box::new(file_absent::FileAbsent::from_check_table(
+        "file_present" => Ok(Box::new(file::file_present::FilePresent::from_check_table(
             generic_check,
             check_table,
         )?)),
-        "file_present" => Ok(Box::new(file_present::FilePresent::from_check_table(
+        "lines_absent" => Ok(Box::new(file::lines_absent::LinesAbsent::from_check_table(
             generic_check,
             check_table,
         )?)),
-        "file_regex_match" => Ok(Box::new(file_regex::FileRegexMatch::from_check_table(
-            generic_check,
-            check_table,
-        )?)),
-        "lines_absent" => Ok(Box::new(lines_absent::LinesAbsent::from_check_table(
-            generic_check,
-            check_table,
-        )?)),
-        "lines_present" => Ok(Box::new(lines_present::LinesPresent::from_check_table(
-            generic_check,
-            check_table,
-        )?)),
+        "lines_present" => Ok(Box::new(
+            file::lines_present::LinesPresent::from_check_table(generic_check, check_table)?,
+        )),
+        // "package_present" => Ok(Box::new(
+        //     package::package_present::PackagePresent::from_check_table(generic_check, check_table)?,
+        // )),
+        // "package_absent" => Ok(Box::new(
+        //     package::package_absent::PackageAbsent::from_check_table(generic_check, check_table)?,
+        // )),
         "key_value_present" => Ok(Box::new(
-            key_value_present::KeyValuePresent::from_check_table(
+            file::key_value_present::KeyValuePresent::from_check_table(
                 generic_check,
                 check_table.clone(),
             )?,
         )),
-        "key_absent" => Ok(Box::new(key_absent::KeyAbsent::from_check_table(
+        "key_absent" => Ok(Box::new(file::key_absent::KeyAbsent::from_check_table(
             generic_check,
             check_table.clone(),
         )?)),
         "key_value_regex_match" => Ok(Box::new(
-            key_value_regex_match::EntryRegexMatch::from_check_table(
+            file::key_value_regex_match::EntryRegexMatch::from_check_table(
                 generic_check,
                 check_table.clone(),
             )?,
@@ -336,9 +146,8 @@ fn get_check_from_check_table(
 pub(crate) fn read_checks_from_path(
     file_with_checks: &url::Url,
     top_level_keys: Vec<&str>,
-) -> Vec<Box<dyn Check>> {
-    let mut checks: Vec<Box<dyn Check>> = vec![];
-
+) -> Vec<Box<dyn Checker>> {
+    let mut checks: Vec<Box<dyn Checker>> = vec![];
     let checks_toml_str = match uri::read_to_string(file_with_checks) {
         Ok(checks_toml) => checks_toml,
         Err(_) => {
@@ -354,7 +163,6 @@ pub(crate) fn read_checks_from_path(
                 return checks;
             }
         };
-
     for key in top_level_keys {
         checks_toml = match checks_toml.get(key) {
             Some(toml) => match toml.as_table() {
@@ -372,7 +180,7 @@ pub(crate) fn read_checks_from_path(
     }
 
     for (key, value) in checks_toml {
-        if key == "__include__" {
+        if key == "include" {
             if let toml_edit::Item::Value(toml_edit::Value::Array(include_uris)) = value {
                 for include_uri in include_uris {
                     let include_path = match uri::parse_uri(
@@ -392,31 +200,35 @@ pub(crate) fn read_checks_from_path(
             continue;
         }
 
-        let file_to_check = match expand_to_absolute(key.as_str()) {
-            Ok(file) => file,
-            Err(_) => {
-                log::error!("path {key} can not be resolved");
-                std::process::exit(1);
-            }
-        };
+        let check_type = key;
+        let mut checks_to_add = vec![];
         match value {
             toml_edit::Item::Table(config_table) => {
-                checks.extend(get_checks_from_config_table(
+                checks_to_add.push(get_check_from_check_table(
                     file_with_checks,
-                    file_to_check.clone(),
+                    check_type.as_str(),
                     &config_table,
                 ));
             }
             toml_edit::Item::ArrayOfTables(array) => {
-                for element in array {
-                    checks.extend(get_checks_from_config_table(
+                for config_table in array {
+                    checks_to_add.push(get_check_from_check_table(
                         file_with_checks,
-                        file_to_check.clone(),
-                        &element,
+                        check_type.as_str(),
+                        &config_table,
                     ));
                 }
             }
             _ => {}
+        }
+
+        for check in checks_to_add {
+            match check {
+                Ok(check) => checks.push(check),
+                Err(err) => {
+                    log::error!("Checkfile {file_with_checks}:{check_type} has errors: {err}")
+                }
+            }
         }
     }
     checks
@@ -425,8 +237,8 @@ pub(crate) fn read_checks_from_path(
 #[cfg(test)]
 mod test {
     use super::*;
-    use std::fs::File;
-    use std::io::Write;
+    use std::fs::{self, File};
+    use std::io::{Read, Write};
     use tempfile::tempdir;
 
     #[test]
@@ -438,39 +250,48 @@ mod test {
         writeln!(
             file_with_checkers,
             r#"
-__include__ = []  # optional list of toml files with additional checks
+include = []  # optional list of toml files with additional checks
 
-["test/absent_file".file_absent]
+[[file_absent]]
+file = "test/absent_file"
 
-["test/present_file".file_present]
+[[file_present]]
+file = "test/present_file"
 
-["test/present.toml".key_absent.key]
+[[key_absent]]
+file = "test/present.toml"
+key.key = "key"
 
-["test/present.toml".key_value_present]
-key1 = 1
-key2 = "value"
+[[key_value_present]]
+file = "test/present.toml"
+key.key1 = 1
 
-["test/present.toml".key_value_regex_match]
-key = 'v.*'
+[key_value_regex_match]
+file = "test/present.toml"
+key.key = 'v.*'
 
-["test/present.txt".lines_absent]
-__lines__ = """\
+[[lines_absent]]
+file = "test/present.txt"
+lines = """\
 multi
 line"""
 
-["test/present.txt".lines_present]
-__lines__ = """\
+[[lines_present]]
+file = "test/present.txt"
+lines = """\
 multi
 line"""
 
-["test/present.toml".entry_present.key]
-__items__ = [1,2,3]
+[[entry_present]]
+file = "test/present.toml"
+entry.key = [1,2,3]
 
-["test/present.toml".entry_absent.key]
-__items__ = [1,2,3]
+[[entry_absent]]
+file = "test/present.toml"
+entry.key = [1,2,3]
         "#
         )
-        .unwrap();
+        .expect("file is created");
 
         let path_with_checkers =
             url::Url::parse(&format!("file://{}", path_with_checkers.to_str().unwrap())).unwrap();

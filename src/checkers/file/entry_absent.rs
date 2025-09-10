@@ -1,52 +1,74 @@
-use crate::mapping::generic::Mapping;
+use crate::{checkers::file::FileCheck, mapping::generic::Mapping};
 
-use super::{
-    base::{Action, Check, CheckConstructor, CheckDefinitionError, CheckError},
-    DefaultContent, GenericCheck,
+use super::super::{
+    base::{Checker, CheckConstructor, CheckDefinitionError, CheckError},
+    GenericChecker,
 };
 
 #[derive(Debug)]
 pub(crate) struct EntryAbsent {
-    generic_check: GenericCheck,
-    value: toml_edit::Table,
+    file_check: FileCheck,
+    absent: toml_edit::Table,
 }
 
+// [[entry_absent]]
+// file = "file"
+// entry.key = ["item1"]
 impl CheckConstructor for EntryAbsent {
     type Output = Self;
     fn from_check_table(
-        generic_check: GenericCheck,
-        value: toml_edit::Table,
+        generic_check: GenericChecker,
+        check_table: toml_edit::Table,
     ) -> Result<Self::Output, CheckDefinitionError> {
+        let file_check = FileCheck::from_check_table(generic_check, &check_table)?;
+        let absent_entries = match check_table.get("entry") {
+            None => {
+                return Err(CheckDefinitionError::InvalidDefinition(
+                    "`entry` key is not present".into(),
+                ))
+            }
+            Some(absent) => match absent.as_table() {
+                None => {
+                    return Err(CheckDefinitionError::InvalidDefinition(
+                        "`entry` is not a table".into(),
+                    ))
+                }
+                Some(absent) => {
+                    // todo: check if there is an array in absent
+                    absent.clone()
+                }
+            },
+        };
+
         Ok(Self {
-            generic_check,
-            value,
+            file_check,
+            absent: absent_entries,
         })
     }
 }
-impl Check for EntryAbsent {
-    fn check_type(&self) -> String {
+
+// [[entry_absent]]
+// file = "test.json"
+// entry.key = ["item"]
+impl Checker for EntryAbsent {
+    fn checker_type(&self) -> String {
         "entry_absent".to_string()
     }
 
-    fn generic_check(&self) -> &GenericCheck {
-        &self.generic_check
+    fn checker_object(&self) -> String {
+        self.file_check.check_object()
     }
 
-    fn get_action(&self) -> Result<Action, CheckError> {
-        let contents = self
-            .generic_check()
-            .get_file_contents(DefaultContent::EmptyString)?;
-        let mut doc = self.generic_check().get_mapping()?;
+    fn generic_checker(&self) -> &GenericChecker {
+        &self.file_check.generic_check
+    }
 
-        remove_entries(doc.as_mut(), &self.value);
+    fn check(&self, fix: bool) -> Result<crate::checkers::base::CheckResult, CheckError> {
+        let mut doc = self.file_check.get_mapping()?;
 
-        let new_contents = doc.to_string()?;
+        remove_entries(doc.as_mut(), &self.absent);
 
-        if contents == new_contents {
-            Ok(Action::None)
-        } else {
-            Ok(Action::SetContents(new_contents))
-        }
+        self.file_check.conclude_check_with_new_doc(self, doc, fix)
     }
 }
 
@@ -56,14 +78,7 @@ fn remove_entries(doc: &mut dyn Mapping, entries_to_remove: &toml_edit::Table) {
             // key_to_remove does not exists, so no need to remove value_to_remove
             continue;
         }
-        if !value_to_remove.is_table() {
-            log::error!("No __items__ element found in checker");
-            return;
-        }
-        let value_to_remove = value_to_remove
-            .as_table()
-            .expect("value to remove is a table");
-        if value_to_remove.contains_key("__items__") {
+        if let Some(value_to_remove) = value_to_remove.as_array() {
             let doc_array = match doc.get_array(key_to_remove, false) {
                 Ok(a) => a,
                 Err(_) => {
@@ -72,13 +87,7 @@ fn remove_entries(doc: &mut dyn Mapping, entries_to_remove: &toml_edit::Table) {
                 }
             };
 
-            for item in value_to_remove
-                .get("__items__")
-                .expect("__items__ is present")
-                .as_array()
-                .expect("__items__ is an array")
-                .iter()
-            {
+            for item in value_to_remove.iter() {
                 doc_array.remove(&toml_edit::Item::Value(item.to_owned()))
             }
             continue;
@@ -86,7 +95,9 @@ fn remove_entries(doc: &mut dyn Mapping, entries_to_remove: &toml_edit::Table) {
         let child_doc = doc
             .get_mapping(key_to_remove, false)
             .expect("key exists from which value is removed");
-        remove_entries(child_doc, value_to_remove);
+        if let Some(value_to_remove) = value_to_remove.as_table() {
+            remove_entries(child_doc, value_to_remove);
+        }
     }
 }
 
@@ -118,8 +129,8 @@ mod tests {
     #[test]
     fn test_remove_entries_with_tables() {
         let entries_to_remove = r#"
-[key.list]
-__items__ = [{key = "3"}, {key = "2"}, {key = "4"}]
+[key]
+list = [{key = "3"}, {key = "2"}, {key = "4"}]
 "#;
         let entries_to_remove = toml_edit::DocumentMut::from_str(entries_to_remove).unwrap();
         let entries_to_remove = entries_to_remove.as_table();

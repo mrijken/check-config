@@ -1,13 +1,13 @@
 # Checkers
 
-Check Config uses `checkers` which define the desired state of the configuration files. There are several
+`check-config` uses `checkers` which define the desired state of the configuration files. There are several
 checker types (and more to come):
 
-| name | description | fixable |
+| checker type | description | fixable |
 |------|-------------|---------|
 | [file_absent](#file-absent) |  the file must be absent | yes |
 | [file_present](#file-present) |  the file must be present, indifferent the content | yes |
-| [file_regex_match](#file-regex-match) |  the content of the file must match the regex expression | when placeholder is prsent |
+| [file_regex_match](#file-regex-match) |  the content of the file must match the regex expression | when placeholder is present |
 | [key_absent](#key-absent) | a specified key must be absent in a toml / yaml / json file  | yes |
 | [key_value_present](#key-value-present) | a specified key with a specified value must be present in a toml / yaml / json file  | yes |
 | [key_value_regex_match](#key-value-regex-match) | the value of a specified key must be match the specified regex in a toml / yaml / json file  | no |
@@ -16,12 +16,12 @@ checker types (and more to come):
 | [lines_absent](#lines-absent) | the specified lines must be absent | yes |
 | [lines_present](#lines-present) | the specified lines must be present | yes |
 
-## Checker.toml
+## check-config.toml
 
-The `check-config.toml` consist of an optional toplevel keys with configuration for check-config itself:
+The `check-config.toml` is the default entrypoint to define all checkers and configure check-config:
 
 ```toml
-__include__ = [  # optional list of toml files with additional checks
+include = [  # optional list of toml files with additional checks
     "/home/me/.checkers/check.toml",  # absolute path
     "~/.checkers/check.toml",  # relative to home dir of current user
     "check.toml", # relative to this parent toml, indifferent if it is a filesystem path or a webserver path
@@ -30,26 +30,35 @@ __include__ = [  # optional list of toml files with additional checks
 ]
 ```
 
+Note: When using a path to a Python package to include checkers, the activated Python (virtual) environment will be used.
+
 And one or more checkers
 
 ```toml
-["<file_path>".<checker_name>.<checker_keys>]
-key = "value"
+[[<checker_name>]]
+<checker object> = "<file_path>"
+<checker specific key/values>
 ```
 
-The syntax is slightly different per check type. See the next sections for help about the checker definitions.
+Note the double square brackets. We use an array of tables to define the checkers, so multiple
+checkers of the same type may exist in the same toml file. If you use only one checker for
+a certain type, you can also use single square brackets. However, to be consistent and
+extensible, we advice to always use double brackets.
+
+The syntax is slightly different per checker type. See the next sections for help about the checker definitions.
 
 You can use arrays of toml tables when when a check has to be done more than once, ie:
 
 ```toml
-[[".gitignore".lines_present]]
-__lines__ = "__pycache__"
+[[lines_present]]
+file = ".gitignore"
+lines = "__pycache__"
 
-[[".gitignore".lines_present]]
-__lines__ = ".cache"
+
+[[lines_present]]
+file = ".gitignore"
+lines = ".cache"
 ```
-
-When using a path to a Python package to include checkers, the activated Python (virtual) environment will be used.
 
 ## Tags
 
@@ -57,9 +66,10 @@ All checkers can have a `__tags__` key to make it possible to exclude or include
 See [cli tags options](usage#Tags) for more information.
 
 ```toml
-[[".gitignore".lines_present]]
-__tags__ = ["linux"]
-__lines__ = ".cache"
+[[lines_present]]
+file = ".gitignore"
+tags = ["linux"]
+lines = ".cache"
 ```
 
 ## File Absent
@@ -69,7 +79,8 @@ __lines__ = ".cache"
 The next example will check that `test/absent_file` will be absent.
 
 ```toml
-["test/absent_file".file_absent]
+[[file_absent]]
+file = "test/absent_file"
 ```
 
 ## File Present
@@ -80,67 +91,101 @@ The next example will check that `test/present_file` will be present. It will
 not check the contents.
 
 ```toml
-["test/present_file".file_present]
+[[file_present]]
+file = "test/present_file"
 ```
 
 When the file does not exists, running with fix will create the file. At default an empty file
-will be created. When a placeholder is given, the created file will contain the placeholder as content.
+will be created.
+
+This checker type can handle any text file.
+
+This checker can also check for:
+- placeholder
+- regex
+- permissions
+
+### Placeholder
+
+When a placeholder is given, the created file will contain the placeholder as content.
 
 ```toml
-["test/present_file".file_present]
-__placeholder__ = "sample content"
+[[file_present]]
+file = "test/present_file"
+placeholder = "sample content"
+```
+
+### Regex Match
+
+Checks whether the contents of the file matches the regex expression.
+
+```toml
+[[file_present]]
+file = ".bashrc"
+regex = 'export KEY=.*'
+```
+
+Multiple regex can be given when the file.checker_type pair is an array, ie:
+
+```toml
+[[file_present]]
+file = ".bashrc"
+regex = 'export KEY=.*'
+
+[[file_present]]
+file = ".bashrc"
+regex = 'export ANOTHER_KEY=.*'
+```
+
+Note: specify the regex as a raw toml string (single quotes) to prevent escaping.
+
+### Permissions
+
+On Unix systems, you can check for the permissions:
+
+```toml
+[[file_present]]
+file = ".bashrc"
+permissions = "644"
+```
+
+The permissions need to be defined in the octal representation. See [chmod calculator](https://chmod-calculator.com/)
+an explanation.
+
+### Combinations
+
+These extra checks can also be combined in one definition:
+
+```toml
+[[file_present]]
+file = ".bashrc"
+regex = 'export KEY=.*'
+placeholder = "export KEY=hi"
+permissions = "644"
 ```
 
 ## Key Absent
 
 `key_absent` will check if the key is not present in the file.
 
-The next example will check that `test/present_file` has no key named `key`.
+The next example will check that `test/present_file` has no key named `key_to_be_absent`.
 
 ```toml
-["test/present.toml".key_absent.key]
+[[key_absent]]
+file = "test/present.toml"
+key.key_to_be_absent = {}
 ```
 
-The key can be nested. In the next case it is sufficient that `key` is not present.
-`super_key` may be present or absent.
+The key can be nested. In the next case it is sufficient that `key_to_be_absent` is not present.
+`super_key` will not be removed if it contains also other keys.
 
 ```toml
-["test/present.toml".key_absent.super_key.key]
+[[key_absent]]
+file = "test/present.toml"
+key.super_key.key_to_be_absent = {}
 ```
 
 This checker type can handle different kind of [mapping file types](#mapping-file-types)
-
-## File Regex Match
-
-Checks whether the contents of the file matches the regex expression.
-
-```toml
-[".bashrc".file_regex_match]
-__regex__ = 'export KEY=.*'
-```
-
-Multiple regex can be given when the file.checker_type pair is an array, ie:
-
-```toml
-[[".bashrc".file_regex_match]]
-__regex__ = 'export KEY=.*'
-
-[[".bashrc".file_regex_match]]
-__regex__ = 'export ANOTHER_KEY=.*'
-```
-
-When the file does not exists, running with fix will create the file if a `__placeholder__` value is given
-with that value as content. If no `__placeholder__` is given, no file is created.
-
-```toml
-[".bashrc".file_regex_match]
-__regex__ = 'export KEY=.*'
-__placeholder__ = "export KEY=value"
-```
-
-Note: specify the regex as a raw toml string (single quotes) to prevent escaping.
-
-This checker type can handle any text file.
 
 ## Key Value Present
 
@@ -149,37 +194,44 @@ Keys may be nested. Intermediate keys has to have mappings as values. When inter
 are not present, they will be added.
 
 ```toml
-["test/present.toml".key_value_present]
-key1 = 1
-key2 = "value"
+[[key_value_present]]
+file = "test/present.toml"
+key.key_to_add = 1
+key.key_to_add_also = "value"
 ```
 
 ```toml
-["test/present.toml".key_value_present.super_key]
-key1 = 1
-key2 = "value"
+[key_value_present.super_key]
+file = "test/present.toml"
+key.super_key.key_to_add = {"inline_table" = "is also possible"}
 ```
 
 This checker type can handle different kind of [mapping file types](#mapping-file-types)
 
 ## Entry Absent
 
-`entry_absent` will check that specified `__items__` are not present on the specified path.
+`entry_absent` will check that all array items `entry.key<.key> = ["item"]` will be removed from the specified
+file.
 
 ```toml
-["test/present.toml".entry_absent.key]
-__items__ = [1, 2]
+[[entry_absent]]
+file = "test/present.toml"
+key.list = [1, 2]
 ```
 
+This checker type can handle different kind of [mapping file types](#mapping-file-types)
 ## Entry Present
 
-`entry_present` will check that specified `__items__` are not present on the specified path.
+`entry_present` will check that all array items `entry.key<.key> = ["item"]` will be added to the specified
+file, if they do not exists already.
 
 ```toml
-["test/present.toml".entry_present.key]
-__items__ = [1, 2]
+[[entry_present]]
+file = "test/present.toml"
+key.list = [1, 2]
 ```
 
+This checker type can handle different kind of [mapping file types](#mapping-file-types)
 ## Key Value Regex Match
 
 `key_value_regex_match` will check that the keys specified are present and the value matches the specified regex.
@@ -188,13 +240,9 @@ Keys may be nested. Intermediate keys has to have mappings as values. When inter
 are not present, they will be added.
 
 ```toml
-["test/present.toml".key_value_regex_match]
-key = 'v.*'
-```
-
-```toml
-["test/present.toml".key_value_regex_match.super_key]
-key = '[0-9]*'
+[[key_value_regex_match]]
+file = "test/present.toml"
+key.key = 'v.*'
 ```
 
 Note: specify the regex as a raw string (single quotes) to be prevent escaping.
@@ -206,22 +254,25 @@ This checker type can handle different kind of [mapping file types](#mapping-fil
 `lines_absent` will check that the file does not contain the lines as specified.
 
 ```toml
-["test/present.txt".lines_absent]
-__lines__ = """\
+[[lines_absent]]
+file = "test/present.txt"
+lines = """\
 multi
 line"""
 ```
 
 ```toml
-["test/present.txt".lines_absent]
-__lines__ = """single line"""
+[lines_absent]
+file = "test/present.txt"
+lines = """single line"""
 ```
 
 You can also remove text between markers which removes the markers also
 
 ```toml
-["test/present.txt".lines_absent]
-__marker_ = "# marker""
+[[lines_absent]]
+file = "test/present.txt"
+marker = "# marker""
 ```
 
 This will change the next text:
@@ -246,32 +297,36 @@ Bla
 `lines_present` will check that the file does contain the lines as specified.
 
 ```toml
-["test/present.txt".lines_present]
-__lines__ = """\
+[[lines_present]]
+file = "test/present.txt"
+lines = """\
 multi
 line"""
 ```
 
 ```toml
 ["test/present.txt".lines_present]
-__lines__ = """single line"""
+file = "test/present.txt"
+lines = """single line"""
 ```
 
 Optionnally it can replace strings by regex, ie if you want to replace an export with a new value:
 
 ```toml
-["~/.bahsrc".lines_present]
-__lines__ = "export EDITOR=hx"
-__replacement_regex = "(?m)^export EDITOR=.*$"
+[[lines_present]]
+file = "~/.bashrc"
+lines = "export EDITOR=hx"
+replacement_regex = "(?m)^export EDITOR=.*$"
 ```
 
 Or you can use marker lines:
 
 
 ```toml
-["~/.bahsrc".lines_present]
-__lines__ = "export EDITOR=hx"
-__marker = "# marker"
+[[lines_present]]
+file = "~/.bashrc"
+lines = "export EDITOR=hx"
+marker = "# marker"
 ```
 
 Which replaces text from
@@ -311,8 +366,8 @@ which contains mappings:
 The filetype will be determined by the extension. You can override this by specifying the filetype:
 
 ```toml
-["test/present.toml".key_value_present]
-__filetype__ = "json"
-key1 = 1
-key2 = "value"
+[[key_value_present]]
+file = "test/present.toml" 
+file_type = "json"
+key.key = 1
 ```

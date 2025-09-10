@@ -1,14 +1,14 @@
 use crate::checkers::base::CheckDefinitionError;
 
-pub(crate) fn parse_marker_lines(
+pub(crate) fn get_marker_from_check_table(
     value: &toml_edit::Table,
 ) -> Result<Option<(String, String)>, CheckDefinitionError> {
-    let marker_lines = match value.get("__marker__") {
+    let marker_lines = match value.get("marker") {
         None => None,
         Some(marker) => match marker.as_str() {
             None => {
                 return Err(CheckDefinitionError::InvalidDefinition(
-                    "__marker__ is not a string".to_string(),
+                    "`marker` is not a string".to_string(),
                 ))
             }
             Some(marker) => {
@@ -24,25 +24,25 @@ pub(crate) fn parse_marker_lines(
     Ok(marker_lines)
 }
 
-/// Get the __lines__ from value
+/// Get the lines from value
 /// When absent, return an error or return the defalt_value when Some
-pub(crate) fn parse_lines(
+pub(crate) fn get_lines_from_check_table(
     value: &toml_edit::Table,
     default_value: Option<String>,
 ) -> Result<String, CheckDefinitionError> {
-    let lines = match value.get("__lines__") {
+    let lines = match value.get("lines") {
         None => {
             if let Some(default_value) = default_value {
                 return Ok(default_value);
             }
             return Err(CheckDefinitionError::InvalidDefinition(
-                "__lines__ is not present".to_string(),
+                "`lines` is not present".to_string(),
             ));
         }
         Some(lines) => match lines.as_str() {
             None => {
                 return Err(CheckDefinitionError::InvalidDefinition(
-                    "__lines__ is not a string".to_string(),
+                    "`lines` is not a string".to_string(),
                 ))
             }
             Some(lines) => lines.to_string(),
@@ -90,7 +90,7 @@ pub(crate) fn remove_between_markers(
     {
         let before = &contents[..start_pos];
         let after = &contents[end_pos + end_marker.len()..];
-        return dbg!(format!("{}{}", before, after));
+        return format!("{}{}", before, after);
     }
 
     contents.to_string()
