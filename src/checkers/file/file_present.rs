@@ -1,12 +1,14 @@
-use std::{fs::Permissions, os::unix::fs::PermissionsExt};
+use std::fs::Permissions;
+#[cfg(not(target_os = "windows"))]
+use std::os::unix::fs::PermissionsExt;
 
 use regex::Regex;
 
 use crate::checkers::file::FileCheck;
 
 use super::super::{
-    base::{Checker, CheckConstructor, CheckDefinitionError, CheckError},
     GenericChecker,
+    base::{CheckConstructor, CheckDefinitionError, CheckError, Checker},
 };
 
 #[derive(Debug)]
@@ -35,6 +37,12 @@ pub(crate) fn get_permissions_from_checktable(
     check_table: &toml_edit::Table,
 ) -> Result<Option<Permissions>, CheckDefinitionError> {
     if let Some(permissions) = check_table.get("permissions") {
+        #[cfg(target_os = "windows")]
+        {
+            Ok(None)
+        }
+
+        #[cfg(not(target_os = "windows"))]
         match permissions.as_str() {
             None => Err(CheckDefinitionError::InvalidDefinition(
                 "permissions is not a string".into(),

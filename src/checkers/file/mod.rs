@@ -1,4 +1,7 @@
-use std::{fs, os::unix::fs::PermissionsExt, path::PathBuf};
+use std::fs;
+#[cfg(not(target_os = "windows"))]
+use std::os::unix::fs::PermissionsExt;
+use std::path::PathBuf;
 
 use similar::{DiffableStr, TextDiff};
 
@@ -114,19 +117,27 @@ impl FileCheck {
         };
 
         let fix_permissions = if let Some(permissions) = permissions.clone() {
-            if create_file {
-                true
-            } else {
-                let current_permissions = match self.file_to_check.metadata() {
-                    Err(_) => {
-                        return Err(CheckError::PermissionsNotAccessable);
-                    }
-                    Ok(metadata) => metadata.permissions(),
-                };
+            #[cfg(target_os = "windows")]
+            {
+                Ok(None)
+            }
 
-                // we only check for the last 3 octal digits
+            #[cfg(not(target_os = "windows"))]
+            {
+                if create_file {
+                    true
+                } else {
+                    let current_permissions = match self.file_to_check.metadata() {
+                        Err(_) => {
+                            return Err(CheckError::PermissionsNotAccessable);
+                        }
+                        Ok(metadata) => metadata.permissions(),
+                    };
 
-                (current_permissions.mode() & 0o777) != (permissions.mode() & 0o777)
+                    // we only check for the last 3 octal digits
+
+                    (current_permissions.mode() & 0o777) != (permissions.mode() & 0o777)
+                }
             }
         } else {
             false
