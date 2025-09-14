@@ -4,8 +4,8 @@ use similar::{DiffableStr, TextDiff};
 
 use crate::{
     checkers::{
-        base::{Checker, CheckDefinitionError, CheckError, CheckResult},
         GenericChecker,
+        base::{CheckDefinitionError, CheckError, CheckResult, Checker},
     },
     file_types::{self, FileType},
     mapping::generic::Mapping,
@@ -118,7 +118,7 @@ impl FileCheck {
                 true
             } else {
                 let current_permissions = match self.file_to_check.metadata() {
-                    Err(e) => {
+                    Err(_) => {
                         return Err(CheckError::PermissionsNotAccessable);
                     }
                     Ok(metadata) => metadata.permissions(),
@@ -227,7 +227,7 @@ impl FileCheck {
             (false, _) => CheckResult::NoFixNeeded,
             (true, false) => CheckResult::FixNeeded(action_message),
             (true, true) => {
-                self.remove_file();
+                self.remove_file()?;
                 CheckResult::FixExecuted(action_message)
             }
         };
@@ -246,7 +246,7 @@ impl FileCheck {
                 };
                 Ok(contents)
             }
-            Err(e) => Ok("".to_string()),
+            Err(_) => Ok("".to_string()),
         }
     }
 

@@ -1,5 +1,6 @@
 include = [
         "https://raw.githubusercontent.com/mrijken/check-config/refs/heads/main/example/checkers/http_check_config.toml",
+        "http_check_config.toml",
         "folder/local_file.toml"
 ]
 

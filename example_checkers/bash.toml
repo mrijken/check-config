@@ -1,2 +1,3 @@
-[".bashrc".file_regex_match]
-__regex__ = "export KEY=.*"
+[[file_regex_match]]
+file  = ".bashrc"
+regex = "export KEY=.*"

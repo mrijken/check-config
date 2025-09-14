@@ -1,11 +1,9 @@
-use std::sync::Arc;
-
 use crate::checkers::file::FileCheck;
 pub(crate) use crate::mapping::generic::Mapping;
 
 use super::super::{
-    base::{Checker, CheckConstructor, CheckDefinitionError, CheckError},
     GenericChecker,
+    base::{CheckConstructor, CheckDefinitionError, CheckError, Checker},
 };
 
 #[derive(Debug)]
@@ -28,13 +26,13 @@ impl CheckConstructor for EntryPresent {
             None => {
                 return Err(CheckDefinitionError::InvalidDefinition(
                     "`entry` key is not present".into(),
-                ))
+                ));
             }
             Some(present) => match present.as_table() {
                 None => {
                     return Err(CheckDefinitionError::InvalidDefinition(
                         "`entry` is not a table".into(),
-                    ))
+                    ));
                 }
                 Some(present) => {
                     // todo: check if there is an array in present

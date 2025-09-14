@@ -4,8 +4,8 @@ use crate::{
 };
 
 use super::super::{
-    base::{Checker, CheckConstructor, CheckError},
     GenericChecker,
+    base::{CheckConstructor, CheckError, Checker},
 };
 
 #[derive(Debug)]
@@ -30,13 +30,13 @@ impl CheckConstructor for KeyValuePresent {
             None => {
                 return Err(CheckDefinitionError::InvalidDefinition(
                     "`key` key is not present".into(),
-                ))
+                ));
             }
             Some(absent) => match absent.as_table() {
                 None => {
                     return Err(CheckDefinitionError::InvalidDefinition(
                         "`key` is not a table".into(),
-                    ))
+                    ));
                 }
                 Some(absent) => {
                     // todo: check if there is an array in absent

@@ -1,4 +1,5 @@
-__include__ = ["http_check_config_relative.toml"]
+include = ["http_check_config_relative.toml"]
 
-["output/test.json".key_value_regex_match]
-regex = "m[a-z]tches"
+[[key_value_regex_match]]
+file = "output/test.json"
+key.regex = "m[a-z]tches"

@@ -4,7 +4,7 @@ use base::CheckConstructor;
 
 use crate::uri::{self};
 
-use self::base::{Checker, CheckDefinitionError};
+use self::base::{CheckDefinitionError, Checker};
 
 pub(crate) mod base;
 pub(crate) mod file;
@@ -237,8 +237,8 @@ pub(crate) fn read_checks_from_path(
 #[cfg(test)]
 mod test {
     use super::*;
-    use std::fs::{self, File};
-    use std::io::{Read, Write};
+    use std::fs::File;
+    use std::io::Write;
     use tempfile::tempdir;
 
     #[test]

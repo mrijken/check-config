@@ -3,7 +3,7 @@ use std::process::ExitCode;
 
 use clap::Parser;
 
-use crate::checkers::{base::Checker, RelativeUrl};
+use crate::checkers::{RelativeUrl, base::Checker};
 
 use super::checkers::read_checks_from_path;
 
@@ -148,7 +148,9 @@ pub fn cli() -> ExitCode {
                             read_checks_from_path(&uri, vec!["tool", "check-config"])
                         }
                         false => {
-                            log::error!("⚠️ No path specified and default paths are not found, so we ran out of options to load the config");
+                            log::error!(
+                                "⚠️ No path specified and default paths are not found, so we ran out of options to load the config"
+                            );
                             return ExitCode::from(ExitStatus::Error);
                         }
                     }
