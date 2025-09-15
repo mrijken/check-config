@@ -143,6 +143,7 @@ impl FileCheck {
             false
         };
 
+        #[cfg(not(target_os = "windows"))]
         if fix_permissions {
             action_messages.push(format!(
                 "fix permissions to {:o}",
