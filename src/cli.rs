@@ -229,8 +229,6 @@ pub(crate) fn run_checks(checks: &Vec<Box<dyn Checker>>, fix: bool) -> ExitStatu
         _ => log::error!("⚠️  There are {error_count} errors executing a fix.",),
     }
 
-    log::error!("🥇 No violations found.");
-
     if error_count > 0 {
         ExitStatus::Error
     } else if fix_needed_count > 0 {
