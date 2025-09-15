@@ -119,7 +119,7 @@ impl FileCheck {
         let fix_permissions = if let Some(permissions) = permissions.clone() {
             #[cfg(target_os = "windows")]
             {
-                Ok(None)
+                false
             }
 
             #[cfg(not(target_os = "windows"))]
