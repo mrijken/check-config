@@ -134,6 +134,10 @@ fn get_check_from_check_table(
                 check_table.clone(),
             )?,
         )),
+        "git_fetch" => Ok(Box::new(file::git_fetch::GitFetch::from_check_table(
+            generic_check,
+            check_table.clone(),
+        )?)),
         _ => {
             log::error!("unknown check {check_type} {check_table}");
             Err(CheckDefinitionError::UnknownCheckType(

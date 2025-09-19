@@ -4,7 +4,7 @@ use std::os::unix::fs::PermissionsExt;
 
 use regex::Regex;
 
-use crate::checkers::file::FileCheck;
+use crate::checkers::file::{FileCheck, get_option_string_value_from_checktable};
 
 use super::super::{
     GenericChecker,
@@ -74,18 +74,14 @@ pub(crate) fn get_permissions_from_checktable(
 pub(crate) fn get_regex_from_checktable(
     check_table: &toml_edit::Table,
 ) -> Result<Option<Regex>, CheckDefinitionError> {
-    match check_table.get("regex") {
-        None => Ok(None),
-        Some(regex) => match regex.as_str() {
-            None => Err(CheckDefinitionError::InvalidDefinition(format!(
-                "regex ({regex}) is not a string"
+    match get_option_string_value_from_checktable(check_table, "regex") {
+        Err(err) => Err(err),
+        Ok(None) => Ok(None),
+        Ok(Some(regex)) => match Regex::new(regex.as_str()) {
+            Ok(r) => Ok(Some(r)),
+            Err(_) => Err(CheckDefinitionError::InvalidDefinition(format!(
+                "regex ({regex}) is not a valid regex"
             ))),
-            Some(s) => match Regex::new(s) {
-                Ok(r) => Ok(Some(r)),
-                Err(_) => Err(CheckDefinitionError::InvalidDefinition(format!(
-                    "regex ({regex}) is not a valid regex"
-                ))),
-            },
         },
     }
 }
@@ -101,7 +97,7 @@ impl CheckConstructor for FilePresent {
 
         let permissions = get_permissions_from_checktable(&value)?;
 
-        let placeholder = get_placeholder_from_checktable(&value)?;
+        let placeholder = get_option_string_value_from_checktable(&value, "placeholder")?;
 
         let regex = get_regex_from_checktable(&value)?;
         Ok(Self {

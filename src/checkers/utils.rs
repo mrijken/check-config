@@ -1,4 +1,7 @@
-use crate::checkers::base::CheckDefinitionError;
+use crate::checkers::{
+    base::CheckDefinitionError,
+    file::{get_option_string_value_from_checktable, get_string_value_from_checktable},
+};
 
 pub(crate) fn get_marker_from_check_table(
     value: &toml_edit::Table,
@@ -9,7 +12,7 @@ pub(crate) fn get_marker_from_check_table(
             None => {
                 return Err(CheckDefinitionError::InvalidDefinition(
                     "`marker` is not a string".to_string(),
-                ))
+                ));
             }
             Some(marker) => {
                 let marker = marker.trim_end();
@@ -25,31 +28,19 @@ pub(crate) fn get_marker_from_check_table(
 }
 
 /// Get the lines from value
-/// When absent, return an error or return the defalt_value when Some
+/// When absent, return an error or return the default_value when Some
 pub(crate) fn get_lines_from_check_table(
-    value: &toml_edit::Table,
+    check_table: &toml_edit::Table,
     default_value: Option<String>,
 ) -> Result<String, CheckDefinitionError> {
-    let lines = match value.get("lines") {
-        None => {
-            if let Some(default_value) = default_value {
-                return Ok(default_value);
-            }
-            return Err(CheckDefinitionError::InvalidDefinition(
-                "`lines` is not present".to_string(),
-            ));
+    match get_option_string_value_from_checktable(check_table, "lines") {
+        Ok(None) => Ok(default_value.unwrap_or("".to_string()).to_string()),
+        Ok(Some(lines)) => {
+            let lines_with_trailing_new_line_when_not_empty = append_str(&lines, "");
+            Ok(lines_with_trailing_new_line_when_not_empty)
         }
-        Some(lines) => match lines.as_str() {
-            None => {
-                return Err(CheckDefinitionError::InvalidDefinition(
-                    "`lines` is not a string".to_string(),
-                ))
-            }
-            Some(lines) => lines.to_string(),
-        },
-    };
-    let lines_with_trailing_new_line_when_not_empty = append_str(&lines, "");
-    Ok(lines_with_trailing_new_line_when_not_empty)
+        Err(err) => Err(err),
+    }
 }
 
 /// Replace the text between markers with replacement

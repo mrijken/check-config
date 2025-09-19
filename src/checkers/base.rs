@@ -16,9 +16,9 @@ pub enum CheckResult {
 
 #[derive(Error, Debug, PartialEq)]
 pub(crate) enum CheckDefinitionError {
-    #[error("invalid check definition")]
+    #[error("invalid check definition ({0})")]
     InvalidDefinition(String),
-    #[error("Unknown checktype")]
+    #[error("Unknown checktype ({0})")]
     UnknownCheckType(String),
 }
 
@@ -26,18 +26,20 @@ pub(crate) enum CheckDefinitionError {
 pub(crate) enum CheckError {
     #[error("file can not be read")]
     FileCanNotBeRead(#[from] io::Error),
-    #[error("unknown file type; do not know how to handle")]
+    #[error("unknown file type ({0}); do not know how to handle")]
     UnknownFileType(String),
     #[error("file can not be removed")]
     FileCanNotBeRemoved,
     #[error("file can not be written")]
     FileCanNotBeWritten,
-    #[error("invalid file format")]
+    #[error("invalid file format ({0})")]
     InvalidFileFormat(String),
-    #[error("invalid regex format")]
+    #[error("invalid regex format ({0})")]
     InvalidRegex(String),
     #[error("permission not available on this system")]
     PermissionsNotAccessable,
+    #[error("git error ({0})")]
+    GitError(String),
 }
 
 pub(crate) trait CheckConstructor {

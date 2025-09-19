@@ -5,8 +5,8 @@ use crate::checkers::{
 
 use super::super::base::CheckConstructor;
 pub(super) use super::super::{
-    base::{Checker, CheckDefinitionError, CheckError},
     GenericChecker,
+    base::{CheckDefinitionError, CheckError, Checker},
 };
 
 #[derive(Debug)]

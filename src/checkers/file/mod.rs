@@ -19,6 +19,7 @@ pub(crate) mod entry_absent;
 pub(crate) mod entry_present;
 pub(crate) mod file_absent;
 pub(crate) mod file_present;
+pub(crate) mod git_fetch;
 pub(crate) mod key_absent;
 pub(crate) mod key_value_present;
 pub(crate) mod key_value_regex_match;
@@ -329,6 +330,33 @@ impl FileCheck {
     }
 }
 
+pub(crate) fn get_option_string_value_from_checktable(
+    check_table: &toml_edit::Table,
+    key: &str,
+) -> Result<Option<String>, CheckDefinitionError> {
+    match check_table.get(key) {
+        None => Ok(None),
+        Some(value) => match value.as_str() {
+            None => Err(CheckDefinitionError::InvalidDefinition(format!(
+                "{key} is not a string"
+            ))),
+            Some(value) => Ok(Some(value.to_string())),
+        },
+    }
+}
+
+pub(crate) fn get_string_value_from_checktable(
+    check_table: &toml_edit::Table,
+    key: &str,
+) -> Result<String, CheckDefinitionError> {
+    match get_option_string_value_from_checktable(check_table, key) {
+        Ok(Some(value)) => Ok(value),
+        Ok(None) => Err(CheckDefinitionError::InvalidDefinition(format!(
+            "{key} is not present in check_table"
+        ))),
+        Err(err) => Err(err),
+    }
+}
 #[cfg(test)]
 mod test_helpers {
     use crate::checkers::GenericChecker;

@@ -1,7 +1,7 @@
 include = [
-        "https://raw.githubusercontent.com/mrijken/check-config/refs/heads/main/example/checkers/http_check_config.toml",
-        "http_check_config.toml",
-        "folder/local_file.toml"
+  "https://raw.githubusercontent.com/mrijken/check-config/refs/heads/main/example/checkers/http_check_config.toml",
+  "http_check_config.toml",
+  "folder/local_file.toml",
 ]
 
 [[file_absent]]
@@ -32,15 +32,15 @@ lines = "alias to_be_removed='ls'"
 
 [[key_absent]]
 file = "output/test.json"
-key.to_be_removed = {}
+key.to_be_removed = {  }
 
 [[key_absent]]
 file = "output/test.toml"
-key.to_be_removed = {}
+key.to_be_removed = {  }
 
 [[key_absent]]
 file = "output/test.yaml"
-key.to_be_removed = {}
+key.to_be_removed = {  }
 
 [[key_value_present]]
 file = "output/test.json"
@@ -137,3 +137,8 @@ entry.list2 = ["already_present"]
 file = "output/test.yaml"
 tags = ["not_selected"]
 entry.list3 = ["not added"]
+
+[[git_fetch]]
+dir = "output/check-config"
+repo = "https://github.com/mrijken/check-config.git"
+branch = "main"

@@ -90,6 +90,11 @@ fn py_url_to_url(package_uri: url::Url) -> Result<url::Url, Error> {
     Ok(module_url.join(path_inside_package_without_leading_slash)?)
 }
 
+// Get an absolute path to the given path
+// If the string starts with:
+// ~  - the path is relative to the homedir of the current user
+// /  - the path is absolute
+// other - the path is relative to the homedir
 pub fn expand_to_absolute(path_str: &str) -> std::io::Result<PathBuf> {
     if path_str.starts_with("~") {
         if let Some(home) = dirs::home_dir() {
