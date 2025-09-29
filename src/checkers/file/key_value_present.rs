@@ -65,7 +65,7 @@ impl Checker for KeyValuePresent {
         &self.file_check.generic_check
     }
 
-    fn check(&self, fix: bool) -> Result<crate::checkers::base::CheckResult, CheckError> {
+    fn check_(&self, fix: bool) -> Result<crate::checkers::base::CheckResult, CheckError> {
         let mut doc = self.file_check.get_mapping()?;
 
         set_key_value(doc.as_mut(), &self.value);

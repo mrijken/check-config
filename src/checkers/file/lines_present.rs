@@ -8,8 +8,8 @@ use crate::checkers::{
 
 use super::super::base::CheckConstructor;
 pub(crate) use super::super::{
-    base::{Checker, CheckDefinitionError, CheckError},
     GenericChecker,
+    base::{CheckDefinitionError, CheckError, Checker},
 };
 use regex::Regex;
 
@@ -84,10 +84,8 @@ impl Checker for LinesPresent {
         &self.file_check.generic_check
     }
 
-    fn check(&self, fix: bool) -> Result<crate::checkers::base::CheckResult, CheckError> {
-        let contents = self
-            .file_check
-            .get_file_contents()?;
+    fn check_(&self, fix: bool) -> Result<crate::checkers::base::CheckResult, CheckError> {
+        let contents = self.file_check.get_file_contents()?;
 
         let new_contents = match (self.replacement_regex.as_ref(), self.marker_lines.as_ref()) {
             (None, None) => {
@@ -123,6 +121,7 @@ mod tests {
     use std::io::Write;
 
     use crate::checkers::base::CheckResult;
+    use crate::checkers::test_helpers;
 
     use super::*;
 
@@ -133,7 +132,7 @@ mod tests {
         marker: Option<String>,
         replacement_regex: Option<String>,
     ) -> (LinesPresent, tempfile::TempDir) {
-        let generic_check = super::super::test_helpers::get_generic_check();
+        let generic_check = test_helpers::get_generic_check();
 
         let mut check_table = toml_edit::Table::new();
         let dir = tempdir().unwrap();
@@ -161,33 +160,34 @@ mod tests {
 
         // not existing file
         assert_eq!(
-            lines_present_check.check(false).unwrap(),
+            lines_present_check.check_(false).unwrap(),
             CheckResult::FixNeeded("Set file contents to: \n@@ -0,0 +1,2 @@\n+1\n+2\n".into())
         );
 
         // empty file
-        File::create(&lines_present_check.file_check.file_to_check).unwrap();
+        File::create(&lines_present_check.file_check.file_to_check.as_ref()).unwrap();
         assert_eq!(
-            lines_present_check.check(false).unwrap(),
+            lines_present_check.check_(false).unwrap(),
             CheckResult::FixNeeded("Set file contents to: \n@@ -1 +1,2 @@\n-\n+1\n+2\n".into())
         );
 
         // file with other contents
-        let mut file = File::create(&lines_present_check.file_check.file_to_check).unwrap();
+        let mut file =
+            File::create(&lines_present_check.file_check.file_to_check.as_ref()).unwrap();
         writeln!(file, "a").unwrap();
         assert_eq!(
-            lines_present_check.check(false).unwrap(),
+            lines_present_check.check_(false).unwrap(),
             CheckResult::FixNeeded("Set file contents to: \n@@ -1 +1,3 @@\n a\n+1\n+2\n".into())
         );
 
         // file with correct contents
         assert_eq!(
-            lines_present_check.check(true).unwrap(),
+            lines_present_check.check_(true).unwrap(),
             CheckResult::FixExecuted("Set file contents to: \n@@ -1 +1,3 @@\n a\n+1\n+2\n".into())
         );
 
         assert_eq!(
-            lines_present_check.check(false).unwrap(),
+            lines_present_check.check_(false).unwrap(),
             CheckResult::NoFixNeeded
         );
     }

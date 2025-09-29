@@ -2,7 +2,7 @@ use core::fmt::Debug as DebugTrait;
 use std::io;
 use thiserror::Error;
 
-use crate::checkers::RelativeUrl;
+use crate::{checkers::RelativeUrl, uri::PathError};
 
 use super::GenericChecker;
 
@@ -11,7 +11,7 @@ pub enum CheckResult {
     NoFixNeeded,
     FixNeeded(String),
     FixExecuted(String),
-    // Error(String),
+    Error(String),
 }
 
 #[derive(Error, Debug, PartialEq)]
@@ -40,6 +40,10 @@ pub(crate) enum CheckError {
     PermissionsNotAccessable,
     #[error("git error ({0})")]
     GitError(String),
+    #[error("file can not be fetched")]
+    FetchError(#[from] PathError),
+    #[error("{0}")]
+    String(String),
 }
 
 pub(crate) trait CheckConstructor {
@@ -69,7 +73,7 @@ pub(crate) trait Checker: DebugTrait {
             CheckResult::NoFixNeeded => ("✅", "".to_string()),
             CheckResult::FixNeeded(action) => ("❌", format!(" - {action}")),
             CheckResult::FixExecuted(action) => ("🔧", format!(" - {action}")),
-            // CheckResult::Error(_) => ("⚠️", "".to_string()),
+            CheckResult::Error(e) => ("🚨", format!(" - {e}")),
         };
         let msg = format!(
             "{} {} - {} - {}{}",
@@ -83,9 +87,20 @@ pub(crate) trait Checker: DebugTrait {
             CheckResult::NoFixNeeded => log::info!("{msg}"),
             CheckResult::FixExecuted(_) => log::info!("{msg}"),
             CheckResult::FixNeeded(_) => log::warn!("{msg}"),
-            // CheckResult::Error(_) => log::error!("{msg}"),
+            CheckResult::Error(_) => log::error!("{msg}"),
         }
     }
 
-    fn check(&self, fix: bool) -> Result<CheckResult, CheckError>;
+    fn check_(&self, fix: bool) -> Result<CheckResult, CheckError>;
+
+    fn check(&self, fix: bool) -> CheckResult {
+        let check_result = match self.check_(fix) {
+            Ok(check_result) => check_result,
+            Err(e) => CheckResult::Error(e.to_string()),
+        };
+
+        self.print(&check_result);
+
+        check_result
+    }
 }

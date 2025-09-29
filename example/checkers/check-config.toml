@@ -2,6 +2,8 @@ include = [
   "https://raw.githubusercontent.com/mrijken/check-config/refs/heads/main/example/checkers/http_check_config.toml",
   "http_check_config.toml",
   "folder/local_file.toml",
+  "copy.toml",
+  "unpack.toml",
 ]
 
 [[file_absent]]
@@ -18,7 +20,7 @@ placeholder = """
         email = <your email>
 """
 
-[[file_regex_match]]
+[[file_present]]
 file = "output/.bashrc"
 regex = "export KEY=.*"
 
@@ -138,7 +140,7 @@ file = "output/test.yaml"
 tags = ["not_selected"]
 entry.list3 = ["not added"]
 
-[[git_fetch]]
+[[git_fetched]]
 dir = "output/check-config"
 repo = "https://github.com/mrijken/check-config.git"
 branch = "main"

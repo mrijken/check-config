@@ -7,16 +7,16 @@ use crate::{
         base::CheckResult,
         file::{get_option_string_value_from_checktable, get_string_value_from_checktable},
     },
-    uri::expand_to_absolute,
+    uri::parse_uri,
 };
 
-use super::super::{
+use super::{
     GenericChecker,
     base::{CheckConstructor, CheckDefinitionError, CheckError, Checker},
 };
 
 #[derive(Debug)]
-pub(crate) struct GitFetch {
+pub(crate) struct GitFetched {
     generic_check: GenericChecker,
     dir: PathBuf,
     repo: String,
@@ -33,7 +33,7 @@ fn exactly_one(a: bool, b: bool, c: bool) -> bool {
 // dir = "destination"
 // repo = "repo_url"
 // ref = "branch, commit hash or tag"
-impl CheckConstructor for GitFetch {
+impl CheckConstructor for GitFetched {
     type Output = Self;
 
     fn from_check_table(
@@ -52,9 +52,10 @@ impl CheckConstructor for GitFetch {
         }
 
         let dir = get_string_value_from_checktable(&check_table, "dir")?;
-        let dir = expand_to_absolute(dir.as_str())
-            .map_err(|e| CheckDefinitionError::InvalidDefinition("invalid path".into()))?;
-
+        let dir = parse_uri(dir.as_str(), Some(generic_check.file_with_checks()))
+            .map_err(|e| CheckDefinitionError::InvalidDefinition(e.to_string()))?
+            .to_file_path()
+            .map_err(|_| CheckDefinitionError::InvalidDefinition("invalid path".into()))?;
         Ok(Self {
             repo,
             branch,
@@ -65,9 +66,9 @@ impl CheckConstructor for GitFetch {
         })
     }
 }
-impl Checker for GitFetch {
+impl Checker for GitFetched {
     fn checker_type(&self) -> String {
-        "git_fetch".to_string()
+        "git_fetched".to_string()
     }
 
     fn generic_checker(&self) -> &GenericChecker {
@@ -76,7 +77,7 @@ impl Checker for GitFetch {
     fn checker_object(&self) -> String {
         self.repo.clone()
     }
-    fn check(&self, fix: bool) -> Result<crate::checkers::base::CheckResult, CheckError> {
+    fn check_(&self, fix: bool) -> Result<crate::checkers::base::CheckResult, CheckError> {
         let mut action_messages: Vec<String> = vec![];
 
         // git clone when self.dir does not exists
@@ -87,14 +88,14 @@ impl Checker for GitFetch {
         }
 
         // error when dir is not a git dir
-        let not_a_git_dir = !self.dir.join(".git").is_dir();
+        let not_a_git_dir = !git_clone && !self.dir.join(".git").is_dir();
 
         if not_a_git_dir {
             action_messages.push("delete dir, because it is not a git dir".into());
         }
 
         // fetch if branch is not pulled or tag/commit is not present
-        let sync_repo = if git_clone {
+        let sync_repo = if git_clone || not_a_git_dir {
             false
         } else {
             !is_in_sync(
@@ -137,8 +138,6 @@ impl Checker for GitFetch {
             (false, false) => CheckResult::NoFixNeeded,
             (false, true) => CheckResult::FixNeeded(action_message),
         };
-
-        self.print(&check_result);
 
         Ok(check_result)
     }
@@ -286,7 +285,7 @@ pub fn sync_with_remote(
 #[cfg(test)]
 mod tests {
 
-    use crate::checkers::base::CheckResult;
+    use crate::checkers::{base::CheckResult, test_helpers};
 
     use super::*;
 
@@ -294,9 +293,9 @@ mod tests {
 
     fn get_check_with_result(
         repo: String,
-        ref_: String,
-    ) -> (Result<GitFetch, CheckDefinitionError>, tempfile::TempDir) {
-        let generic_check = super::super::test_helpers::get_generic_check();
+        branch: String,
+    ) -> (Result<GitFetched, CheckDefinitionError>, tempfile::TempDir) {
+        let generic_check = test_helpers::get_generic_check();
 
         let mut check_table = toml_edit::Table::new();
         let tmp_dir = tempdir().unwrap();
@@ -304,33 +303,33 @@ mod tests {
         check_table.insert("dir", dir.to_string_lossy().to_string().into());
 
         check_table.insert("repo", repo.into());
-        check_table.insert("ref", ref_.into());
+        check_table.insert("branch", branch.into());
         (
-            GitFetch::from_check_table(generic_check, check_table),
+            GitFetched::from_check_table(generic_check, check_table),
             tmp_dir,
         )
     }
 
     #[test]
-    fn test_git_fetch() {
-        let (git_fetch_check, _tempdir) = get_check_with_result(
+    fn test_git_fetched() {
+        let (git_fetched_check, _tempdir) = get_check_with_result(
             "https://github.com/mrijken/check-config.git".into(),
             "main".into(),
         );
 
-        let git_fetch_check = git_fetch_check.expect("correct checktable");
+        let git_fetch_check = git_fetched_check.expect("correct checktable");
 
         assert_eq!(
-            git_fetch_check.check(false).unwrap(),
-            CheckResult::FixNeeded("clone repo".into())
+            git_fetch_check.check_(false).unwrap(),
+            CheckResult::FixNeeded("git clone".into())
         );
 
         assert_eq!(
-            git_fetch_check.check(true).unwrap(),
-            CheckResult::FixExecuted("clone repo".into())
+            git_fetch_check.check_(true).unwrap(),
+            CheckResult::FixExecuted("git clone".into())
         );
         assert_eq!(
-            git_fetch_check.check(false).unwrap(),
+            git_fetch_check.check_(false).unwrap(),
             CheckResult::NoFixNeeded
         );
     }

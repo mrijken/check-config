@@ -64,7 +64,7 @@ impl Checker for EntryPresent {
         &self.file_check.generic_check
     }
 
-    fn check(&self, fix: bool) -> Result<crate::checkers::base::CheckResult, CheckError> {
+    fn check_(&self, fix: bool) -> Result<crate::checkers::base::CheckResult, CheckError> {
         let mut doc = self.file_check.get_mapping()?;
 
         add_entries(doc.as_mut(), &self.present);

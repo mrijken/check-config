@@ -7,20 +7,20 @@ use crate::{
 };
 
 use super::super::{
-    base::{Checker, CheckConstructor, CheckError},
     GenericChecker,
+    base::{CheckConstructor, CheckError, Checker},
 };
 
 #[derive(Debug)]
-pub(crate) struct EntryRegexMatch {
+pub(crate) struct EntryRegexMatched {
     file_check: FileCheck,
     value: toml_edit::Table,
 }
 
-// [key_value_regex_match]
+// [key_value_regex_matched]
 // file = "file"
 // key.key = "regex"
-impl CheckConstructor for EntryRegexMatch {
+impl CheckConstructor for EntryRegexMatched {
     type Output = Self;
 
     fn from_check_table(
@@ -33,13 +33,13 @@ impl CheckConstructor for EntryRegexMatch {
             None => {
                 return Err(CheckDefinitionError::InvalidDefinition(
                     "`key` key is not present".into(),
-                ))
+                ));
             }
             Some(absent) => match absent.as_table() {
                 None => {
                     return Err(CheckDefinitionError::InvalidDefinition(
                         "`key` is not a table".into(),
-                    ))
+                    ));
                 }
                 Some(absent) => {
                     // todo: check if there is an array in absent
@@ -54,9 +54,9 @@ impl CheckConstructor for EntryRegexMatch {
         })
     }
 }
-impl Checker for EntryRegexMatch {
+impl Checker for EntryRegexMatched {
     fn checker_type(&self) -> String {
-        "key_value_regex_match".to_string()
+        "key_value_regex_matched".to_string()
     }
 
     fn checker_object(&self) -> String {
@@ -67,7 +67,7 @@ impl Checker for EntryRegexMatch {
         &self.file_check.generic_check
     }
 
-    fn check(&self, fix: bool) -> Result<crate::checkers::base::CheckResult, CheckError> {
+    fn check_(&self, fix: bool) -> Result<crate::checkers::base::CheckResult, CheckError> {
         let mut doc = self.file_check.get_mapping()?;
 
         match validate_key_value_regex(doc.as_mut(), &self.value, "".to_string()) {
@@ -128,20 +128,20 @@ fn validate_key_value_regex(
                             key: make_key_path(&key_path, key),
                             regex: raw_regex.value().to_owned(),
                             found: "".to_string(),
-                        })
+                        });
                     }
                 }
             }
             toml_edit::Item::Table(t) => match doc.get_mapping(key, false) {
                 Ok(child_doc) => {
-                    return validate_key_value_regex(child_doc, t, make_key_path(&key_path, key))
+                    return validate_key_value_regex(child_doc, t, make_key_path(&key_path, key));
                 }
                 _ => {
                     return Ok(RegexValidateResult::Invalid {
                         key: make_key_path(&key_path, key),
                         regex: "".to_string(),
                         found: "".to_string(),
-                    })
+                    });
                 }
             },
 
@@ -160,7 +160,7 @@ mod tests {
     #[test]
     fn test_test_files() {
         for (test_path, test_input, test_expected_output, checker) in
-            read_test_files("key_value_regex_match")
+            read_test_files("key_value_regex_matched")
         {
             let mut test_input = test_input;
             let result =

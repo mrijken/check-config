@@ -12,14 +12,15 @@ use crate::{
     },
     file_types::{self, FileType},
     mapping::generic::Mapping,
-    uri::expand_to_absolute,
+    uri::WritablePath,
 };
 
 pub(crate) mod entry_absent;
 pub(crate) mod entry_present;
 pub(crate) mod file_absent;
+pub(crate) mod file_copied;
 pub(crate) mod file_present;
-pub(crate) mod git_fetch;
+pub(crate) mod file_unpacked;
 pub(crate) mod key_absent;
 pub(crate) mod key_value_present;
 pub(crate) mod key_value_regex_match;
@@ -29,7 +30,7 @@ pub(crate) mod lines_present;
 #[derive(Debug, Clone)]
 pub(crate) struct FileCheck {
     generic_check: GenericChecker,
-    pub(crate) file_to_check: PathBuf,
+    pub(crate) file_to_check: WritablePath,
     pub(crate) file_type_override: Option<String>,
 }
 
@@ -45,13 +46,9 @@ impl FileCheck {
             Some(file_to_check) => match file_to_check.as_str() {
                 None => Err(CheckDefinitionError::InvalidDefinition(
                     "file is not a string".into(),
-                )),
-                Some(file_to_check) => match expand_to_absolute(file_to_check) {
-                    Ok(file) => Ok(file),
-                    Err(_) => Err(CheckDefinitionError::InvalidDefinition(
-                        "file is not a valida path".into(),
-                    )),
-                },
+                ))?,
+                Some(file_to_check) => Ok(WritablePath::from_string(file_to_check)
+                    .map_err(|_| CheckDefinitionError::InvalidDefinition("invalid path".into()))?),
             },
         }?;
 
@@ -73,11 +70,11 @@ impl FileCheck {
     }
 
     fn check_object(&self) -> String {
-        self.file_to_check.to_string_lossy().to_string()
+        self.file_to_check.as_ref().to_string_lossy().to_string()
     }
 
     fn file_to_check(&self) -> &PathBuf {
-        &self.file_to_check
+        &self.file_to_check.as_ref()
     }
 
     fn get_action_message(&self, old_contents: &str, new_contents: &str) -> String {
@@ -105,7 +102,7 @@ impl FileCheck {
     ) -> Result<CheckResult, CheckError> {
         let mut action_messages: Vec<String> = vec![];
 
-        let create_file = !self.file_to_check.exists();
+        let create_file = !self.file_to_check.as_ref().exists();
 
         if create_file {
             action_messages.push("create file".into());
@@ -128,7 +125,7 @@ impl FileCheck {
                 if create_file {
                     true
                 } else {
-                    let current_permissions = match self.file_to_check.metadata() {
+                    let current_permissions = match self.file_to_check.as_ref().metadata() {
                         Err(_) => {
                             return Err(CheckError::PermissionsNotAccessable);
                         }
@@ -187,8 +184,6 @@ impl FileCheck {
             }
         };
 
-        check.print(&check_result);
-
         Ok(check_result)
     }
 
@@ -215,8 +210,6 @@ impl FileCheck {
             }
         };
 
-        check.print(&check_result);
-
         Ok(check_result)
     }
 
@@ -236,7 +229,7 @@ impl FileCheck {
     ) -> Result<CheckResult, CheckError> {
         let action_message = "remove file".to_string();
 
-        let check_result = match (self.file_to_check.exists(), fix) {
+        let check_result = match (self.file_to_check.as_ref().exists(), fix) {
             (false, _) => CheckResult::NoFixNeeded,
             (true, false) => CheckResult::FixNeeded(action_message),
             (true, true) => {
@@ -244,7 +237,6 @@ impl FileCheck {
                 CheckResult::FixExecuted(action_message)
             }
         };
-        check.print(&check_result);
 
         Ok(check_result)
     }
@@ -355,20 +347,5 @@ pub(crate) fn get_string_value_from_checktable(
             "{key} is not present in check_table"
         ))),
         Err(err) => Err(err),
-    }
-}
-#[cfg(test)]
-mod test_helpers {
-    use crate::checkers::GenericChecker;
-
-    pub(crate) fn get_generic_check() -> GenericChecker {
-        let file = tempfile::NamedTempFile::new().expect("temp file is created");
-        GenericChecker {
-            file_with_checks: url::Url::parse(
-                format!("file://{}", file.path().to_string_lossy()).as_str(),
-            )
-            .expect("valid path"),
-            tags: Vec::new(),
-        }
     }
 }

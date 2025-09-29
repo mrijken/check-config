@@ -1,36 +1,40 @@
 # Checkers
 
-`check-config` uses `checkers` which define the desired state of the configuration files. There are several
-checker types (and more to come):
+`check-config` uses `checkers` which define the desired state of the configuration files.
+There are several checker types (and more to come):
 
-| checker type | description | fixable |
-|------|-------------|---------|
-| [file_absent](#file-absent) |  the file must be absent | yes |
-| [file_present](#file-present) |  the file must be present, indifferent the content | yes |
-| [file_regex_match](#file-regex-match) |  the content of the file must match the regex expression | when placeholder is present |
-| [key_absent](#key-absent) | a specified key must be absent in a toml / yaml / json file  | yes |
-| [key_value_present](#key-value-present) | a specified key with a specified value must be present in a toml / yaml / json file  | yes |
-| [key_value_regex_match](#key-value-regex-match) | the value of a specified key must be match the specified regex in a toml / yaml / json file  | no |
-| [entry_absent](#entry-absent) | a specified entry must be absent in the array of a toml / yaml / json file  | yes |
-| [entry_present](#entry-present) | a specified entry  must be present in the of a toml / yaml / json file  | yes |
-| [lines_absent](#lines-absent) | the specified lines must be absent | yes |
-| [lines_present](#lines-present) | the specified lines must be present | yes |
+| checker type                                        | description                                                                                 | fixable |
+| --------------------------------------------------- | ------------------------------------------------------------------------------------------- | ------- |
+| [file_absent](#file-absent)                         | the file must be absent                                                                     | yes     |
+| [file_present](#file-present)                       | the file must be present, indifferent the content                                           | yes     |
+| [key_absent](#key-absent)                           | a specified key must be absent in a toml / yaml / json file                                 | yes     |
+| [key_value_present](#key-value-present)             | a specified key with a specified value must be present in a toml / yaml / json file         | yes     |
+| [key_value_regex_matched](#key-value-regex-matched) | the value of a specified key must be match the specified regex in a toml / yaml / json file | no      |
+| [entry_absent](#entry-absent)                       | a specified entry must be absent in the array of a toml / yaml / json file                  | yes     |
+| [entry_present](#entry-present)                     | a specified entry must be present in the of a toml / yaml / json file                       | yes     |
+| [lines_absent](#lines-absent)                       | the specified lines must be absent                                                          | yes     |
+| [lines_present](#lines-present)                     | the specified lines must be present                                                         | yes     |
+| [file_unpacked](#file-unpacked)                     | the file must be unpacked                                                                   | yes     |
+| [file_copied]#file-copied)                          | the file must be copied                                                                     | yes     |
+| [git_fetched]#get-fetched)                          | the git repo must be present                                                                | yes     |
 
 ## check-config.toml
 
-The `check-config.toml` is the default entrypoint to define all checkers and configure check-config:
+The `check-config.toml` is the default entrypoint to define all checkers and
+configure check-config:
 
 ```toml
 include = [  # optional list of toml files with additional checks
     "/home/me/.checkers/check.toml",  # absolute path
     "~/.checkers/check.toml",  # relative to home dir of current user
-    "check.toml", # relative to this parent toml, indifferent if it is a filesystem path or a webserver path
+    "check.toml", # relative to the parent dir of this toml, indifferent if it is a filesystem path or a webserver path
     "py://my_package:checkers/python.toml", # path to file in python package
     "https//example.com/check.toml", # path on webserver
-]
+ ]
 ```
 
-Note: When using a path to a Python package to include checkers, the activated Python (virtual) environment will be used.
+Note: When using a path to a Python package to include checkers, the activated
+Python (virtual) environment will be used.
 
 And one or more checkers
 
@@ -40,14 +44,16 @@ And one or more checkers
 <checker specific key/values>
 ```
 
-Note the double square brackets. We use an array of tables to define the checkers, so multiple
-checkers of the same type may exist in the same toml file. If you use only one checker for
-a certain type, you can also use single square brackets. However, to be consistent and
-extensible, we advice to always use double brackets.
+Note the double square brackets. We use an array of tables to define the checkers,
+so multiple checkers of the same type may exist in the same toml file. If you use
+only one checker for a certain type, you can also use single square brackets.
+However, to be consistent and extensible, we advice to always use double brackets.
 
-The syntax is slightly different per checker type. See the next sections for help about the checker definitions.
+The syntax is slightly different per checker type. See the next sections for help
+about the checker definitions.
 
-You can use arrays of toml tables when when a check has to be done more than once, ie:
+You can use arrays of toml tables when when a check has to be done more than
+once, ie:
 
 ```toml
 [[lines_present]]
@@ -62,7 +68,9 @@ lines = ".cache"
 
 ## Tags
 
-All checkers can have a `__tags__` key to make it possible to exclude or include this checker from the execution.
+All checkers can have a `tags` key to make it possible to exclude or include
+this checker from the execution.
+
 See [cli tags options](usage#Tags) for more information.
 
 ```toml
@@ -70,6 +78,21 @@ See [cli tags options](usage#Tags) for more information.
 file = ".gitignore"
 tags = ["linux"]
 lines = ".cache"
+```
+
+## Fixable
+
+When `--fix` is given on the cli, `check-config` will try to fix the checkers. However,
+sometimes you do not want to fix a checker, but just check if a previous fix is
+performed correct. For example: you unzip a file in one checker and want to check
+whether a file is unpacked from the zip. In that case you do not want to create
+an empty file by the checker which checks for the file. To do so, add
+`fixable = false` to your checker, like:
+
+```toml
+[[file_present]]
+file = "path/to/unpacked_file"
+fixable = false
 ```
 
 ## File Absent
@@ -95,12 +118,13 @@ not check the contents.
 file = "test/present_file"
 ```
 
-When the file does not exists, running with fix will create the file. At default an empty file
-will be created.
+When the file does not exists, running with fix will create the file. At default an
+empty file will be created.
 
 This checker type can handle any text file.
 
 This checker can also check for:
+
 - placeholder
 - regex
 - permissions
@@ -164,6 +188,31 @@ placeholder = "export KEY=hi"
 permissions = "644"
 ```
 
+## File Copied
+
+`file_copied` will check that the file is copied from a file on your system or from
+https.
+
+```toml
+[[file_copied]]
+file = "url or path to file"
+
+```
+
+TODO
+
+## File Unpacked
+
+`file_unpacked` will check that the file is unpacked.
+
+TODO
+
+## Git Fetched
+
+`git_fetched` will check that the git repo is cloned and fetched.
+
+TODO
+
 ## Key Absent
 
 `key_absent` will check if the key is not present in the file.
@@ -220,6 +269,7 @@ key.list = [1, 2]
 ```
 
 This checker type can handle different kind of [mapping file types](#mapping-file-types)
+
 ## Entry Present
 
 `entry_present` will check that all array items `entry.key<.key> = ["item"]` will be added to the specified
@@ -232,15 +282,16 @@ key.list = [1, 2]
 ```
 
 This checker type can handle different kind of [mapping file types](#mapping-file-types)
-## Key Value Regex Match
 
-`key_value_regex_match` will check that the keys specified are present and the value matches the specified regex.
+## Key Value Regex Matched
+
+`key_value_regex_matched` will check that the keys specified are present and the value matches the specified regex.
 Of course, the regex can only match string values.
 Keys may be nested. Intermediate keys has to have mappings as values. When intermediate values
 are not present, they will be added.
 
 ```toml
-[[key_value_regex_match]]
+[[key_value_regex_matched]]
 file = "test/present.toml"
 key.key = 'v.*'
 ```
@@ -321,7 +372,6 @@ replacement_regex = "(?m)^export EDITOR=.*$"
 
 Or you can use marker lines:
 
-
 ```toml
 [[lines_present]]
 file = "~/.bashrc"
@@ -354,11 +404,11 @@ a next checker.
 
 ## Mapping File Types
 
-The checker types with a key (key_absent, key_value_present, key_value_regex_match) can we used on several file types
+The checker types with a key (key_absent, key_value_present, key_value_regex_matched) can we used on several file types
 which contains mappings:
 
 | type | extension |
-|------|-----------|
+| ---- | --------- |
 | toml | toml      |
 | yaml | yaml, yml |
 | json | json      |
@@ -367,7 +417,7 @@ The filetype will be determined by the extension. You can override this by speci
 
 ```toml
 [[key_value_present]]
-file = "test/present.toml" 
+file = "test/present.toml"
 file_type = "json"
 key.key = 1
 ```

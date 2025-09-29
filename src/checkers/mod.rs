@@ -1,4 +1,8 @@
+use std::fs;
+use std::io::{self, Write};
+use std::path::{Path, PathBuf};
 use std::{env, str::FromStr};
+use url::Url;
 
 use base::CheckConstructor;
 
@@ -9,6 +13,7 @@ use self::base::{CheckDefinitionError, Checker};
 pub(crate) mod base;
 pub(crate) mod file;
 // pub(crate) mod package;
+pub(crate) mod git;
 pub(crate) mod test_helpers;
 pub(crate) mod utils;
 
@@ -40,6 +45,8 @@ pub(crate) struct GenericChecker {
     pub(crate) file_with_checks: url::Url,
     // overridden file type
     pub(crate) tags: Vec<String>,
+    // fixable
+    pub(crate) fixable: bool,
 }
 
 impl GenericChecker {
@@ -76,6 +83,21 @@ fn read_tags_from_table(
     }
 }
 
+fn get_option_boolean_from_check_table(
+    check_table: &toml_edit::Table,
+    key: &str,
+) -> Result<Option<bool>, CheckDefinitionError> {
+    match check_table.get(key) {
+        None => Ok(None),
+        Some(value) => match value.as_bool() {
+            Some(value) => Ok(Some(value)),
+            None => Err(CheckDefinitionError::InvalidDefinition(format!(
+                "{key} is not a boolean",
+            ))),
+        },
+    }
+}
+
 fn get_check_from_check_table(
     file_with_checks: &url::Url,
     check_type: &str,
@@ -85,9 +107,12 @@ fn get_check_from_check_table(
 
     let tags = read_tags_from_table(&check_table)?;
 
+    let fixable = (get_option_boolean_from_check_table(&check_table, "fixable")?).unwrap_or(true);
+
     let generic_check = GenericChecker {
         file_with_checks: file_with_checks.clone(),
         tags,
+        fixable,
     };
     match check_type {
         "entry_absent" => Ok(Box::new(file::entry_absent::EntryAbsent::from_check_table(
@@ -105,6 +130,13 @@ fn get_check_from_check_table(
             generic_check,
             check_table,
         )?)),
+        "file_copied" => Ok(Box::new(file::file_copied::FileCopied::from_check_table(
+            generic_check,
+            check_table,
+        )?)),
+        "file_unpacked" => Ok(Box::new(
+            file::file_unpacked::FileUnpacked::from_check_table(generic_check, check_table)?,
+        )),
         "lines_absent" => Ok(Box::new(file::lines_absent::LinesAbsent::from_check_table(
             generic_check,
             check_table,
@@ -128,13 +160,13 @@ fn get_check_from_check_table(
             generic_check,
             check_table.clone(),
         )?)),
-        "key_value_regex_match" => Ok(Box::new(
-            file::key_value_regex_match::EntryRegexMatch::from_check_table(
+        "key_value_regex_matched" => Ok(Box::new(
+            file::key_value_regex_match::EntryRegexMatched::from_check_table(
                 generic_check,
                 check_table.clone(),
             )?,
         )),
-        "git_fetch" => Ok(Box::new(file::git_fetch::GitFetch::from_check_table(
+        "git_fetched" => Ok(Box::new(git::GitFetched::from_check_table(
             generic_check,
             check_table.clone(),
         )?)),
@@ -270,7 +302,7 @@ key.key = "key"
 file = "test/present.toml"
 key.key1 = 1
 
-[key_value_regex_match]
+[key_value_regex_matched]
 file = "test/present.toml"
 key.key = 'v.*'
 

@@ -57,7 +57,7 @@ impl Checker for LinesAbsent {
         &self.file_check.generic_check
     }
 
-    fn check(&self, fix: bool) -> Result<crate::checkers::base::CheckResult, CheckError> {
+    fn check_(&self, fix: bool) -> Result<crate::checkers::base::CheckResult, CheckError> {
         let contents = self.file_check.get_file_contents()?;
 
         let new_contents = if let Some((start_marker, end_marker)) = self.marker_lines.as_ref() {
@@ -77,6 +77,7 @@ mod tests {
     use std::io::Write;
 
     use crate::checkers::base::CheckResult;
+    use crate::checkers::test_helpers;
 
     use super::*;
 
@@ -86,7 +87,7 @@ mod tests {
         lines: String,
         marker: Option<String>,
     ) -> (LinesAbsent, tempfile::TempDir) {
-        let generic_check = super::super::test_helpers::get_generic_check();
+        let generic_check = test_helpers::get_generic_check();
 
         let mut check_table = toml_edit::Table::new();
         let dir = tempdir().unwrap();
@@ -136,46 +137,46 @@ mod tests {
 
         // not existing file
         assert_eq!(
-            lines_absent_check.check(false).unwrap(),
+            lines_absent_check.check_(false).unwrap(),
             CheckResult::NoFixNeeded
         );
 
         // empty file
-        File::create(lines_absent_check.file_check.file_to_check.clone()).unwrap();
+        File::create(lines_absent_check.file_check.file_to_check.as_ref().clone()).unwrap();
         assert_eq!(
-            lines_absent_check.check(false).unwrap(),
+            lines_absent_check.check_(false).unwrap(),
             CheckResult::NoFixNeeded
         );
 
         // file with other contents
         let mut file: File =
-            File::create(lines_absent_check.file_check.file_to_check.clone()).unwrap();
+            File::create(lines_absent_check.file_check.file_to_check.as_ref().clone()).unwrap();
         writeln!(file, "a").unwrap();
         assert_eq!(
-            lines_absent_check.check(false).unwrap(),
+            lines_absent_check.check_(false).unwrap(),
             CheckResult::NoFixNeeded
         );
 
         // file with incorrect contents
         let mut file: File =
-            File::create(lines_absent_check.file_check.file_to_check.clone()).unwrap();
+            File::create(lines_absent_check.file_check.file_to_check.as_ref().clone()).unwrap();
         write!(file, "1\n2\nb\n").unwrap();
         assert_eq!(
-            lines_absent_check.check(false).unwrap(),
+            lines_absent_check.check_(false).unwrap(),
             CheckResult::FixNeeded(
                 "Set file contents to: \n@@ -1,3 +1 @@\n-1\n-2\n b\n".to_string()
             )
         );
 
         assert_eq!(
-            lines_absent_check.check(true).unwrap(),
+            lines_absent_check.check_(true).unwrap(),
             CheckResult::FixExecuted(
                 "Set file contents to: \n@@ -1,3 +1 @@\n-1\n-2\n b\n".to_string()
             )
         );
 
         assert_eq!(
-            lines_absent_check.check(false).unwrap(),
+            lines_absent_check.check_(false).unwrap(),
             CheckResult::NoFixNeeded,
         );
     }

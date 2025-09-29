@@ -1,5 +1,5 @@
 include = ["http_check_config_relative.toml"]
 
-[[key_value_regex_match]]
+[[key_value_regex_matched]]
 file = "output/test.json"
 key.regex = "m[a-z]tches"

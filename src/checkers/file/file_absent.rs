@@ -1,8 +1,8 @@
 use crate::checkers::base::CheckResult;
 use crate::checkers::file::FileCheck;
 
-use super::super::base::{Checker, CheckConstructor, CheckDefinitionError, CheckError};
 use super::super::GenericChecker;
+use super::super::base::{CheckConstructor, CheckDefinitionError, CheckError, Checker};
 
 #[derive(Debug, Clone)]
 pub(crate) struct FileAbsent {
@@ -35,7 +35,7 @@ impl Checker for FileAbsent {
         &self.file_check.generic_check
     }
 
-    fn check(&self, fix: bool) -> Result<CheckResult, CheckError> {
+    fn check_(&self, fix: bool) -> Result<CheckResult, CheckError> {
         self.file_check.conclude_check_with_remove(self, fix)
     }
 }
@@ -45,12 +45,14 @@ mod tests {
 
     use std::fs::File;
 
+    use crate::checkers::test_helpers;
+
     use super::*;
 
-    use tempfile::{tempdir, TempDir};
+    use tempfile::{TempDir, tempdir};
 
     fn get_file_absent_check() -> (FileAbsent, TempDir) {
-        let generic_check = super::super::test_helpers::get_generic_check();
+        let generic_check = test_helpers::get_generic_check();
 
         let mut check_table = toml_edit::Table::new();
         let dir = tempdir().unwrap();
@@ -68,19 +70,20 @@ mod tests {
         let (file_absent_check, _tmpdir) = get_file_absent_check();
 
         assert_eq!(
-            file_absent_check.check(false).unwrap(),
+            file_absent_check.check_(false).unwrap(),
             CheckResult::NoFixNeeded
         );
 
-        File::create(&file_absent_check.file_check.file_to_check).expect("file is created");
+        File::create(&file_absent_check.file_check.file_to_check.as_ref())
+            .expect("file is created");
 
         assert_eq!(
-            file_absent_check.check(true).unwrap(),
+            file_absent_check.check_(true).unwrap(),
             CheckResult::FixExecuted("remove file".into())
         );
 
         assert_eq!(
-            file_absent_check.check(false).unwrap(),
+            file_absent_check.check_(false).unwrap(),
             CheckResult::NoFixNeeded
         );
     }

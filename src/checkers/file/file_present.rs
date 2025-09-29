@@ -19,20 +19,6 @@ pub(crate) struct FilePresent {
     regex: Option<Regex>,
 }
 
-pub(crate) fn get_placeholder_from_checktable(
-    check_table: &toml_edit::Table,
-) -> Result<Option<String>, CheckDefinitionError> {
-    match check_table.get("placeholder") {
-        None => Ok(None),
-        Some(placeholder) => match placeholder.as_str() {
-            None => Err(CheckDefinitionError::InvalidDefinition(
-                "placeholder is not a string".into(),
-            )),
-            Some(placeholder) => Ok(Some(placeholder.to_string())),
-        },
-    }
-}
-
 pub(crate) fn get_permissions_from_checktable(
     check_table: &toml_edit::Table,
 ) -> Result<Option<Permissions>, CheckDefinitionError> {
@@ -119,7 +105,7 @@ impl Checker for FilePresent {
     fn checker_object(&self) -> String {
         self.file_check.check_object()
     }
-    fn check(&self, fix: bool) -> Result<crate::checkers::base::CheckResult, CheckError> {
+    fn check_(&self, fix: bool) -> Result<crate::checkers::base::CheckResult, CheckError> {
         self.file_check.conclude_check_file_exists(
             self,
             self.placeholder.clone(),
@@ -135,7 +121,7 @@ mod tests {
 
     use std::fs::write;
 
-    use crate::checkers::base::CheckResult;
+    use crate::checkers::{base::CheckResult, test_helpers};
 
     use super::*;
 
@@ -146,7 +132,7 @@ mod tests {
         permissions: Option<String>,
         regex: Option<String>,
     ) -> (Result<FilePresent, CheckDefinitionError>, tempfile::TempDir) {
-        let generic_check = super::super::test_helpers::get_generic_check();
+        let generic_check = test_helpers::get_generic_check();
 
         let mut check_table = toml_edit::Table::new();
         let dir = tempdir().unwrap();
@@ -186,16 +172,16 @@ mod tests {
         let (file_present_check, _tempdir) = get_file_present_check(None, None, None);
 
         assert_eq!(
-            file_present_check.check(false).unwrap(),
+            file_present_check.check_(false).unwrap(),
             CheckResult::FixNeeded("create file".into())
         );
 
         assert_eq!(
-            file_present_check.check(true).unwrap(),
+            file_present_check.check_(true).unwrap(),
             CheckResult::FixExecuted("create file".into())
         );
         assert_eq!(
-            file_present_check.check(false).unwrap(),
+            file_present_check.check_(false).unwrap(),
             CheckResult::NoFixNeeded
         );
     }
@@ -206,16 +192,16 @@ mod tests {
             get_file_present_check(Some("placeholder".into()), None, None);
 
         assert_eq!(
-            file_present_check.check(false).unwrap(),
+            file_present_check.check_(false).unwrap(),
             CheckResult::FixNeeded("create file\nset contents to placeholder".into())
         );
 
         assert_eq!(
-            file_present_check.check(true).unwrap(),
+            file_present_check.check_(true).unwrap(),
             CheckResult::FixExecuted("create file\nset contents to placeholder".into())
         );
         assert_eq!(
-            file_present_check.check(false).unwrap(),
+            file_present_check.check_(false).unwrap(),
             CheckResult::NoFixNeeded
         );
     }
@@ -225,17 +211,17 @@ mod tests {
         let (file_present_check, _tempdir) = get_file_present_check(None, Some("666".into()), None);
 
         assert_eq!(
-            file_present_check.check(false).unwrap(),
+            file_present_check.check_(false).unwrap(),
             CheckResult::FixNeeded("create file\nfix permissions to 666".into())
         );
 
         assert_eq!(
-            file_present_check.check(true).unwrap(),
+            file_present_check.check_(true).unwrap(),
             CheckResult::FixExecuted("create file\nfix permissions to 666".into())
         );
 
         assert_eq!(
-            file_present_check.check(false).unwrap(),
+            file_present_check.check_(false).unwrap(),
             CheckResult::NoFixNeeded
         );
     }
@@ -250,28 +236,34 @@ mod tests {
         assert_eq!(
             file_present_error,
             CheckDefinitionError::InvalidDefinition(
-                "regex (\"^[0-9]{1,3$\") is not a valid regex".into()
+                "regex (^[0-9]{1,3$) is not a valid regex".into()
             )
         );
         let (file_present_check, _tempdir) =
             get_file_present_check(None, None, Some("[0-9]{1,3}".into()));
 
         assert_eq!(
-            file_present_check.check(false).unwrap(),
+            file_present_check.check_(false).unwrap(),
             CheckResult::FixNeeded("create file\nfix content to match regex \"[0-9]{1,3}\"".into())
         );
 
-        let _ = write(file_present_check.file_check.file_to_check.clone(), "bla");
+        let _ = write(
+            file_present_check.file_check.file_to_check.as_ref().clone(),
+            "bla",
+        );
 
         assert_eq!(
-            file_present_check.check(false).unwrap(),
+            file_present_check.check_(false).unwrap(),
             CheckResult::FixNeeded("fix content to match regex \"[0-9]{1,3}\"".into())
         );
 
-        let _ = write(file_present_check.file_check.file_to_check.clone(), "129");
+        let _ = write(
+            file_present_check.file_check.file_to_check.as_ref().clone(),
+            "129",
+        );
 
         assert_eq!(
-            file_present_check.check(false).unwrap(),
+            file_present_check.check_(false).unwrap(),
             CheckResult::NoFixNeeded
         );
     }

@@ -1,7 +1,4 @@
-use crate::checkers::{
-    base::CheckDefinitionError,
-    file::{get_option_string_value_from_checktable, get_string_value_from_checktable},
-};
+use crate::checkers::{base::CheckDefinitionError, file::get_option_string_value_from_checktable};
 
 pub(crate) fn get_marker_from_check_table(
     value: &toml_edit::Table,

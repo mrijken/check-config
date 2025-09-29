@@ -4,8 +4,8 @@ use crate::{
 };
 
 use super::super::{
-    base::{Checker, CheckConstructor, CheckError},
     GenericChecker,
+    base::{CheckConstructor, CheckError, Checker},
 };
 
 #[derive(Debug)]
@@ -30,13 +30,13 @@ impl CheckConstructor for KeyAbsent {
             None => {
                 return Err(CheckDefinitionError::InvalidDefinition(
                     "`key` key is not present".into(),
-                ))
+                ));
             }
             Some(absent) => match absent.as_table() {
                 None => {
                     return Err(CheckDefinitionError::InvalidDefinition(
                         "`key` is not a table".into(),
-                    ))
+                    ));
                 }
                 Some(absent) => {
                     // todo: check if there is an array in absent
@@ -65,7 +65,7 @@ impl Checker for KeyAbsent {
         self.file_check.check_object()
     }
 
-    fn check(&self, fix: bool) -> Result<crate::checkers::base::CheckResult, CheckError> {
+    fn check_(&self, fix: bool) -> Result<crate::checkers::base::CheckResult, CheckError> {
         let mut doc = self.file_check.get_mapping()?;
 
         unset_key(doc.as_mut(), &self.value);

@@ -200,35 +200,35 @@ pub(crate) fn run_checks(checks: &Vec<Box<dyn Checker>>, fix: bool) -> ExitStatu
     let mut error_count = 0;
 
     for check in checks {
+        let fix = check.generic_checker().fixable && fix;
         let result = check.check(fix);
         match result {
-            Ok(crate::checkers::base::CheckResult::NoFixNeeded) => no_fix_needed_count += 1,
-            Ok(crate::checkers::base::CheckResult::FixExecuted(_)) => fix_executed_count += 1,
-            Ok(crate::checkers::base::CheckResult::FixNeeded(_)) => fix_needed_count += 1,
-            Err(_) => error_count += 1,
+            crate::checkers::base::CheckResult::NoFixNeeded => no_fix_needed_count += 1,
+            crate::checkers::base::CheckResult::FixExecuted(_) => fix_executed_count += 1,
+            crate::checkers::base::CheckResult::FixNeeded(_) => fix_needed_count += 1,
+            crate::checkers::base::CheckResult::Error(_) => error_count += 1,
         };
     }
 
     log::warn!("{checks} checks found", checks = checks.len());
     if fix {
-        log::warn!("{fix_executed_count} checks fixed");
-        log::warn!("{no_fix_needed_count} checks did not a fix");
-    } else {
-        match fix_needed_count {
-            0 => log::error!("🥇 No violations found."),
+        log::warn!("✅ {fix_executed_count} checks fixed");
+        log::warn!("✅ {no_fix_needed_count} checks did not a fix");
+    }
 
-            1 => log::error!("🪛  There is 1 violation to fix.",),
-            _ => log::error!("🪛  There are {fix_needed_count} violations to fix.",),
-        }
+    match fix_needed_count {
+        0 => log::error!("🥇 No violations found."),
+
+        1 => log::error!("🪛 There is 1 violation to fix.",),
+        _ => log::error!("🪛 There are {fix_needed_count} violations to fix.",),
     }
 
     match error_count {
         0 => (),
 
-        1 => log::error!("⚠️  There was an error executing a fix.",),
-        _ => log::error!("⚠️  There are {error_count} errors executing a fix.",),
+        1 => log::error!("🚨 There was 1 error executing a fix.",),
+        _ => log::error!("🚨 There are {error_count} errors executing a fix.",),
     }
-
     if error_count > 0 {
         ExitStatus::Error
     } else if fix_needed_count > 0 {
