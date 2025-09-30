@@ -8,11 +8,11 @@ destination = "temp/test.tar.gz"
 
 [[file_unpacked]]
 source = "temp/test.zip"
-destination = "output/unpack/zip"
+destination_dir = "output/unpack/zip"
 
 [[file_unpacked]]
 source = "temp/test.tar.gz"
-destination = "output/unpack/tar.gz"
+destination_dir = "output/unpack/tar.gz"
 
 [[file_present]]
 file = "output/unpack/zip/test/sample"

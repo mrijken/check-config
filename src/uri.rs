@@ -148,6 +148,10 @@ impl ReadPath for ReadablePath {
 pub struct WritablePath(PathBuf);
 
 impl WritablePath {
+    pub fn new(path: PathBuf) -> WritablePath {
+        WritablePath(path)
+    }
+
     pub fn from_string(input: &str) -> Result<WritablePath, Error> {
         if input.starts_with("~") {
             if let Some(home) = dirs::home_dir() {

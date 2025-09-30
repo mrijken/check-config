@@ -18,7 +18,7 @@ use super::{
 #[derive(Debug)]
 pub(crate) struct GitFetched {
     generic_check: GenericChecker,
-    dir: PathBuf,
+    destination_dir: PathBuf,
     repo: String,
     branch: Option<String>,
     tag: Option<String>,
@@ -61,7 +61,7 @@ impl CheckConstructor for GitFetched {
             branch,
             commit_hash,
             tag,
-            dir,
+            destination_dir: dir,
             generic_check,
         })
     }
@@ -81,14 +81,14 @@ impl Checker for GitFetched {
         let mut action_messages: Vec<String> = vec![];
 
         // git clone when self.dir does not exists
-        let git_clone = !self.dir.exists();
+        let git_clone = !self.destination_dir.exists();
 
         if git_clone {
             action_messages.push("git clone".into());
         }
 
         // error when dir is not a git dir
-        let not_a_git_dir = !git_clone && !self.dir.join(".git").is_dir();
+        let not_a_git_dir = !git_clone && !self.destination_dir.join(".git").is_dir();
 
         if not_a_git_dir {
             action_messages.push("delete dir, because it is not a git dir".into());
@@ -99,7 +99,7 @@ impl Checker for GitFetched {
             false
         } else {
             !is_in_sync(
-                &self.dir,
+                &self.destination_dir,
                 self.branch.as_deref(),
                 self.commit_hash.as_deref(),
                 self.tag.as_deref(),
@@ -118,13 +118,13 @@ impl Checker for GitFetched {
         let check_result = match (fix, fix_needed) {
             (true, true) => {
                 if git_clone {
-                    git2::Repository::clone(self.repo.as_str(), self.dir.clone())
+                    git2::Repository::clone(self.repo.as_str(), self.destination_dir.clone())
                         .map_err(|e| CheckError::GitError(e.to_string()))?;
                 }
 
                 if sync_repo || git_clone {
                     sync_with_remote(
-                        &self.dir,
+                        &self.destination_dir,
                         self.branch.as_deref(),
                         self.commit_hash.as_deref(),
                         self.tag.as_deref(),

@@ -15,8 +15,8 @@ There are several checker types (and more to come):
 | [lines_absent](#lines-absent)                       | the specified lines must be absent                                                          | yes     |
 | [lines_present](#lines-present)                     | the specified lines must be present                                                         | yes     |
 | [file_unpacked](#file-unpacked)                     | the file must be unpacked                                                                   | yes     |
-| [file_copied]#file-copied)                          | the file must be copied                                                                     | yes     |
-| [git_fetched]#get-fetched)                          | the git repo must be present                                                                | yes     |
+| [file_copied](file-copied)                          | the file must be copied                                                                     | yes     |
+| [git_fetched](#get-fetched)                         | the git repo must be present and fetched                                                    | yes     |
 
 ## check-config.toml
 
@@ -27,7 +27,7 @@ configure check-config:
 include = [  # optional list of toml files with additional checks
     "/home/me/.checkers/check.toml",  # absolute path
     "~/.checkers/check.toml",  # relative to home dir of current user
-    "check.toml", # relative to the parent dir of this toml, indifferent if it is a filesystem path or a webserver path
+    "config:check.toml", # relative to the parent dir of this toml
     "py://my_package:checkers/python.toml", # path to file in python package
     "https//example.com/check.toml", # path on webserver
  ]
@@ -40,38 +40,23 @@ And one or more checkers
 
 ```toml
 [[<checker_name>]]
-<checker object> = "<file_path>"
 <checker specific key/values>
 ```
 
 Note the double square brackets. We use an array of tables to define the checkers,
 so multiple checkers of the same type may exist in the same toml file. If you use
-only one checker for a certain type, you can also use single square brackets.
+only one checker for a certain type in toml file, you can also use single square brackets.
 However, to be consistent and extensible, we advice to always use double brackets.
 
 The syntax is slightly different per checker type. See the next sections for help
 about the checker definitions.
 
-You can use arrays of toml tables when when a check has to be done more than
-once, ie:
-
-```toml
-[[lines_present]]
-file = ".gitignore"
-lines = "__pycache__"
-
-
-[[lines_present]]
-file = ".gitignore"
-lines = ".cache"
-```
-
-## Tags
+### Tags
 
 All checkers can have a `tags` key to make it possible to exclude or include
 this checker from the execution.
 
-See [cli tags options](usage#Tags) for more information.
+See [cli tags options](usage#Tags) for more information about the usage.
 
 ```toml
 [[lines_present]]
@@ -80,13 +65,13 @@ tags = ["linux"]
 lines = ".cache"
 ```
 
-## Fixable
+### Fixable
 
 When `--fix` is given on the cli, `check-config` will try to fix the checkers. However,
-sometimes you do not want to fix a checker, but just check if a previous fix is
+sometimes you do not want a fix a violation, but just check if a previous fix is
 performed correct. For example: you unzip a file in one checker and want to check
 whether a file is unpacked from the zip. In that case you do not want to create
-an empty file by the checker which checks for the file. To do so, add
+an empty file by the checker which checks for the unpacked file. To do so, add
 `fixable = false` to your checker, like:
 
 ```toml
@@ -118,12 +103,12 @@ not check the contents.
 file = "test/present_file"
 ```
 
-When the file does not exists, running with fix will create the file. At default an
-empty file will be created.
+When the file does not exists, running with fix will create the file. At default
+an empty file will be created.
 
 This checker type can handle any text file.
 
-This checker can also check for:
+This checker has some options:
 
 - placeholder
 - regex
@@ -131,7 +116,8 @@ This checker can also check for:
 
 ### Placeholder
 
-When a placeholder is given, the created file will contain the placeholder as content.
+When a file will be created when run with `--fix`, the created file will be created
+with the placeholder as content.
 
 ```toml
 [[file_present]]
@@ -147,18 +133,6 @@ Checks whether the contents of the file matches the regex expression.
 [[file_present]]
 file = ".bashrc"
 regex = 'export KEY=.*'
-```
-
-Multiple regex can be given when the file.checker_type pair is an array, ie:
-
-```toml
-[[file_present]]
-file = ".bashrc"
-regex = 'export KEY=.*'
-
-[[file_present]]
-file = ".bashrc"
-regex = 'export ANOTHER_KEY=.*'
 ```
 
 Note: specify the regex as a raw toml string (single quotes) to prevent escaping.
@@ -178,7 +152,7 @@ an explanation.
 
 ### Combinations
 
-These extra checks can also be combined in one definition:
+These options can of course be combined in one definition:
 
 ```toml
 [[file_present]]
@@ -195,35 +169,61 @@ https.
 
 ```toml
 [[file_copied]]
-file = "url or path to file"
+source = "url or path to file"
+destination_dir = "dir on local filesystem"
+destination = "path (including filename) on local filesystem"
 
 ```
 
-TODO
+Only on `destination` and `destination_dir`` needs to be specified.
+When`destination_dir`is given, the`destination`is created by appending the filename
+from the source to the`destination`.
+When`destination`is given,`destination_dir` is ignored.
+
+When the parent dir of the `destination` does not exists, the dir is created.
 
 ## File Unpacked
 
-`file_unpacked` will check that the file is unpacked.
+`file_unpacked` will check that the file is unpacked. It can unpack zip, tar.gz and tar files.
 
-TODO
+```toml
+[[file_unpacked]]
+source = " path to packed file"
+destination_dir = "path to destination directory"
+unpacker = "optional override extension"
+```
+
+The unpack method is selected based on the extension of the source. When the extension is the correct one,
+you can override it via `unpacker`.
 
 ## Git Fetched
 
 `git_fetched` will check that the git repo is cloned and fetched.
 
-TODO
+```toml
+[[git_fetched]]
+repo = "git url"
+destination_dir = "path to destination directory"
+
+# one of the next
+branch = "main"
+commit_hash = "a1872"
+tag = " v1.1"
+```
 
 ## Key Absent
 
 `key_absent` will check if the key is not present in the file.
 
-The next example will check that `test/present_file` has no key named `key_to_be_absent`.
+The next example will check that `test/file.toml` has no key named `key_to_be_absent`.
 
 ```toml
 [[key_absent]]
-file = "test/present.toml"
+file = "test/file.toml"
 key.key_to_be_absent = {}
 ```
+
+The value of the key is not important; any value will do.
 
 The key can be nested. In the next case it is sufficient that `key_to_be_absent` is not present.
 `super_key` will not be removed if it contains also other keys.
@@ -315,7 +315,7 @@ line"""
 ```toml
 [lines_absent]
 file = "test/present.txt"
-lines = """single line"""
+lines = "single line"
 ```
 
 You can also remove text between markers which removes the markers also
@@ -361,7 +361,7 @@ file = "test/present.txt"
 lines = """single line"""
 ```
 
-Optionnally it can replace strings by regex, ie if you want to replace an export with a new value:
+Optionally it can replace strings by regex, i.e. if you want to replace an export with a new value:
 
 ```toml
 [[lines_present]]

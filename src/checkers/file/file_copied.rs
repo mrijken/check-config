@@ -35,10 +35,28 @@ impl CheckConstructor for FileCopied {
         )
         .map_err(|_| CheckDefinitionError::InvalidDefinition("invalid source url".into()))?;
 
-        let destination = WritablePath::from_string(
-            get_string_value_from_checktable(&check_table, "destination")?.as_str(),
-        )
-        .map_err(|_| CheckDefinitionError::InvalidDefinition("invalid destination url".into()))?;
+        let destination = if check_table.contains_key("destination") {
+            WritablePath::from_string(
+                get_string_value_from_checktable(&check_table, "destination")?.as_str(),
+            )
+            .map_err(|_| {
+                CheckDefinitionError::InvalidDefinition("invalid destination path".into())
+            })?
+        } else {
+            let destination_dir = WritablePath::from_string(
+                get_string_value_from_checktable(&check_table, "destination_dir")?.as_str(),
+            )
+            .map_err(|_| {
+                CheckDefinitionError::InvalidDefinition("invalid destination_dir path".into())
+            })?;
+
+            let file_name = match source.as_ref().path().rsplit_once("/") {
+                Some((_, filename)) => filename,
+                None => source.as_ref().path(),
+            };
+
+            WritablePath::new(destination_dir.as_ref().join(file_name))
+        };
 
         Ok(Self {
             destination,

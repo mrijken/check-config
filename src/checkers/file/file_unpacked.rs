@@ -23,14 +23,14 @@ enum Unpacker {
 #[derive(Debug)]
 pub(crate) struct FileUnpacked {
     source: WritablePath,
-    destination: WritablePath,
+    destination_dir: WritablePath,
     unpacker: Unpacker,
     generic_check: GenericChecker,
 }
 
 // [[file_unpacked]]
 // source = "file.zip"
-// destination = "path to unpack to"
+// destination_dir = "path to unpack to"
 // unpacker = "zip"  #optional, when not discoverable from extension.
 impl CheckConstructor for FileUnpacked {
     type Output = Self;
@@ -44,8 +44,8 @@ impl CheckConstructor for FileUnpacked {
         )
         .map_err(|_| CheckDefinitionError::InvalidDefinition("invalid source url".into()))?;
 
-        let destination = WritablePath::from_string(
-            get_string_value_from_checktable(&check_table, "destination")?.as_str(),
+        let destination_dir = WritablePath::from_string(
+            get_string_value_from_checktable(&check_table, "destination_dir")?.as_str(),
         )
         .map_err(|_| CheckDefinitionError::InvalidDefinition("invalid destination url".into()))?;
 
@@ -82,7 +82,7 @@ impl CheckConstructor for FileUnpacked {
         };
 
         Ok(Self {
-            destination,
+            destination_dir,
             source,
             unpacker,
             generic_check,
@@ -109,9 +109,9 @@ impl Checker for FileUnpacked {
             Err(e) => return Err(CheckError::String(e.to_string())),
         };
 
-        dbg!(self.destination.as_ref());
+        dbg!(self.destination_dir.as_ref());
 
-        let file_unpack = !dbg!(self.destination.as_ref().exists());
+        let file_unpack = !self.destination_dir.as_ref().exists();
 
         if file_unpack {
             action_messages.push("unpack file".into());
@@ -126,7 +126,7 @@ impl Checker for FileUnpacked {
                 match self.unpacker {
                     Unpacker::Tar => {
                         tar::Archive::new(File::open(self.source.as_ref()).expect("file exists"))
-                            .unpack(self.destination.as_ref())
+                            .unpack(self.destination_dir.as_ref())
                             .map_err(|e| CheckError::String(e.to_string()))?;
                     }
 
@@ -135,7 +135,7 @@ impl Checker for FileUnpacked {
                             File::open(self.source.as_ref()).expect("file exists"),
                         );
                         tar::Archive::new(tar)
-                            .unpack(self.destination.as_ref())
+                            .unpack(self.destination_dir.as_ref())
                             .map_err(|e| CheckError::String(e.to_string()))?;
                     }
                     Unpacker::Unzip => {
@@ -143,7 +143,7 @@ impl Checker for FileUnpacked {
                             File::open(self.source.as_ref()).expect("file exists"),
                         )
                         .map_err(|e| CheckError::String(e.to_string()))?
-                        .extract(self.destination.as_ref())
+                        .extract(self.destination_dir.as_ref())
                         .map_err(|e| CheckError::String(e.to_string()))?;
                     }
                 }
