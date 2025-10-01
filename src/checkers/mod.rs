@@ -39,6 +39,62 @@ impl RelativeUrl for url::Url {
     }
 }
 
+/// get the valid checks
+/// invalid check are logged with error level and passed silently
+/// todo: do not perform checks when at least one check has a definition error
+fn get_checks_from_config_table(
+    file_with_checks: &url::Url,
+    file_to_check: PathBuf,
+    config_table: &toml_edit::Table,
+    parent_tags: &Vec<String>,
+) -> Vec<Box<dyn Check>> {
+    let mut checks = vec![];
+
+    for (check_type, check_table) in config_table {
+        match check_table {
+            toml_edit::Item::Table(check_table) => {
+                match get_check_from_check_table(
+                    file_with_checks,
+                    file_to_check.clone(),
+                    check_type,
+                    check_table,
+                    parent_tags,
+                ) {
+                    Ok(check) => checks.push(check),
+                    Err(err) => {
+                        log::error!("Checkfile {file_with_checks}:{check_type} has errors: {err}")
+                    }
+                }
+            }
+            toml_edit::Item::ArrayOfTables(array) => {
+                for check_table in array {
+                    match get_check_from_check_table(
+                        file_with_checks,
+                        file_to_check.clone(),
+                        check_type,
+                        check_table,
+                        parent_tags,
+                    ) {
+                        Ok(check) => checks.push(check),
+                        Err(err) => log::error!(
+                            "Checkfile {file_with_checks}:{check_type} has errors: {err}"
+                        ),
+                    }
+                }
+            }
+            value => {
+                log::error!(
+                    "Unexpected value type {} {}",
+                    value.type_name(),
+                    file_with_checks.path()
+                );
+                std::process::exit(1);
+            }
+        };
+    }
+    checks
+}
+
 #[derive(Debug, Clone)]
 pub(crate) struct GenericChecker {
     // path to the file where the checkers are defined
@@ -55,29 +111,35 @@ impl GenericChecker {
     }
 }
 
+fn tags_array_to_tags_vec(
+    tags_array: &toml_edit::Array,
+) -> Result<Vec<String>, CheckDefinitionError> {
+    let mut tags = Vec::new();
+    for i in tags_array {
+        if let Some(value) = i.as_str() {
+            tags.push(value.into());
+        } else {
+            return Err(CheckDefinitionError::InvalidDefinition(
+                " __tags__ contains a value which is not a string".to_string(),
+            ));
+        };
+    }
+
+    Ok(tags)
+}
+
 fn read_tags_from_table(
     check_table: &toml_edit::Table,
 ) -> Result<Vec<String>, CheckDefinitionError> {
-    let mut tags = Vec::new();
-    match check_table.get("tags") {
-        None => Ok(tags),
+    match check_table.get("__tags__") {
+        None => Ok(vec![]),
         Some(item) => {
             if !item.is_array() {
                 Err(CheckDefinitionError::InvalidDefinition(
                     "`tags` is not an array".into(),
                 ))
             } else {
-                for i in item.as_array().unwrap() {
-                    if let Some(value) = i.as_str() {
-                        tags.push(value.into());
-                    } else {
-                        return Err(CheckDefinitionError::InvalidDefinition(
-                            "`tags` contains a value which is not a string".to_string(),
-                        ));
-                    };
-                }
-
-                Ok(tags)
+                tags_array_to_tags_vec(item.as_array().expect("is an array"))
             }
         }
     }
@@ -102,10 +164,14 @@ fn get_check_from_check_table(
     file_with_checks: &url::Url,
     check_type: &str,
     check_table: &toml_edit::Table,
-) -> Result<Box<dyn Checker>, CheckDefinitionError> {
-    let check_table = check_table.clone();
+    parent_tags: &Vec<String>,
+) -> Result<Box<dyn Check>, CheckDefinitionError> {
+    let mut check_table = check_table.clone();
 
-    let tags = read_tags_from_table(&check_table)?;
+    let mut tags = read_tags_from_table(&check_table)?;
+    for tag in parent_tags {
+        tags.push(tag.clone());
+    }
 
     let fixable = (get_option_boolean_from_check_table(&check_table, "fixable")?).unwrap_or(true);
 
@@ -182,8 +248,10 @@ fn get_check_from_check_table(
 pub(crate) fn read_checks_from_path(
     file_with_checks: &url::Url,
     top_level_keys: Vec<&str>,
-) -> Vec<Box<dyn Checker>> {
-    let mut checks: Vec<Box<dyn Checker>> = vec![];
+    parent_tags: &Vec<String>,
+) -> Vec<Box<dyn Check>> {
+    let mut checks: Vec<Box<dyn Check>> = vec![];
+
     let checks_toml_str = match uri::read_to_string(file_with_checks) {
         Ok(checks_toml) => checks_toml,
         Err(_) => {
@@ -215,43 +283,73 @@ pub(crate) fn read_checks_from_path(
         }
     }
 
-    for (key, value) in checks_toml {
-        if key == "include" {
-            if let toml_edit::Item::Value(toml_edit::Value::Array(include_uris)) = value {
-                for include_uri in include_uris {
-                    let include_path = match uri::parse_uri(
-                        include_uri.as_str().expect("uri is a string"),
-                        Some(file_with_checks),
-                    ) {
-                        Ok(include_path) => include_path,
-                        Err(_) => {
-                            log::error!("{include_uri} is not a valid uri");
-                            std::process::exit(1);
-                        }
-                    };
-                    checks.extend(read_checks_from_path(&include_path, vec![]));
+    let tags_of_this_file = if let Some(tags) = checks_toml.get("__tags__")
+        && let toml_edit::Item::Value(toml_edit::Value::Array(tags)) = tags
+    {
+        match tags_array_to_tags_vec(tags) {
+            Ok(mut tags) => {
+                for tag in parent_tags {
+                    if !tags.contains(tag) {
+                        tags.push(tag.clone());
+                    }
                 }
+                tags
             }
-
-            continue;
+            Err(_) => {
+                log::error!("{tags} contains invalid values");
+                std::process::exit(1);
+            }
         }
+    } else {
+        vec![]
+    };
 
-        let check_type = key;
-        let mut checks_to_add = vec![];
+    if let Some(include) = checks_toml.get("__include__") {
+        if let toml_edit::Item::Value(toml_edit::Value::Array(include_uris)) = include {
+            for include_uri in include_uris {
+                let include_path = match uri::parse_uri(
+                    include_uri.as_str().expect("uri is a string"),
+                    Some(file_with_checks),
+                ) {
+                    Ok(include_path) => include_path,
+                    Err(_) => {
+                        log::error!("{include_uri} is not a valid uri");
+                        std::process::exit(1);
+                    }
+                };
+                checks.extend(read_checks_from_path(
+                    &include_path,
+                    vec![],
+                    &tags_of_this_file,
+                ));
+            }
+        }
+    }
+
+    for (key, value) in checks_toml {
+        let file_to_check = match expand_to_absolute(key.as_str()) {
+            Ok(file) => file,
+            Err(_) => {
+                log::error!("path {key} can not be resolved");
+                std::process::exit(1);
+            }
+        };
         match value {
             toml_edit::Item::Table(config_table) => {
                 checks_to_add.push(get_check_from_check_table(
                     file_with_checks,
                     check_type.as_str(),
                     &config_table,
+                    &tags_of_this_file,
                 ));
             }
             toml_edit::Item::ArrayOfTables(array) => {
                 for config_table in array {
                     checks_to_add.push(get_check_from_check_table(
                         file_with_checks,
-                        check_type.as_str(),
-                        &config_table,
+                        file_to_check.clone(),
+                        &element,
+                        &tags_of_this_file,
                     ));
                 }
             }
@@ -331,7 +429,7 @@ entry.key = [1,2,3]
 
         let path_with_checkers =
             url::Url::parse(&format!("file://{}", path_with_checkers.to_str().unwrap())).unwrap();
-        let checks = read_checks_from_path(&path_with_checkers, vec![]);
+        let checks = read_checks_from_path(&path_with_checkers, vec![], &vec![]);
 
         assert_eq!(checks.len(), 9);
     }
@@ -353,7 +451,7 @@ entry.key = [1,2,3]
 
         let path_with_checkers =
             url::Url::parse(&format!("file://{}", path_with_checkers.to_str().unwrap())).unwrap();
-        let checks = read_checks_from_path(&path_with_checkers, vec![]);
+        let checks = read_checks_from_path(&path_with_checkers, vec![], &vec![]);
 
         assert_eq!(checks.len(), 0);
     }
