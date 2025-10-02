@@ -70,7 +70,7 @@ impl Checker for KeyValuePresent {
 
         set_key_value(doc.as_mut(), &self.value);
 
-        self.file_check.conclude_check_with_new_doc(self, doc, fix)
+        self.file_check.conclude_check_with_new_doc(doc, fix)
     }
 }
 

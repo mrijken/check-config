@@ -8,13 +8,14 @@ use similar::{DiffableStr, TextDiff};
 use crate::{
     checkers::{
         GenericChecker,
-        base::{CheckDefinitionError, CheckError, CheckResult, Checker},
+        base::{CheckDefinitionError, CheckError, CheckResult},
     },
     file_types::{self, FileType},
     mapping::generic::Mapping,
     uri::WritablePath,
 };
 
+pub(crate) mod dir_copied;
 pub(crate) mod entry_absent;
 pub(crate) mod entry_present;
 pub(crate) mod file_absent;
@@ -94,7 +95,6 @@ impl FileCheck {
 
     fn conclude_check_file_exists(
         &self,
-        check: &impl Checker,
         placeholder: Option<String>,
         permissions: Option<std::fs::Permissions>,
         regex: Option<regex::Regex>,
@@ -189,7 +189,6 @@ impl FileCheck {
 
     fn conclude_check_new_contents(
         &self,
-        check: &impl Checker,
         new_contents: String,
         fix: bool,
     ) -> Result<CheckResult, CheckError> {
@@ -215,18 +214,13 @@ impl FileCheck {
 
     fn conclude_check_with_new_doc(
         &self,
-        check: &impl Checker,
         new_doc: Box<dyn Mapping>,
         fix: bool,
     ) -> Result<CheckResult, CheckError> {
-        self.conclude_check_new_contents(check, new_doc.to_string()?, fix)
+        self.conclude_check_new_contents(new_doc.to_string()?, fix)
     }
 
-    fn conclude_check_with_remove(
-        &self,
-        check: &impl Checker,
-        fix: bool,
-    ) -> Result<CheckResult, CheckError> {
+    fn conclude_check_with_remove(&self, fix: bool) -> Result<CheckResult, CheckError> {
         let action_message = "remove file".to_string();
 
         let check_result = match (self.file_to_check.as_ref().exists(), fix) {

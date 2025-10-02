@@ -70,7 +70,7 @@ impl Checker for KeyAbsent {
 
         unset_key(doc.as_mut(), &self.value);
 
-        self.file_check.conclude_check_with_new_doc(self, doc, fix)
+        self.file_check.conclude_check_with_new_doc(doc, fix)
     }
 }
 

@@ -16,6 +16,7 @@ There are several checker types (and more to come):
 | [lines_present](#lines-present)                     | the specified lines must be present                                                         | yes     |
 | [file_unpacked](#file-unpacked)                     | the file must be unpacked                                                                   | yes     |
 | [file_copied](file-copied)                          | the file must be copied                                                                     | yes     |
+| [dir_copied](dir-copied)                            | the dir must be copied                                                                      | yes     |
 | [git_fetched](#get-fetched)                         | the git repo must be present and fetched                                                    | yes     |
 
 ## check-config.toml
@@ -172,6 +173,25 @@ https.
 source = "url or path to file"
 destination_dir = "dir on local filesystem"
 destination = "path (including filename) on local filesystem"
+
+```
+
+Only on `destination` and `destination_dir`` needs to be specified.
+When`destination_dir`is given, the`destination`is created by appending the filename
+from the source to the`destination`.
+When`destination`is given,`destination_dir` is ignored.
+
+When the parent dir of the `destination` does not exists, the dir is created.
+
+## Dir Copied
+
+`dir_copied` will check that the dir including all contents is copied.
+
+```toml
+[[dir_copied]]
+source = "path to dir"
+destination_dir = "dir on local filesystem in which the contents are copied"
+destination = "dir on local filesystem in which the source directory is copied"
 
 ```
 

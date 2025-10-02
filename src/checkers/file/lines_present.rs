@@ -111,7 +111,7 @@ impl Checker for LinesPresent {
         };
 
         self.file_check
-            .conclude_check_new_contents(self, new_contents, fix)
+            .conclude_check_new_contents(new_contents, fix)
     }
 }
 

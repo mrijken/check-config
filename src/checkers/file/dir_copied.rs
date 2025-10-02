@@ -1,6 +1,6 @@
 use crate::{
     checkers::{base::CheckResult, file::get_string_value_from_checktable},
-    uri::{ReadPath, ReadablePath, WritablePath},
+    uri::{ReadPath, WritablePath},
 };
 
 use super::super::{
@@ -9,29 +9,29 @@ use super::super::{
 };
 
 #[derive(Debug)]
-pub(crate) struct FileCopied {
-    source: ReadablePath,
+pub(crate) struct DirCopied {
+    source: WritablePath,
     destination: WritablePath,
     generic_check: GenericChecker,
 }
 
-//[[file_copied]]
-// source = "path or url of file to copy"
-// destination = "path (including filename) to copy to"
+//[[dir_copied]]
+// source = "path directory to copy"
+// destination = "path in which the directory contents will be copied"
+// desintation_dir = "path in which the directory will be copied"
 //
 // check if file is copied
 // if source is a relative path, it's relative to the check file, so the dir
 // which contain the file which defines this check.
-impl CheckConstructor for FileCopied {
+impl CheckConstructor for DirCopied {
     type Output = Self;
 
     fn from_check_table(
         generic_check: GenericChecker,
         check_table: toml_edit::Table,
     ) -> Result<Self::Output, CheckDefinitionError> {
-        let source = ReadablePath::from_string(
+        let source = WritablePath::from_string(
             get_string_value_from_checktable(&check_table, "source")?.as_str(),
-            &generic_check.file_with_checks,
         )
         .map_err(|_| CheckDefinitionError::InvalidDefinition("invalid source url".into()))?;
 
@@ -50,9 +50,13 @@ impl CheckConstructor for FileCopied {
                 CheckDefinitionError::InvalidDefinition("invalid destination_dir path".into())
             })?;
 
-            let file_name = match source.as_ref().path().rsplit_once("/") {
-                Some((_, filename)) => filename,
-                None => source.as_ref().path(),
+            let file_name = match source.as_ref().file_name() {
+                Some(filename) => filename,
+                None => {
+                    return Err(CheckDefinitionError::InvalidDefinition(
+                        "Source has to filename".into(),
+                    ));
+                }
             };
 
             WritablePath::new(destination_dir.as_ref().join(file_name))
@@ -65,43 +69,65 @@ impl CheckConstructor for FileCopied {
         })
     }
 }
-impl Checker for FileCopied {
+
+/// Recursively copy all contents of `src` into `dst`.
+fn copy_dir_contents(src: &std::path::Path, dst: &std::path::Path) -> std::io::Result<()> {
+    // Create destination directory if it doesn’t exist
+    if !dst.exists() {
+        std::fs::create_dir_all(dst)?;
+    }
+
+    for entry in std::fs::read_dir(src)? {
+        let entry = entry?;
+        let path = entry.path();
+        let dest_path = dst.join(entry.file_name());
+
+        if path.is_dir() {
+            // Recurse into subdirectory
+            copy_dir_contents(&path, &dest_path)?;
+        } else {
+            // Copy file
+            std::fs::copy(&path, &dest_path)?;
+        }
+    }
+
+    Ok(())
+}
+
+impl Checker for DirCopied {
     fn checker_type(&self) -> String {
-        "file_copied".to_string()
+        "dir_copied".to_string()
     }
 
     fn generic_checker(&self) -> &GenericChecker {
         &self.generic_check
     }
     fn checker_object(&self) -> String {
-        self.source.as_ref().to_string()
+        self.source.as_ref().to_string_lossy().to_string()
     }
     fn check_(&self, fix: bool) -> Result<crate::checkers::base::CheckResult, CheckError> {
         // todo check whether the file is changed
         let mut action_messages: Vec<String> = vec![];
 
         match self.source.exists() {
-            Ok(false) => return Err(CheckError::String("source file does not exists".into())),
+            Ok(false) => return Err(CheckError::String("source dir does not exists".into())),
             Ok(true) => (),
             Err(e) => return Err(CheckError::String(e.to_string())),
         }
 
-        let copy_file_needed = !self.destination.as_ref().exists();
+        // todo: check also all subdirs and files
+        let copy_dir_needed = !self.destination.as_ref().exists();
 
-        if copy_file_needed {
-            action_messages.push("copy file".into());
+        if copy_dir_needed {
+            action_messages.push("copy dir".into());
         }
         let action_message = action_messages.join("\n");
 
-        let check_result = match (copy_file_needed, fix) {
+        let check_result = match (copy_dir_needed, fix) {
             (false, _) => CheckResult::NoFixNeeded,
             (true, false) => CheckResult::FixNeeded(action_message),
             (true, true) => {
-                if let Some(parent) = self.destination.as_ref().parent() {
-                    std::fs::create_dir_all(parent)?;
-                }
-
-                match self.source.copy(&self.destination) {
+                match copy_dir_contents(self.source.as_ref(), self.destination.as_ref()) {
                     Ok(_) => CheckResult::FixExecuted(action_message),
                     Err(e) => return Err(CheckError::String(e.to_string())),
                 }
@@ -123,74 +149,53 @@ mod tests {
 
     use tempfile::tempdir;
 
-    fn get_file_copied_check_with_result(
-        source: impl Into<String>,
-    ) -> (Result<FileCopied, CheckDefinitionError>, tempfile::TempDir) {
+    fn get_dir_copied_check_with_result()
+    -> (Result<DirCopied, CheckDefinitionError>, tempfile::TempDir) {
         let generic_check = test_helpers::get_generic_check();
 
         let mut check_table = toml_edit::Table::new();
         let dir = tempdir().unwrap();
-        let destination = dir.path().join("file_to_check");
+        let source = dir.path().join("source");
+        let subdir = source.join("subdir");
+        std::fs::create_dir_all(&subdir).unwrap();
+        std::fs::create_dir(&subdir);
+        let file = subdir.join("file");
+        std::fs::File::create(file).unwrap();
+        let destination = dir.path().join("destination");
         check_table.insert(
             "destination",
             destination.to_string_lossy().to_string().into(),
         );
-        check_table.insert("source", source.into().into());
-        (
-            FileCopied::from_check_table(generic_check, check_table),
-            dir,
-        )
+        check_table.insert("source", source.to_string_lossy().to_string().into());
+        (DirCopied::from_check_table(generic_check, check_table), dir)
     }
 
     #[test]
-    fn test_file_copied_from_https() {
-        let (file_copied_check, _tempdir) = get_file_copied_check_with_result(
-            "https://rust-lang.org/static/images/rust-logo-blk.svg",
-        );
-        let file_copied_check = file_copied_check.expect("no errors");
+    fn test_dir_copied_from_fs() {
+        let (dir_copied_check, _tempdir) = get_dir_copied_check_with_result();
+        let dir_copied_check = dir_copied_check.expect("no errors");
 
         assert_eq!(
-            file_copied_check.check_(false).unwrap(),
-            CheckResult::FixNeeded("copy file".into())
+            dir_copied_check.check_(false).unwrap(),
+            CheckResult::FixNeeded("copy dir".into())
         );
 
         assert_eq!(
-            file_copied_check.check_(true).unwrap(),
-            CheckResult::FixExecuted("copy file".into())
+            dir_copied_check.check_(true).unwrap(),
+            CheckResult::FixExecuted("copy dir".into())
         );
         assert_eq!(
-            file_copied_check.check_(false).unwrap(),
-            CheckResult::NoFixNeeded
-        );
-    }
-
-    #[test]
-    fn test_file_copied_from_fs() {
-        let dir = tempdir().unwrap();
-        let file_to_copy = dir.path().join("file_to_copy");
-        let _ = write(&file_to_copy, "bla");
-
-        let (file_copied_check, _tempdir) =
-            get_file_copied_check_with_result(file_to_copy.to_string_lossy().to_string());
-        let file_copied_check = file_copied_check.expect("no errors");
-
-        assert_eq!(
-            file_copied_check.check_(false).unwrap(),
-            CheckResult::FixNeeded("copy file".into())
-        );
-
-        assert_eq!(
-            file_copied_check.check_(true).unwrap(),
-            CheckResult::FixExecuted("copy file".into())
-        );
-        assert_eq!(
-            file_copied_check.check_(false).unwrap(),
+            dir_copied_check.check_(false).unwrap(),
             CheckResult::NoFixNeeded
         );
 
-        assert_eq!(
-            std::fs::read_to_string(file_copied_check.destination.as_ref()).unwrap(),
-            "bla"
-        )
+        assert!(dir_copied_check.destination.as_ref().exists());
+        assert!(
+            dir_copied_check
+                .destination
+                .as_ref()
+                .join("subdir/file")
+                .exists()
+        );
     }
 }
