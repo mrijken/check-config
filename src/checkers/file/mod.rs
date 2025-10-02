@@ -74,7 +74,7 @@ impl FileCheck {
     }
 
     fn file_to_check(&self) -> &PathBuf {
-        &self.file_to_check.as_ref()
+        self.file_to_check.as_ref()
     }
 
     fn get_action_message(&self, old_contents: &str, new_contents: &str) -> String {

@@ -1,8 +1,4 @@
-use std::fs;
-use std::io::{self, Write};
-use std::path::{Path, PathBuf};
 use std::{env, str::FromStr};
-use url::Url;
 
 use base::CheckConstructor;
 

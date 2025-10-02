@@ -74,8 +74,7 @@ mod tests {
             CheckResult::NoFixNeeded
         );
 
-        File::create(&file_absent_check.file_check.file_to_check.as_ref())
-            .expect("file is created");
+        File::create(file_absent_check.file_check.file_to_check.as_ref()).expect("file is created");
 
         assert_eq!(
             file_absent_check.check_(true).unwrap(),

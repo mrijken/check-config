@@ -165,15 +165,14 @@ mod tests {
         );
 
         // empty file
-        File::create(&lines_present_check.file_check.file_to_check.as_ref()).unwrap();
+        File::create(lines_present_check.file_check.file_to_check.as_ref()).unwrap();
         assert_eq!(
             lines_present_check.check_(false).unwrap(),
             CheckResult::FixNeeded("Set file contents to: \n@@ -1 +1,2 @@\n-\n+1\n+2\n".into())
         );
 
         // file with other contents
-        let mut file =
-            File::create(&lines_present_check.file_check.file_to_check.as_ref()).unwrap();
+        let mut file = File::create(lines_present_check.file_check.file_to_check.as_ref()).unwrap();
         writeln!(file, "a").unwrap();
         assert_eq!(
             lines_present_check.check_(false).unwrap(),
