@@ -1,0 +1,36 @@
+#["speedtest-akamai".package_installed]
+#__installer__ = "uv"
+#__version__ = "1.0"
+
+
+#[["test.toml".key_value_present]]
+#file = "test.json"
+
+[["test.toml".key_value_present]]
+# test
+key1_.key1__="3"
+key2 = {"test"=1}
+
+# ["test.toml".key_value_present]
+
+# ["test.toml".key_value_present]
+key1.key2_.key2__="3"
+
+
+[["test.toml".key_value_present]]
+file = "blas"
+["test.toml".key_value_present.key23.akjd.aslkdj]
+test=12
+
+[[package_installed]]
+package = "helix"
+
+[[key_value_present]]
+file = "test"
+key_value.sub= 1
+
+[[key_value_present]]
+file = "test2"
+[key_value_present.key_value]
+sub = 2
+

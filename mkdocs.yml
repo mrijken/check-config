@@ -23,6 +23,7 @@ theme:
     - content.code.copy
 
 markdown_extensions:
+  - include
   - admonition
   - toc:
       permalink: true

@@ -1,0 +1,17 @@
+[[file_copied]]
+# copy from url
+destination = "output/rust-logo.svg"
+source = "https://rust-lang.org/static/images/rust-logo-blk.svg"
+
+[[file_copied]]
+# copy from path relative to the current file
+destination = "output/python-logo.svg"
+source = "config:python-logo.svg"
+
+[[file_present]]
+file = "output/rust-logo.svg"
+fixable = false
+
+[[file_present]]
+file = "output/python-logo.svg"
+fixable = false

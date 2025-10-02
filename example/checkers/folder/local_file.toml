@@ -1,7 +1,8 @@
-__include__ = [
+include = [
         "relative_local_file.toml"
 ]
 
 
-["output/test.yaml".entry_present.list]
-__items__ = ["to_be_added", "to_be_kept"]
+[[entry_present]]
+file = "output/test.yaml"
+entry.list = ["to_be_added", "to_be_kept"]

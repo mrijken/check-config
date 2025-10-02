@@ -34,6 +34,7 @@ Run `check-config --fix` to apply changes, or `check-config` to verify everythin
 ### 🔧 **Shareable Configuration Snippets**
 
 Traditional dotfile repositories force users to adopt entire configuration files. check-config lets you share just the essential parts:
+
 - Share your preferred Python formatting rules without forcing your entire `pyproject.toml`
 - Distribute security settings without overwriting personal aliases
 - Collaborate on team standards while preserving individual preferences
@@ -55,6 +56,7 @@ Perfect for ensuring tools like Ruff, Black, and ESLint use consistent settings 
 ### 📦 **Composable Configuration**
 
 Combine multiple configuration files to build your complete setup:
+
 - Base configurations for your team
 - Personal tweaks and preferences  
 - Project-specific requirements
@@ -63,6 +65,7 @@ Combine multiple configuration files to build your complete setup:
 ## Beyond Simple Lines
 
 check-config supports multiple checker types for different configuration needs:
+
 - **Lines present/absent**: Shell configs, text files
 - **Key-value pairs**: TOML, JSON, YAML files
 - **File existence**: Ensure critical files exist

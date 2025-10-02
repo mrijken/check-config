@@ -3,20 +3,17 @@ use std::process::ExitCode;
 
 use clap::Parser;
 
-use crate::checkers::{
-    base::{Action, Check},
-    RelativeUrl,
-};
+use crate::checkers::{RelativeUrl, base::Checker};
 
 use super::checkers::read_checks_from_path;
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 pub enum ExitStatus {
-    /// Linting was successful and there were no linting errors.
+    /// Reading checks was succesful and there are no checks to fix
     Success,
-    /// Linting was successful but there were linting errors.
+    /// Reading checks was succesul and there are checks to fix
     Failure,
-    /// Linting failed.
+    /// Reading checks was faild or executing fixes was failed
     Error,
 }
 
@@ -122,18 +119,10 @@ pub fn cli() -> ExitCode {
 
     let mut checks = match cli.path {
         Some(path_str) => match parse_path_str_to_uri(path_str.as_str()) {
-            Some(uri) => match std::path::Path::new(uri.path()).exists() {
-                true => {
-                    log::info!("Using checkers from {}", &uri.short_url_str());
-                    read_checks_from_path(&uri, vec![], &vec![])
-                }
-                false => {
-                    log::error!(
-                        "⚠  Unable to load checkers. Path ({path_str}) as specified does not exist.",
-                    );
-                    return ExitCode::from(ExitStatus::Error);
-                }
-            },
+            Some(uri) => {
+                log::info!("Using checkers from {}", &uri.short_url_str());
+                read_checks_from_path(&uri, vec![])
+            }
             None => {
                 log::error!(
                     "Unable to load checkers. Path ({path_str}) specified is not a valid path.",
@@ -147,7 +136,7 @@ pub fn cli() -> ExitCode {
             match std::path::Path::new(uri.path()).exists() {
                 true => {
                     log::info!("Using checkers from {}", &uri);
-                    read_checks_from_path(&uri, vec![], &vec![])
+                    read_checks_from_path(&uri, vec![])
                 }
                 false => {
                     log::warn!("check-config.toml does not exists.");
@@ -156,10 +145,12 @@ pub fn cli() -> ExitCode {
                     match std::path::Path::new(uri.path()).exists() {
                         true => {
                             log::info!("Using checkers from {}", &uri);
-                            read_checks_from_path(&uri, vec!["tool", "check-config"], &vec![])
+                            read_checks_from_path(&uri, vec!["tool", "check-config"])
                         }
                         false => {
-                            log::error!("⚠️ No path specified and default paths are not found, so we ran out of options to load the config");
+                            log::error!(
+                                "⚠️ No path specified and default paths are not found, so we ran out of options to load the config"
+                            );
                             return ExitCode::from(ExitStatus::Error);
                         }
                     }
@@ -174,88 +165,75 @@ pub fn cli() -> ExitCode {
         log::error!("List of checks (type, location of definition, file to check, tags)");
         checks.iter().for_each(|check| {
             let enabled = filter_checks(
-                &check.generic_check().tags,
+                &check.generic_checker().tags,
                 &cli.any_tags,
                 &cli.all_tags,
                 &cli.skip_tags,
             );
 
-            log::error!(
-                "{} {} - {} - {} - {:?}",
-                if enabled { "⬜" } else { " ✖️" },
-                check.generic_check().file_with_checks.short_url_str(),
-                check
-                    .generic_check()
-                    .file_to_check
-                    .as_os_str()
-                    .to_string_lossy(),
-                check.check_type(),
-                check.generic_check().tags
-            )
+            check.list_checker(enabled);
         });
         return ExitCode::from(ExitStatus::Success);
     }
 
     // log::info!(
-    //     "☰ Restricting checkers which have __tags__ which all are part of: {:?}",
+    //     "☰ Restricting checkers which have tags which all are part of: {:?}",
     //     restricted_tags,
     // );
 
     checks.retain(|check| {
         filter_checks(
-            &check.generic_check().tags,
+            &check.generic_checker().tags,
             &cli.any_tags,
             &cli.all_tags,
             &cli.skip_tags,
         )
     });
 
-    dbg!(checks.len());
-
-    let (action_count, success_count) =
-        run_checks(&checks, cli.fix, cli.create_missing_directories);
-
-    log::warn!("{success_count} checks successful.");
-    if action_count > 0 {
-        // note: error level is used to always show this message, also with the lowest verbose level
-        if action_count == 1 {
-            log::error!("🪛  There is 1 violation to fix.",);
-        } else {
-            log::error!("🪛  There are {action_count} violations to fix.",);
-        }
-        ExitCode::from(ExitStatus::Failure)
-    } else {
-        // note: error level is used to always show this message, also with the lowest verbose level
-        log::error!("🥇 No violations found.");
-        ExitCode::from(ExitStatus::Success)
-    }
+    ExitCode::from(run_checks(&checks, cli.fix))
 }
 
-pub(crate) fn run_checks(
-    checks: &Vec<Box<dyn Check>>,
-    fix: bool,
-    create_missing_directories: bool,
-) -> (i32, i32) {
-    let mut action_count = 0;
-    let mut success_count = 0;
+pub(crate) fn run_checks(checks: &Vec<Box<dyn Checker>>, fix: bool) -> ExitStatus {
+    let mut fix_needed_count = 0;
+    let mut fix_executed_count = 0;
+    let mut no_fix_needed_count = 0;
+    let mut error_count = 0;
 
     for check in checks {
-        let result = if fix {
-            check.fix(create_missing_directories)
-        } else {
-            check.check()
-        };
+        let fix = check.generic_checker().fixable && fix;
+        let result = check.check(fix);
         match result {
-            Err(_) => {
-                log::error!("⚠  There was an error fixing files.");
-                return (0, 0);
-            }
-            Ok(Action::None) => success_count += 1,
-            Ok(_action) => {
-                action_count += 1;
-            }
+            crate::checkers::base::CheckResult::NoFixNeeded => no_fix_needed_count += 1,
+            crate::checkers::base::CheckResult::FixExecuted(_) => fix_executed_count += 1,
+            crate::checkers::base::CheckResult::FixNeeded(_) => fix_needed_count += 1,
+            crate::checkers::base::CheckResult::Error(_) => error_count += 1,
         };
     }
 
-    (action_count, success_count)
+    log::warn!("{checks} checks found", checks = checks.len());
+    if fix {
+        log::warn!("✅ {fix_executed_count} checks fixed");
+        log::warn!("✅ {no_fix_needed_count} checks did not a fix");
+    }
+
+    match fix_needed_count {
+        0 => log::error!("🥇 No violations found."),
+
+        1 => log::error!("🪛 There is 1 violation to fix.",),
+        _ => log::error!("🪛 There are {fix_needed_count} violations to fix.",),
+    }
+
+    match error_count {
+        0 => (),
+
+        1 => log::error!("🚨 There was 1 error executing a fix.",),
+        _ => log::error!("🚨 There are {error_count} errors executing a fix.",),
+    }
+    if error_count > 0 {
+        ExitStatus::Error
+    } else if fix_needed_count > 0 {
+        ExitStatus::Failure
+    } else {
+        ExitStatus::Success
+    }
 }

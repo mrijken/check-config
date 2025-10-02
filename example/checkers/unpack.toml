@@ -1,0 +1,29 @@
+[[file_copied]]
+source = "config:test.zip"
+destination = "temp/test.zip"
+
+[[file_copied]]
+source = "config:test.tar.gz"
+destination = "temp/test.tar.gz"
+
+[[file_unpacked]]
+source = "temp/test.zip"
+destination_dir = "output/unpack/zip"
+
+[[file_unpacked]]
+source = "temp/test.tar.gz"
+destination_dir = "output/unpack/tar.gz"
+
+[[file_present]]
+file = "output/unpack/zip/test/sample"
+fixable = false
+
+[[file_present]]
+file = "output/unpack/tar.gz/test/sample"
+fixable = false
+
+[[file_absent]]
+file = "temp/test.zip"
+
+[[file_absent]]
+file = "temp/test.tar.gz"
