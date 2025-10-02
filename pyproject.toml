@@ -1,42 +1,40 @@
-[build-system]
-requires = ["maturin>=1.0,<2.0"]
-
-build-backend = "maturin"
-
 [project]
 name = "check-config"
-version = "0.8.6"
+version = "0.9.0-alpha.2"
 description = "Check configuration files."
-authors = [{ name = "Marc Rijken", email = "marc@rijken.org" }]
-maintainers = [{ name = "Marc Rijken", email = "marc@rijken.org" }]
 readme = "README.md"
 requires-python = ">=3.10"
 license = { file = "LICENSE" }
+authors = [{ name = "Marc Rijken", email = "marc@rijken.org" }]
+maintainers = [{ name = "Marc Rijken", email = "marc@rijken.org" }]
 keywords = ["automation", "configuration"]
 classifiers = [
-    "Development Status :: 4 - Beta",
-    "Environment :: Console",
-    "Intended Audience :: Developers",
-    "License :: OSI Approved :: MIT License",
-    "Operating System :: OS Independent",
-    "Programming Language :: Python",
-    "Programming Language :: Python :: 3.10",
-    "Programming Language :: Python :: 3.11",
-    "Programming Language :: Python :: 3.12",
-    "Programming Language :: Python :: 3.13",
-    "Programming Language :: Python :: 3 :: Only",
-    "Programming Language :: Rust",
-    "Topic :: Software Development :: Quality Assurance",
+  "Development Status :: 4 - Beta",
+  "Environment :: Console",
+  "Intended Audience :: Developers",
+  "License :: OSI Approved :: MIT License",
+  "Operating System :: OS Independent",
+  "Programming Language :: Python",
+  "Programming Language :: Python :: 3 :: Only",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Programming Language :: Rust",
+  "Topic :: Software Development :: Quality Assurance",
 ]
 
 [project.urls]
-source = "https://github.com/mrijken/check-config"
 homepage = "https://check-config.readthedocs.io"
+source = "https://github.com/mrijken/check-config"
+
+[build-system]
+requires = ["maturin>=1.0,<2.0"]
+build-backend = "maturin"
 
 [tool.maturin]
 bindings = "bin"
-profile = "release"
 manifest-path = "Cargo.toml"
 module-name = "check-config"
+profile = "release"
 strip = true
-

@@ -1,9 +1,22 @@
-[["~/.bashrc".lines_present]]
-__lines__ = "export SHELL=/bin/bash"
+[[lines_present]]
+file = "~/.bashrc"
+lines = "export SHELL=/bin/bash"
 
-[["~/.bashrc".lines_present]]
-__lines__ = "export EDITOR=hx"
+[[lines_present]]
+file = "~/.bashrc"
+lines = "export EDITOR=hx"
 
 
-["test.json".key_value_present]
+[[key_value_present]]
+file = "test.json"
 key1.key2.key3="value"
+
+
+[[key_value_present]]
+file = "test.toml"
+inline_table.key="value"
+
+
+[[key_value_present.table]]
+file = "test.toml"
+key="value"

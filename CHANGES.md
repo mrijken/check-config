@@ -1,5 +1,9 @@
 # CHANGES
 
+## 0.9.0.alpha.1
+
+- BREAKING: refactor the check-config toml files. See documentation for new format.
+
 ## 0.8.6
 
 - The path specified on the cli with, can also be a URL.
@@ -30,7 +34,7 @@
 
 ## 0.8.0
 
-- Add __replacements_regex in lines_present
+- Add \_\_replacements_regex in lines_present
 - BREAKING: use [__config__] in stead of [check-config] as config table
 - BREAKING: use `check-config.toml` as default name
 - preserve formatting of toml files, including comments

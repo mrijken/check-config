@@ -1,0 +1,34 @@
+[[key_value_present]]
+file = "pyproject.toml"
+key.tool.ruff.line-length = 120
+key.tool.ruff.select = ["ALL"]
+key.tool.ruff.ignore = [
+  "D",  # pydocstyle
+  "ANN102",  # Missing type annotation for {name} in classmethod
+  "ANN101",  # Missing type annotation for `self` in method
+  "EM102",  # Exception must not use an f-string literal, assign to variable first
+  "TCH",  # Use Type Checking Block
+  "TRY003",  # Avoid specifying long messages outside the exception class
+  "EM",  # Error messages must not use string literal, must not use f-string
+  "FBT",  # Do not use positional / default boolean arguments
+]
+
+[[key_value_present]]
+file = "pyproject.toml"
+key.tool.ruff.per-file-ignores."tests/**" = [
+  "S101",  # No usage of assert
+  "INP",  # No implicit namespace packages
+  "SLF",  # No private member accessed
+  "ARG",  # unused arguments
+  "PLR2004",  # No usage of magic contants
+  "ANN201",  # Missing return type annotation
+]
+key.tool.ruff.per-file-ignores."notebooks/**" = ["ALL"]
+
+[[key_value_present]]
+file = "pyproject.toml"
+key.tool.ruff.isort.force-single-line = true
+
+[[key_value_regex_matched]]
+file = "pyproject.toml"
+key.tool.ruff.target-version = "(py310)|(py311)"

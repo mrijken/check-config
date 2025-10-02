@@ -66,10 +66,12 @@ dict = { str = "string", int = 1, float = 1.1, bool = true, array = [1, 2] }
     }
 
     pub(crate) fn test_mapping(mut mapping_to_check: Box<dyn Mapping>) {
-        assert!(mapping_to_check
-            .get_array("array", false)
-            .expect("")
-            .contains_item(&toml_edit::Item::from(toml_edit::Value::from(1))));
+        assert!(
+            mapping_to_check
+                .get_array("array", false)
+                .expect("")
+                .contains_item(&toml_edit::Item::from(toml_edit::Value::from(1)))
+        );
 
         assert_eq!(
             mapping_to_check.get_string("str").expect(""),
@@ -87,12 +89,14 @@ dict = { str = "string", int = 1, float = 1.1, bool = true, array = [1, 2] }
             "string".to_string()
         );
 
-        assert!(mapping_to_check
-            .get_mapping("dict", false)
-            .expect("")
-            .get_array("array", false)
-            .unwrap()
-            .contains_item(&toml_edit::Item::from(toml_edit::Value::from(1))));
+        assert!(
+            mapping_to_check
+                .get_mapping("dict", false)
+                .expect("")
+                .get_array("array", false)
+                .unwrap()
+                .contains_item(&toml_edit::Item::from(toml_edit::Value::from(1)))
+        );
 
         mapping_to_check
             .get_mapping("new_dict", true)
@@ -139,12 +143,14 @@ dict = { str = "string", int = 1, float = 1.1, bool = true, array = [1, 2] }
                 "new_array_value",
             )));
 
-        assert!(mapping_to_check
-            .get_array("new_array", false)
-            .unwrap()
-            .contains_item(&toml_edit::Item::from(toml_edit::Value::from(
-                "new_array_value"
-            ))));
+        assert!(
+            mapping_to_check
+                .get_array("new_array", false)
+                .unwrap()
+                .contains_item(&toml_edit::Item::from(toml_edit::Value::from(
+                    "new_array_value"
+                )))
+        );
 
         mapping_to_check
             .get_mapping("dict", false)
@@ -155,13 +161,15 @@ dict = { str = "string", int = 1, float = 1.1, bool = true, array = [1, 2] }
                 "new_nested_array_value",
             )));
 
-        assert!(mapping_to_check
-            .get_mapping("dict", false)
-            .unwrap()
-            .get_array("new_nested_array", false)
-            .unwrap()
-            .contains_item(&toml_edit::Item::from(toml_edit::Value::from(
-                "new_nested_array_value"
-            ))));
+        assert!(
+            mapping_to_check
+                .get_mapping("dict", false)
+                .unwrap()
+                .get_array("new_nested_array", false)
+                .unwrap()
+                .contains_item(&toml_edit::Item::from(toml_edit::Value::from(
+                    "new_nested_array_value"
+                )))
+        );
     }
 }

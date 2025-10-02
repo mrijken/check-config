@@ -333,7 +333,7 @@ dict = { str = "string", int = 1, float = 1.1, bool = true, array = [1, 2] }
     fn test_insert_and_remove_with_comments() {
         let old_doc = "
 [table]
-# prefix comment Key \"keep_int\" 
+# prefix comment Key \"keep_int\"
 keep_int = 2  # suffix comment Value 2
 # prefix comment Key \"remove_int\"
 remove_int = 3  # suffix comment Value 3
@@ -350,7 +350,7 @@ keep_array = [ # prefix comment Value \"keep_item_1\"
 
         let items_to_add = "
 [table]
-# prefix comment Key \"add_int\" 
+# prefix comment Key \"add_int\"
 add_int = 2  # suffix comment Value 2
 keep_array = [ # prefix comment \"add_item_4\"
     \"add_item_4\" # suffix comment \"add_item_4\"
@@ -409,7 +409,7 @@ keep_array = [
 
         assert_eq!(
             Mapping::to_string(&new_doc).unwrap(),
-            "\n[table]\n# prefix comment Key \"keep_int\" \nkeep_int = 2  # suffix comment Value 2\nkeep_array = [ # prefix comment Value \"keep_item_1\"\n    \"keep_item_1\",\n    # prefix comment item keep_item_3\n    \"keep_item_3\" # suffix comment item keep_item_3\n, # prefix comment \"add_item_4\"\n    \"add_item_4\" # suffix comment \"add_item_4\"\n] # suffix comment Array \"keep_array\"\n# prefix comment Key \"add_int\" \nadd_int = 2  # suffix comment Value 2\n        "
+            "\n[table]\n# prefix comment Key \"keep_int\"\nkeep_int = 2  # suffix comment Value 2\nkeep_array = [ # prefix comment Value \"keep_item_1\"\n    \"keep_item_1\",\n    # prefix comment item keep_item_3\n    \"keep_item_3\" # suffix comment item keep_item_3\n, # prefix comment \"add_item_4\"\n    \"add_item_4\" # suffix comment \"add_item_4\"\n] # suffix comment Array \"keep_array\"\n# prefix comment Key \"add_int\"\nadd_int = 2  # suffix comment Value 2\n        "
         );
     }
 }

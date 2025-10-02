@@ -1,15 +1,15 @@
-use crate::checkers::base::CheckDefinitionError;
+use crate::checkers::{base::CheckDefinitionError, file::get_option_string_value_from_checktable};
 
-pub(crate) fn parse_marker_lines(
+pub(crate) fn get_marker_from_check_table(
     value: &toml_edit::Table,
 ) -> Result<Option<(String, String)>, CheckDefinitionError> {
-    let marker_lines = match value.get("__marker__") {
+    let marker_lines = match value.get("marker") {
         None => None,
         Some(marker) => match marker.as_str() {
             None => {
                 return Err(CheckDefinitionError::InvalidDefinition(
-                    "__marker__ is not a string".to_string(),
-                ))
+                    "`marker` is not a string".to_string(),
+                ));
             }
             Some(marker) => {
                 let marker = marker.trim_end();
@@ -24,32 +24,20 @@ pub(crate) fn parse_marker_lines(
     Ok(marker_lines)
 }
 
-/// Get the __lines__ from value
-/// When absent, return an error or return the defalt_value when Some
-pub(crate) fn parse_lines(
-    value: &toml_edit::Table,
+/// Get the lines from value
+/// When absent, return an error or return the default_value when Some
+pub(crate) fn get_lines_from_check_table(
+    check_table: &toml_edit::Table,
     default_value: Option<String>,
 ) -> Result<String, CheckDefinitionError> {
-    let lines = match value.get("__lines__") {
-        None => {
-            if let Some(default_value) = default_value {
-                return Ok(default_value);
-            }
-            return Err(CheckDefinitionError::InvalidDefinition(
-                "__lines__ is not present".to_string(),
-            ));
+    match get_option_string_value_from_checktable(check_table, "lines") {
+        Ok(None) => Ok(default_value.unwrap_or("".to_string()).to_string()),
+        Ok(Some(lines)) => {
+            let lines_with_trailing_new_line_when_not_empty = append_str(&lines, "");
+            Ok(lines_with_trailing_new_line_when_not_empty)
         }
-        Some(lines) => match lines.as_str() {
-            None => {
-                return Err(CheckDefinitionError::InvalidDefinition(
-                    "__lines__ is not a string".to_string(),
-                ))
-            }
-            Some(lines) => lines.to_string(),
-        },
-    };
-    let lines_with_trailing_new_line_when_not_empty = append_str(&lines, "");
-    Ok(lines_with_trailing_new_line_when_not_empty)
+        Err(err) => Err(err),
+    }
 }
 
 /// Replace the text between markers with replacement
@@ -90,7 +78,7 @@ pub(crate) fn remove_between_markers(
     {
         let before = &contents[..start_pos];
         let after = &contents[end_pos + end_marker.len()..];
-        return dbg!(format!("{}{}", before, after));
+        return format!("{}{}", before, after);
     }
 
     contents.to_string()

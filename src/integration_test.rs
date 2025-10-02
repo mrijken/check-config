@@ -11,26 +11,21 @@ mod tests {
         CopyBuilder::new("example/input", "output").run().unwrap();
 
         let file_with_checks = cli::parse_path_str_to_uri("example/pyproject.toml").unwrap();
-        let checks = checkers::read_checks_from_path(
-            &file_with_checks,
-            vec!["tool", "check-config"],
-            &vec![],
-        )
-        .into_iter()
-        .filter(|c| {
-            cli::filter_checks(
-                &c.generic_check().tags,
-                &[],
-                &[],
-                &["not_selected".to_string()],
-            )
-        })
-        .collect();
+        let checks =
+            checkers::read_checks_from_path(&file_with_checks, vec!["tool", "check-config"])
+                .into_iter()
+                .filter(|c| {
+                    cli::filter_checks(
+                        &c.generic_checker().tags,
+                        &[],
+                        &[],
+                        &["not_selected".to_string()],
+                    )
+                })
+                .collect();
 
-        let (action_count, success_count) = cli::run_checks(&checks, true, true);
+        assert_eq!(cli::run_checks(&checks, true), cli::ExitStatus::Success);
 
-        assert_eq!(action_count, 0);
-        assert_eq!(success_count, 29);
         assert!(!dir_diff::is_different("output", "example/expected_output").unwrap());
 
         std::fs::remove_dir_all("output").unwrap();

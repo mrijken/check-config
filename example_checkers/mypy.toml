@@ -1,10 +1,14 @@
-["pyproject.toml".key_value_present.tool.mypy]
+[[key_value_present]]
+file = "pyproject.toml"
+
+[key_value_present.key.tool.mypy]
 explicit_package_bases = true
 namespace_packages = true
 ignore_missing_imports = true
 
-[".pre-commit-config.yaml".entry_present.repos]
-__items__ = [
+[[entry_present]]
+file = ".pre-commit-config.yaml"
+entry.repos = [
     { repo = "local", hooks = [
         { id = "mypy", name = "mypy", language = "system", entry = "poetry run mypy dvb", pass_filenames = false, always_run = true },
     ] },
@@ -13,5 +17,6 @@ __items__ = [
     ] },
 ]
 
-[[".gitignore".lines_present]]
-__lines__ = ".mypy_cache"
+[[lines_present]]
+file = ".gitignore"
+lines = ".mypy_cache"
