@@ -109,8 +109,6 @@ impl Checker for FileUnpacked {
             Err(e) => return Err(CheckError::String(e.to_string())),
         };
 
-        dbg!(self.destination_dir.as_ref());
-
         let file_unpack = !self.destination_dir.as_ref().exists();
 
         if file_unpack {
