@@ -119,10 +119,18 @@ pub fn cli() -> ExitCode {
 
     let mut checks = match cli.path {
         Some(path_str) => match parse_path_str_to_uri(path_str.as_str()) {
-            Some(uri) => {
-                log::info!("Using checkers from {}", &uri.short_url_str());
-                read_checks_from_path(&uri, vec![])
-            }
+            Some(uri) => match std::path::Path::new(uri.path()).exists() {
+                true => {
+                    log::info!("Using checkers from {}", &uri.short_url_str());
+                    read_checks_from_path(&uri, vec![], &vec![])
+                }
+                false => {
+                    log::error!(
+                        "⚠  Unable to load checkers. Path ({path_str}) as specified does not exist.",
+                    );
+                    return ExitCode::from(ExitStatus::Error);
+                }
+            },
             None => {
                 log::error!(
                     "Unable to load checkers. Path ({path_str}) specified is not a valid path.",
@@ -136,7 +144,7 @@ pub fn cli() -> ExitCode {
             match std::path::Path::new(uri.path()).exists() {
                 true => {
                     log::info!("Using checkers from {}", &uri);
-                    read_checks_from_path(&uri, vec![])
+                    read_checks_from_path(&uri, vec![], &vec![])
                 }
                 false => {
                     log::warn!("check-config.toml does not exists.");
@@ -145,7 +153,7 @@ pub fn cli() -> ExitCode {
                     match std::path::Path::new(uri.path()).exists() {
                         true => {
                             log::info!("Using checkers from {}", &uri);
-                            read_checks_from_path(&uri, vec!["tool", "check-config"])
+                            read_checks_from_path(&uri, vec!["tool", "check-config"], &vec![])
                         }
                         false => {
                             log::error!(

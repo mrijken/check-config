@@ -94,7 +94,6 @@ impl FileCheck {
 
     fn conclude_check_file_exists(
         &self,
-        check: &impl Checker,
         placeholder: Option<String>,
         permissions: Option<std::fs::Permissions>,
         regex: Option<regex::Regex>,
@@ -189,7 +188,7 @@ impl FileCheck {
 
     fn conclude_check_new_contents(
         &self,
-        check: &impl Checker,
+        _check: &impl Checker,
         new_contents: String,
         fix: bool,
     ) -> Result<CheckResult, CheckError> {
@@ -224,7 +223,7 @@ impl FileCheck {
 
     fn conclude_check_with_remove(
         &self,
-        check: &impl Checker,
+        _check: &impl Checker,
         fix: bool,
     ) -> Result<CheckResult, CheckError> {
         let action_message = "remove file".to_string();

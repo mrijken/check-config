@@ -107,7 +107,6 @@ impl Checker for FilePresent {
     }
     fn check_(&self, fix: bool) -> Result<crate::checkers::base::CheckResult, CheckError> {
         self.file_check.conclude_check_file_exists(
-            self,
             self.placeholder.clone(),
             self.permissions.clone(),
             self.regex.clone(),
