@@ -1,391 +1,350 @@
-use std::{env, str::FromStr};
+use std::fs;
+#[cfg(not(target_os = "windows"))]
+use std::os::unix::fs::PermissionsExt;
+use std::path::PathBuf;
 
-use base::CheckConstructor;
+use similar::{DiffableStr, TextDiff};
 
-use crate::uri::{self};
+use crate::{
+    checkers::{
+        GenericChecker,
+        base::{CheckDefinitionError, CheckError, CheckResult, Checker},
+    },
+    file_types::{self, FileType},
+    mapping::generic::Mapping,
+    uri::WritablePath,
+};
 
-use self::base::{CheckDefinitionError, Checker};
-
-pub(crate) mod base;
-pub(crate) mod file;
-// pub(crate) mod package;
-pub(crate) mod git;
-pub(crate) mod test_helpers;
-pub(crate) mod utils;
-
-pub(crate) trait RelativeUrl {
-    fn short_url_str(&self) -> String;
-}
-
-impl RelativeUrl for url::Url {
-    fn short_url_str(&self) -> String {
-        let cwd_url = url::Url::parse(&format!(
-            "file://{}",
-            env::current_dir()
-                .unwrap()
-                .into_os_string()
-                .into_string()
-                .unwrap()
-        ))
-        .unwrap();
-        match cwd_url.make_relative(self) {
-            Some(relative_url) => relative_url,
-            None => self.as_str().to_owned(),
-        }
-    }
-}
+pub(crate) mod entry_absent;
+pub(crate) mod entry_present;
+pub(crate) mod file_absent;
+pub(crate) mod file_copied;
+pub(crate) mod file_present;
+pub(crate) mod file_unpacked;
+pub(crate) mod key_absent;
+pub(crate) mod key_value_present;
+pub(crate) mod key_value_regex_match;
+pub(crate) mod lines_absent;
+pub(crate) mod lines_present;
 
 #[derive(Debug, Clone)]
-pub(crate) struct GenericChecker {
-    // path to the file where the checkers are defined
-    pub(crate) file_with_checks: url::Url,
-    // overridden file type
-    pub(crate) tags: Vec<String>,
-    // fixable
-    pub(crate) fixable: bool,
+pub(crate) struct FileCheck {
+    generic_check: GenericChecker,
+    pub(crate) file_to_check: WritablePath,
+    pub(crate) file_type_override: Option<String>,
 }
 
-impl GenericChecker {
-    fn file_with_checks(&self) -> &url::Url {
-        &self.file_with_checks
+impl FileCheck {
+    fn from_check_table(
+        generic_check: GenericChecker,
+        config_table: &toml_edit::Table,
+    ) -> Result<Self, CheckDefinitionError> {
+        let file_to_check = match config_table.get("file") {
+            None => Err(CheckDefinitionError::InvalidDefinition(
+                "file is not defined".into(),
+            )),
+            Some(file_to_check) => match file_to_check.as_str() {
+                None => Err(CheckDefinitionError::InvalidDefinition(
+                    "file is not a string".into(),
+                ))?,
+                Some(file_to_check) => Ok(WritablePath::from_string(file_to_check)
+                    .map_err(|_| CheckDefinitionError::InvalidDefinition("invalid path".into()))?),
+            },
+        }?;
+
+        let file_type_override = match config_table.get("file_type") {
+            None => Ok(None),
+            Some(file_type) => match file_type.as_str() {
+                None => Err(CheckDefinitionError::InvalidDefinition(
+                    "file_type is not a string".into(),
+                )),
+                Some(file_type) => Ok(Some(file_type.to_string())),
+            },
+        }?;
+
+        Ok(Self {
+            file_to_check,
+            file_type_override,
+            generic_check,
+        })
     }
-}
 
-fn tags_array_to_tags_vec(
-    tags_array: &toml_edit::Array,
-) -> Result<Vec<String>, CheckDefinitionError> {
-    let mut tags = Vec::new();
-    for i in tags_array {
-        if let Some(value) = i.as_str() {
-            tags.push(value.into());
+    fn check_object(&self) -> String {
+        self.file_to_check.as_ref().to_string_lossy().to_string()
+    }
+
+    fn file_to_check(&self) -> &PathBuf {
+        self.file_to_check.as_ref()
+    }
+
+    fn get_action_message(&self, old_contents: &str, new_contents: &str) -> String {
+        format!(
+            "Set file contents to: \n{}",
+            TextDiff::from_lines(
+                old_contents,
+                // self.generic_check()
+                //     .get_file_contents(DefaultContent::EmptyString)
+                //     .unwrap_or("".to_string())
+                //     .as_str(),
+                new_contents
+            )
+            .unified_diff()
+        )
+    }
+
+    fn conclude_check_file_exists(
+        &self,
+        placeholder: Option<String>,
+        permissions: Option<std::fs::Permissions>,
+        regex: Option<regex::Regex>,
+        fix: bool,
+    ) -> Result<CheckResult, CheckError> {
+        let mut action_messages: Vec<String> = vec![];
+
+        let create_file = !self.file_to_check.as_ref().exists();
+
+        if create_file {
+            action_messages.push("create file".into());
+        }
+        let fix_placeholder = if let Some(placeholder) = placeholder.clone() {
+            action_messages.push(format!("set contents to {}", placeholder.clone()));
+            create_file
         } else {
-            return Err(CheckDefinitionError::InvalidDefinition(
-                " __tags__ contains a value which is not a string".to_string(),
-            ));
+            false
         };
+
+        let fix_permissions = if let Some(permissions) = permissions.clone() {
+            #[cfg(target_os = "windows")]
+            {
+                false
+            }
+
+            #[cfg(not(target_os = "windows"))]
+            {
+                if create_file {
+                    true
+                } else {
+                    let current_permissions = match self.file_to_check.as_ref().metadata() {
+                        Err(_) => {
+                            return Err(CheckError::PermissionsNotAccessable);
+                        }
+                        Ok(metadata) => metadata.permissions(),
+                    };
+
+                    // we only check for the last 3 octal digits
+
+                    (current_permissions.mode() & 0o777) != (permissions.mode() & 0o777)
+                }
+            }
+        } else {
+            false
+        };
+
+        #[cfg(not(target_os = "windows"))]
+        if fix_permissions {
+            action_messages.push(format!(
+                "fix permissions to {:o}",
+                permissions.clone().unwrap().to_owned().mode()
+            ));
+        }
+
+        let fix_regex = if let Some(regex) = regex.clone() {
+            create_file || !regex.is_match(self.get_file_contents()?.as_str())
+        } else {
+            false
+        };
+
+        if fix_regex {
+            action_messages.push(format!(
+                "fix content to match regex {:?}",
+                regex.unwrap().to_string()
+            ));
+        }
+
+        let action_message = action_messages.join("\n");
+
+        let check_result = match (
+            create_file || fix_permissions || fix_placeholder || fix_regex,
+            fix,
+        ) {
+            (false, _) => CheckResult::NoFixNeeded,
+            (true, false) => CheckResult::FixNeeded(action_message),
+            (true, true) => {
+                let contents = if fix_placeholder {
+                    placeholder.unwrap()
+                } else {
+                    "".to_string()
+                };
+                self.set_file_contents(contents)?;
+                if fix_permissions {
+                    fs::set_permissions(self.file_to_check(), permissions.unwrap())?;
+                }
+                CheckResult::FixExecuted(action_message)
+            }
+        };
+
+        Ok(check_result)
     }
 
-    Ok(tags)
-}
+    fn conclude_check_new_contents(
+        &self,
+        _check: &impl Checker,
+        new_contents: String,
+        fix: bool,
+    ) -> Result<CheckResult, CheckError> {
+        let old_contents = self.get_file_contents()?;
 
-fn read_tags_from_table(
-    check_table: &toml_edit::Table,
-) -> Result<Vec<String>, CheckDefinitionError> {
-    let tags = Vec::new();
-    match check_table.get("tags") {
-        None => Ok(tags),
-        Some(item) => {
-            if !item.is_array() {
-                Err(CheckDefinitionError::InvalidDefinition(
-                    "`tags` is not an array".into(),
-                ))
-            } else {
-                tags_array_to_tags_vec(item.as_array().expect("is an array"))
+        let action_message = if old_contents == new_contents {
+            "".to_string()
+        } else {
+            self.get_action_message(old_contents.as_str(), new_contents.as_str())
+        };
+
+        let check_result = match (old_contents == new_contents, fix) {
+            (true, _) => CheckResult::NoFixNeeded,
+            (false, false) => CheckResult::FixNeeded(action_message),
+            (false, true) => {
+                self.set_file_contents(new_contents)?;
+                CheckResult::FixExecuted(action_message)
             }
+        };
+
+        Ok(check_result)
+    }
+
+    fn conclude_check_with_new_doc(
+        &self,
+        check: &impl Checker,
+        new_doc: Box<dyn Mapping>,
+        fix: bool,
+    ) -> Result<CheckResult, CheckError> {
+        self.conclude_check_new_contents(check, new_doc.to_string()?, fix)
+    }
+
+    fn conclude_check_with_remove(
+        &self,
+        _check: &impl Checker,
+        fix: bool,
+    ) -> Result<CheckResult, CheckError> {
+        let action_message = "remove file".to_string();
+
+        let check_result = match (self.file_to_check.as_ref().exists(), fix) {
+            (false, _) => CheckResult::NoFixNeeded,
+            (true, false) => CheckResult::FixNeeded(action_message),
+            (true, true) => {
+                self.remove_file()?;
+                CheckResult::FixExecuted(action_message)
+            }
+        };
+
+        Ok(check_result)
+    }
+
+    fn get_file_contents(&self) -> Result<String, CheckError> {
+        match fs::read_to_string(self.file_to_check()) {
+            Ok(contents) => {
+                let contents = if contents.ends_with_newline() {
+                    contents
+                } else {
+                    format!("{contents}\n")
+                };
+                Ok(contents)
+            }
+            Err(_) => Ok("".to_string()),
         }
     }
+
+    fn set_file_contents(&self, contents: String) -> Result<(), CheckError> {
+        if fs::exists(self.file_to_check()).expect("no error checking existance of path")
+            && contents.is_empty()
+        {
+            return Ok(());
+        }
+
+        if let Some(parent) = self.file_to_check().parent()
+            && !parent.exists()
+        {
+            fs::create_dir_all(parent)?;
+        }
+
+        if let Err(e) = fs::write(self.file_to_check(), contents) {
+            log::error!(
+                "⚠  Cannot write file {} {}",
+                self.file_to_check().to_string_lossy(),
+                e
+            );
+            Err(CheckError::FileCanNotBeWritten)
+        } else {
+            Ok(())
+        }
+    }
+
+    fn remove_file(&self) -> Result<(), CheckError> {
+        if let Err(e) = fs::remove_file(self.file_to_check()) {
+            log::error!(
+                "⚠ Cannot remove file {} {}",
+                self.file_to_check().to_string_lossy(),
+                e
+            );
+            Err(CheckError::FileCanNotBeRemoved)
+        } else {
+            Ok(())
+        }
+    }
+
+    fn get_mapping(&self) -> Result<Box<dyn Mapping>, CheckError> {
+        let extension = self.file_to_check().extension();
+        if extension.is_none() && self.file_type_override.is_none() {
+            return Err(CheckError::UnknownFileType(
+                "No extension found".to_string(),
+            ));
+        };
+
+        let contents = self.get_file_contents()?;
+
+        let extension = self.file_type_override.clone().unwrap_or(
+            extension
+                .expect("file has an extension")
+                .to_str()
+                .expect("extension is a string")
+                .to_string(),
+        );
+
+        if extension == "toml" {
+            return file_types::toml::Toml::new().to_mapping(&contents);
+        } else if extension == "json" {
+            return file_types::json::Json::new().to_mapping(&contents);
+        } else if extension == "yaml" || extension == "yml" {
+            return file_types::yaml::Yaml::new().to_mapping(&contents);
+        }
+        Err(CheckError::UnknownFileType(extension))
+    }
 }
 
-fn get_option_boolean_from_check_table(
+pub(crate) fn get_option_string_value_from_checktable(
     check_table: &toml_edit::Table,
     key: &str,
-) -> Result<Option<bool>, CheckDefinitionError> {
+) -> Result<Option<String>, CheckDefinitionError> {
     match check_table.get(key) {
         None => Ok(None),
-        Some(value) => match value.as_bool() {
-            Some(value) => Ok(Some(value)),
+        Some(value) => match value.as_str() {
             None => Err(CheckDefinitionError::InvalidDefinition(format!(
-                "{key} is not a boolean",
+                "{key} is not a string"
             ))),
+            Some(value) => Ok(Some(value.to_string())),
         },
     }
 }
 
-fn get_check_from_check_table(
-    file_with_checks: &url::Url,
-    check_type: &str,
+pub(crate) fn get_string_value_from_checktable(
     check_table: &toml_edit::Table,
-    parent_tags: &Vec<String>,
-) -> Result<Box<dyn Checker>, CheckDefinitionError> {
-    let check_table = check_table.clone();
-
-    let mut tags = read_tags_from_table(&check_table)?;
-    for tag in parent_tags {
-        tags.push(tag.clone());
-    }
-
-    let fixable = (get_option_boolean_from_check_table(&check_table, "fixable")?).unwrap_or(true);
-
-    let generic_check = GenericChecker {
-        file_with_checks: file_with_checks.clone(),
-        tags,
-        fixable,
-    };
-    match check_type {
-        "entry_absent" => Ok(Box::new(file::entry_absent::EntryAbsent::from_check_table(
-            generic_check,
-            check_table,
-        )?)),
-        "entry_present" => Ok(Box::new(
-            file::entry_present::EntryPresent::from_check_table(generic_check, check_table)?,
-        )),
-        "file_absent" => Ok(Box::new(file::file_absent::FileAbsent::from_check_table(
-            generic_check,
-            check_table,
-        )?)),
-        "file_present" => Ok(Box::new(file::file_present::FilePresent::from_check_table(
-            generic_check,
-            check_table,
-        )?)),
-        "file_copied" => Ok(Box::new(file::file_copied::FileCopied::from_check_table(
-            generic_check,
-            check_table,
-        )?)),
-        "file_unpacked" => Ok(Box::new(
-            file::file_unpacked::FileUnpacked::from_check_table(generic_check, check_table)?,
-        )),
-        "lines_absent" => Ok(Box::new(file::lines_absent::LinesAbsent::from_check_table(
-            generic_check,
-            check_table,
-        )?)),
-        "lines_present" => Ok(Box::new(
-            file::lines_present::LinesPresent::from_check_table(generic_check, check_table)?,
-        )),
-        // "package_present" => Ok(Box::new(
-        //     package::package_present::PackagePresent::from_check_table(generic_check, check_table)?,
-        // )),
-        // "package_absent" => Ok(Box::new(
-        //     package::package_absent::PackageAbsent::from_check_table(generic_check, check_table)?,
-        // )),
-        "key_value_present" => Ok(Box::new(
-            file::key_value_present::KeyValuePresent::from_check_table(
-                generic_check,
-                check_table.clone(),
-            )?,
-        )),
-        "key_absent" => Ok(Box::new(file::key_absent::KeyAbsent::from_check_table(
-            generic_check,
-            check_table.clone(),
-        )?)),
-        "key_value_regex_matched" => Ok(Box::new(
-            file::key_value_regex_match::EntryRegexMatched::from_check_table(
-                generic_check,
-                check_table.clone(),
-            )?,
-        )),
-        "git_fetched" => Ok(Box::new(git::GitFetched::from_check_table(
-            generic_check,
-            check_table.clone(),
-        )?)),
-        _ => {
-            log::error!("unknown check {check_type} {check_table}");
-            Err(CheckDefinitionError::UnknownCheckType(
-                check_type.to_string(),
-            ))
-        }
-    }
-}
-
-pub(crate) fn read_checks_from_path(
-    file_with_checks: &url::Url,
-    top_level_keys: Vec<&str>,
-    parent_tags: &Vec<String>,
-) -> Vec<Box<dyn Checker>> {
-    let mut checks: Vec<Box<dyn Checker>> = vec![];
-
-    let checks_toml_str = match uri::read_to_string(file_with_checks) {
-        Ok(checks_toml) => checks_toml,
-        Err(_) => {
-            log::error!("⚠ {file_with_checks} could not be read");
-            return checks;
-        }
-    };
-    let mut checks_toml: toml_edit::Table =
-        match toml_edit::DocumentMut::from_str(checks_toml_str.as_str()) {
-            Ok(checks_toml) => checks_toml.as_table().to_owned(),
-            Err(e) => {
-                log::error!("Invalid toml file {file_with_checks} {e}");
-                return checks;
-            }
-        };
-    for key in top_level_keys {
-        checks_toml = match checks_toml.get(key) {
-            Some(toml) => match toml.as_table() {
-                Some(toml) => toml.clone(),
-                None => {
-                    log::error!("Top level key {key} in {file_with_checks} is not a table");
-                    return vec![];
-                }
-            },
-            None => {
-                log::error!("Top level key {key} is not found in {file_with_checks}");
-                return vec![];
-            }
-        }
-    }
-
-    let tags_of_this_file = if let Some(tags) = checks_toml.get("__tags__")
-        && let toml_edit::Item::Value(toml_edit::Value::Array(tags)) = tags
-    {
-        match tags_array_to_tags_vec(tags) {
-            Ok(mut tags) => {
-                for tag in parent_tags {
-                    if !tags.contains(tag) {
-                        tags.push(tag.clone());
-                    }
-                }
-                tags
-            }
-            Err(_) => {
-                log::error!("{tags} contains invalid values");
-                std::process::exit(1);
-            }
-        }
-    } else {
-        vec![]
-    };
-
-    for (key, value) in checks_toml {
-        if key == "include" {
-            if let toml_edit::Item::Value(toml_edit::Value::Array(include_uris)) = value {
-                for include_uri in include_uris {
-                    let include_path = match uri::parse_uri(
-                        include_uri.as_str().expect("uri is a string"),
-                        Some(file_with_checks),
-                    ) {
-                        Ok(include_path) => include_path,
-                        Err(_) => {
-                            log::error!("{include_uri} is not a valid uri");
-                            std::process::exit(1);
-                        }
-                    };
-                    checks.extend(read_checks_from_path(&include_path, vec![], parent_tags));
-                }
-            }
-            continue;
-        }
-
-        let check_type = key;
-        let mut checks_to_add = vec![];
-        match value {
-            toml_edit::Item::Table(config_table) => {
-                checks_to_add.push(get_check_from_check_table(
-                    file_with_checks,
-                    check_type.as_str(),
-                    &config_table,
-                    &tags_of_this_file,
-                ));
-            }
-            toml_edit::Item::ArrayOfTables(array) => {
-                for config_table in array {
-                    checks_to_add.push(get_check_from_check_table(
-                        file_with_checks,
-                        check_type.as_str(),
-                        &config_table,
-                        &tags_of_this_file,
-                    ));
-                }
-            }
-            _ => {}
-        }
-
-        for check in checks_to_add {
-            match check {
-                Ok(check) => checks.push(check),
-                Err(err) => {
-                    log::error!("Checkfile {file_with_checks}:{check_type} has errors: {err}")
-                }
-            }
-        }
-    }
-    checks
-}
-
-#[cfg(test)]
-mod test {
-    use super::*;
-    use std::fs::File;
-    use std::io::Write;
-    use tempfile::tempdir;
-
-    #[test]
-    fn test_read_checks_from_path() {
-        let dir = tempdir().unwrap();
-        let path_with_checkers = dir.path().join("check-config.toml");
-        let mut file_with_checkers = File::create(&path_with_checkers).unwrap();
-
-        writeln!(
-            file_with_checkers,
-            r#"
-include = []  # optional list of toml files with additional checks
-
-[[file_absent]]
-file = "test/absent_file"
-
-[[file_present]]
-file = "test/present_file"
-
-[[key_absent]]
-file = "test/present.toml"
-key.key = "key"
-
-[[key_value_present]]
-file = "test/present.toml"
-key.key1 = 1
-
-[key_value_regex_matched]
-file = "test/present.toml"
-key.key = 'v.*'
-
-[[lines_absent]]
-file = "test/present.txt"
-lines = """\
-multi
-line"""
-
-[[lines_present]]
-file = "test/present.txt"
-lines = """\
-multi
-line"""
-
-[[entry_present]]
-file = "test/present.toml"
-entry.key = [1,2,3]
-
-[[entry_absent]]
-file = "test/present.toml"
-entry.key = [1,2,3]
-        "#
-        )
-        .expect("file is created");
-
-        let path_with_checkers =
-            url::Url::parse(&format!("file://{}", path_with_checkers.to_str().unwrap())).unwrap();
-        let checks = read_checks_from_path(&path_with_checkers, vec![], &vec![]);
-
-        assert_eq!(checks.len(), 9);
-    }
-
-    #[test]
-    fn test_read_invalid_checks_from_path() {
-        let dir = tempdir().unwrap();
-        let path_with_checkers = dir.path().join("check-config.toml");
-        let mut file_with_checkers = File::create(&path_with_checkers).unwrap();
-
-        writeln!(
-            file_with_checkers,
-            r#"
-["test/absent_file".fileXabsent]
-
-        "#
-        )
-        .expect("write is succsful");
-
-        let path_with_checkers =
-            url::Url::parse(&format!("file://{}", path_with_checkers.to_str().unwrap())).unwrap();
-        let checks = read_checks_from_path(&path_with_checkers, vec![], &vec![]);
-
-        assert_eq!(checks.len(), 0);
+    key: &str,
+) -> Result<String, CheckDefinitionError> {
+    match get_option_string_value_from_checktable(check_table, key) {
+        Ok(Some(value)) => Ok(value),
+        Ok(None) => Err(CheckDefinitionError::InvalidDefinition(format!(
+            "{key} is not present in check_table"
+        ))),
+        Err(err) => Err(err),
     }
 }
