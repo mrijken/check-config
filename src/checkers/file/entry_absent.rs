@@ -68,7 +68,7 @@ impl Checker for EntryAbsent {
 
         remove_entries(doc.as_mut(), &self.absent);
 
-        self.file_check.conclude_check_with_new_doc(self, doc, fix)
+        self.file_check.conclude_check_with_new_doc(doc, fix)
     }
 }
 

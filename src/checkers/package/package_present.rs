@@ -1,8 +1,10 @@
 use std::process::Command;
 
+// inspiration: https://github.com/mason-org/mason.nvim/tree/ad7146aa61dcaeb54fa900144d768f040090bff0/lua/mason-core/installer/managers
+
 use super::super::{
-    base::{Action, Check, CheckConstructor, CheckDefinitionError, CheckError},
     GenericCheck,
+    base::{Action, Check, CheckConstructor, CheckDefinitionError, CheckError},
 };
 
 #[derive(Clone, Debug, PartialEq)]

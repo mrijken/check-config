@@ -36,7 +36,7 @@ impl Checker for FileAbsent {
     }
 
     fn check_(&self, fix: bool) -> Result<CheckResult, CheckError> {
-        self.file_check.conclude_check_with_remove(self, fix)
+        self.file_check.conclude_check_with_remove(fix)
     }
 }
 
