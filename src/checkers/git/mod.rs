@@ -311,6 +311,7 @@ mod tests {
     }
 
     #[test]
+    #[ignore = "needs internet connection"]
     fn test_git_fetched() {
         let (git_fetched_check, _tempdir) = get_check_with_result(
             "https://github.com/mrijken/check-config.git".into(),
