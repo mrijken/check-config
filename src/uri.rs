@@ -1,6 +1,11 @@
+use core::hash;
 use derive_more::{AsRef, Display, From};
 use dirs;
-use std::{io::Write, path::PathBuf};
+use std::{
+    hash::{Hash, Hasher},
+    io::Write,
+    path::PathBuf,
+};
 use url::Url;
 
 #[derive(Debug, From, Display)]
@@ -65,6 +70,13 @@ pub trait ReadPath {
     fn read_to_string(&self) -> Result<String, PathError>;
 
     fn copy(&self, dest: &WritablePath) -> Result<(), PathError>;
+
+    fn hash(&self) -> Result<u64, PathError> {
+        let mut hasher = std::hash::DefaultHasher::new();
+        let content = self.read_to_string()?;
+        content.hash(&mut hasher);
+        Ok(hasher.finish())
+    }
 }
 
 impl ReadablePath {
