@@ -5,6 +5,7 @@ mod tests {
     use dircpy::*;
 
     #[test]
+    #[ignore = "needs internet connection"]
     fn test_example() {
         let _ = std::fs::remove_dir_all("output");
 
@@ -26,7 +27,6 @@ mod tests {
 
         assert_eq!(cli::run_checks(&checks, true), cli::ExitStatus::Success);
 
-        dbg!(dir_diff::is_different("output", "example/expected_output"));
         assert!(!dir_diff::is_different("output", "example/expected_output").unwrap());
 
         std::fs::remove_dir_all("output").unwrap();
