@@ -63,7 +63,11 @@ impl Checker for LinesAbsent {
         let new_contents = if let Some((start_marker, end_marker)) = self.marker_lines.as_ref() {
             remove_between_markers(&contents, start_marker, end_marker)
         } else {
-            contents.replace(&self.lines, "")
+            // remove with leading new line when a block is in front of it
+            let mut contents = contents.clone();
+            contents = contents.replace(format!("\n{}", self.lines).as_str(), "");
+            contents = contents.replace(self.lines.as_str(), "");
+            contents
         };
 
         self.file_check

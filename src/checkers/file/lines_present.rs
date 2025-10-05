@@ -176,13 +176,15 @@ mod tests {
         writeln!(file, "a").unwrap();
         assert_eq!(
             lines_present_check.check_(false).unwrap(),
-            CheckResult::FixNeeded("Set file contents to: \n@@ -1 +1,3 @@\n a\n+1\n+2\n".into())
+            CheckResult::FixNeeded("Set file contents to: \n@@ -1 +1,4 @@\n a\n+\n+1\n+2\n".into())
         );
 
         // file with correct contents
         assert_eq!(
             lines_present_check.check_(true).unwrap(),
-            CheckResult::FixExecuted("Set file contents to: \n@@ -1 +1,3 @@\n a\n+1\n+2\n".into())
+            CheckResult::FixExecuted(
+                "Set file contents to: \n@@ -1 +1,4 @@\n a\n+\n+1\n+2\n".into()
+            )
         );
 
         assert_eq!(
