@@ -86,7 +86,16 @@ impl Checker for FileCopied {
             Err(e) => return Err(CheckError::String(e.to_string())),
         }
 
-        let copy_file_needed = !self.destination.as_ref().exists();
+        let destination_exists = self.destination.as_ref().exists();
+
+        let source_and_destination_are_different =
+            if destination_exists && self.source.hash()? != self.destination.hash()? {
+                true
+            } else {
+                false
+            };
+
+        let copy_file_needed = !destination_exists || source_and_destination_are_different;
 
         if copy_file_needed {
             action_messages.push("copy file".into());
