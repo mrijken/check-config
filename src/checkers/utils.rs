@@ -86,6 +86,6 @@ pub(crate) fn remove_between_markers(
 
 pub(crate) fn append_str(contents: &str, lines: &str) -> String {
     let contents = contents.trim_end();
-    let optional_new_line = if contents.is_empty() { "" } else { "\n" };
+    let optional_new_line = if contents.is_empty() { "" } else { "\n\n" };
     format!("{}{}{}", contents, optional_new_line, lines)
 }
