@@ -97,6 +97,8 @@ fn add_entries(doc: &mut dyn Mapping, entries_to_add: &toml_edit::Table) {
 
 #[cfg(test)]
 mod tests {
+    use std::{fs::read_to_string, io::Write, str::FromStr};
+
     use crate::checkers::test_helpers::read_test_files;
 
     use super::*;
@@ -111,9 +113,88 @@ mod tests {
 
             assert_eq!(
                 *test_expected_output,
-                test_input.to_string().unwrap(),
+                test_input.to_string(4).unwrap(),
                 "test_path {test_path} failed"
             );
         }
+    }
+    fn get_file_check_with_result(
+        entry: i64,
+        indent: Option<i64>,
+    ) -> (
+        Result<EntryPresent, CheckDefinitionError>,
+        tempfile::TempDir,
+    ) {
+        let generic_check = crate::checkers::test_helpers::get_generic_check();
+        let tmp_dir = tempfile::tempdir().unwrap();
+        let path_to_check = tmp_dir.path().join("file_to_check.json");
+        let mut file_to_check = std::fs::File::create(&path_to_check).unwrap();
+
+        let indent = if let Some(indent) = indent {
+            format!("indent = {}", indent)
+        } else {
+            "".to_string()
+        };
+
+        let check_doc = toml_edit::DocumentMut::from_str(
+            format!(
+                r#"
+                file="{}"
+                entry.list = [ {} ]
+                {}"#,
+                path_to_check.to_string_lossy().to_string(),
+                entry,
+                indent
+            )
+            .as_str(),
+        )
+        .unwrap();
+        let check_table = check_doc.as_table().clone();
+
+        writeln!(file_to_check, "{{\"list\": [1,2] }}").unwrap();
+
+        (
+            EntryPresent::from_check_table(generic_check, check_table),
+            tmp_dir,
+        )
+    }
+
+    fn get_file_unpacked_check(
+        entry: i64,
+        indent: Option<i64>,
+    ) -> (EntryPresent, tempfile::TempDir) {
+        let (file_check_with_result, tempdir) = get_file_check_with_result(entry, indent);
+
+        (
+            file_check_with_result.expect("check without issues"),
+            tempdir,
+        )
+    }
+
+    #[test]
+    fn test_indent() {
+        let (result, dir) = get_file_check_with_result(12, Some(-2));
+        assert_eq!(
+            result.err().unwrap(),
+            CheckDefinitionError::InvalidDefinition("indent must be >= 0".into())
+        );
+
+        let (result, dir) = get_file_check_with_result(12, Some(2));
+        result.unwrap().check(true);
+        let file_to_check = dir.path().join("file_to_check.json");
+        let contents = read_to_string(file_to_check).unwrap();
+        assert_eq!(
+            contents,
+            "{\n  \"list\": [\n    1,\n    2,\n    12\n  ]\n}\n"
+        );
+
+        let (result, dir) = get_file_check_with_result(12, Some(4));
+        result.unwrap().check(true);
+        let file_to_check = dir.path().join("file_to_check.json");
+        let contents = read_to_string(file_to_check).unwrap();
+        assert_eq!(
+            contents,
+            "{\n    \"list\": [\n        1,\n        2,\n        12\n    ]\n}\n"
+        );
     }
 }

@@ -24,13 +24,15 @@ pub(crate) fn from_string(doc: &str) -> Result<Box<dyn Mapping>, CheckError> {
 }
 
 impl Mapping for serde_json::Map<String, serde_json::Value> {
-    fn to_string(&self) -> Result<String, CheckError> {
+    fn to_string(&self, indent: usize) -> Result<String, CheckError> {
         if self.is_empty() {
             return Ok("".to_string());
         }
         let buf = Vec::new();
 
-        let formatter = serde_json::ser::PrettyFormatter::with_indent(b"    ");
+        let indent = " ".repeat(indent);
+
+        let formatter = serde_json::ser::PrettyFormatter::with_indent(indent.as_bytes());
         let mut ser = serde_json::Serializer::with_formatter(buf, formatter);
         self.serialize(&mut ser).unwrap();
         Ok(String::from_utf8(ser.into_inner()).unwrap() + "\n")
@@ -207,9 +209,18 @@ mod tests {
             mapping_to_check
                 .get_mapping("dict", false)
                 .expect("")
-                .to_string()
+                .to_string(4)
                 .unwrap(),
             "{\n    \"array\": [\n        1,\n        2\n    ],\n    \"bool\": true,\n    \"float\": 1.1,\n    \"int\": 1,\n    \"str\": \"string\"\n}\n".to_string()
+        );
+
+        assert_eq!(
+            mapping_to_check
+                .get_mapping("dict", false)
+                .expect("")
+                .to_string(2)
+                .unwrap(),
+            "{\n  \"array\": [\n    1,\n    2\n  ],\n  \"bool\": true,\n  \"float\": 1.1,\n  \"int\": 1,\n  \"str\": \"string\"\n}\n".to_string()
         );
     }
 

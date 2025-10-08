@@ -18,7 +18,7 @@ pub(crate) fn from_string(
 }
 
 impl Mapping for toml_edit::DocumentMut {
-    fn to_string(&self) -> Result<String, CheckError> {
+    fn to_string(&self, _indent: usize) -> Result<String, CheckError> {
         Ok(std::string::ToString::to_string(&self))
     }
 
@@ -58,7 +58,7 @@ impl Mapping for toml_edit::DocumentMut {
 }
 
 impl Mapping for toml_edit::Table {
-    fn to_string(&self) -> Result<String, CheckError> {
+    fn to_string(&self, _indent: usize) -> Result<String, CheckError> {
         log::error!("not implemented, call to_string on Document instead");
         std::process::exit(1);
     }
@@ -134,7 +134,7 @@ impl Mapping for toml_edit::Table {
 }
 
 impl Mapping for toml_edit::InlineTable {
-    fn to_string(&self) -> Result<String, CheckError> {
+    fn to_string(&self, _indent: usize) -> Result<String, CheckError> {
         log::error!("not implemented, call to_string on Document instead");
         std::process::exit(1);
     }
@@ -408,7 +408,7 @@ keep_array = [
         new_doc.fmt();
 
         assert_eq!(
-            Mapping::to_string(&new_doc).unwrap(),
+            Mapping::to_string(&new_doc, 0).unwrap(),
             "\n[table]\n# prefix comment Key \"keep_int\"\nkeep_int = 2  # suffix comment Value 2\nkeep_array = [ # prefix comment Value \"keep_item_1\"\n    \"keep_item_1\",\n    # prefix comment item keep_item_3\n    \"keep_item_3\" # suffix comment item keep_item_3\n, # prefix comment \"add_item_4\"\n    \"add_item_4\" # suffix comment \"add_item_4\"\n] # suffix comment Array \"keep_array\"\n# prefix comment Key \"add_int\"\nadd_int = 2  # suffix comment Value 2\n        "
         );
     }

@@ -9,7 +9,7 @@ pub(crate) enum MappingError {
 }
 
 pub(crate) trait Mapping: Send + Sync {
-    fn to_string(&self) -> Result<String, CheckError>;
+    fn to_string(&self, indent: usize) -> Result<String, CheckError>;
 
     fn get_mapping(
         &mut self,
