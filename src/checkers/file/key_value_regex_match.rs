@@ -1,7 +1,12 @@
 use regex::Regex;
 
 use crate::{
-    checkers::{base::CheckDefinitionError, file::FileCheck},
+    checkers::{
+        base::{CheckDefinitionError, CheckResult},
+        file::{
+            FileCheck, get_option_string_value_from_checktable, key_value_present::set_key_value,
+        },
+    },
     file_types::RegexValidateResult,
     mapping::generic::Mapping,
 };
@@ -14,12 +19,14 @@ use super::super::{
 #[derive(Debug)]
 pub(crate) struct EntryRegexMatched {
     file_check: FileCheck,
-    value: toml_edit::Table,
+    key_regex: toml_edit::Table,
+    placeholder: Option<String>,
 }
 
 // [key_value_regex_matched]
 // file = "file"
 // key.key = "regex"
+// placeholder = "optional value to be set when key is absent"
 impl CheckConstructor for EntryRegexMatched {
     type Output = Self;
 
@@ -35,22 +42,22 @@ impl CheckConstructor for EntryRegexMatched {
                     "`key` key is not present".into(),
                 ));
             }
-            Some(absent) => match absent.as_table() {
+            Some(key_value_regex) => match key_value_regex.as_table() {
                 None => {
                     return Err(CheckDefinitionError::InvalidDefinition(
                         "`key` is not a table".into(),
                     ));
                 }
-                Some(absent) => {
-                    // todo: check if there is an array in absent
-                    absent.clone()
-                }
+                Some(key_value_regex) => key_value_regex.clone(),
             },
         };
 
+        let placeholder = get_option_string_value_from_checktable(&check_table, "placeholder")?;
+
         Ok(Self {
             file_check,
-            value: key_value_regex,
+            key_regex: key_value_regex,
+            placeholder,
         })
     }
 }
@@ -70,23 +77,38 @@ impl Checker for EntryRegexMatched {
     fn check_(&self, fix: bool) -> Result<crate::checkers::base::CheckResult, CheckError> {
         let mut doc = self.file_check.get_mapping()?;
 
-        match validate_key_value_regex(doc.as_mut(), &self.value, "".to_string()) {
-            Ok(RegexValidateResult::Valid) => Ok(crate::checkers::base::CheckResult::NoFixNeeded),
-            Ok(RegexValidateResult::Invalid {
-                key,
-                regex,
-                found: _,
-            }) => {
-                let mut action_message =
-                    format!("content of {} does not match regex {:?}", key, regex);
-                if fix {
-                    action_message += " (not fixable via --fix)";
+        let fix_needed =
+            match validate_key_value_regex(doc.as_mut(), &self.key_regex, "".to_string()) {
+                Ok(RegexValidateResult::Valid) => false,
+                Ok(RegexValidateResult::Invalid { key, regex, found }) => true,
+                Err(e) => return Err(CheckError::InvalidRegex(e.to_string())),
+            };
+
+        let action_message = match fix_needed {
+            false => "".to_string(),
+            true => {
+                if self.placeholder.is_none() {
+                    "content of key does not match regex".to_string()
+                } else {
+                    format!(
+                        "content of key does not match regex (setting placeholder to {})",
+                        self.placeholder.clone().unwrap()
+                    )
                 }
-                Ok(crate::checkers::base::CheckResult::FixNeeded(
-                    action_message,
-                ))
             }
-            Err(e) => Err(CheckError::InvalidRegex(e.to_string())),
+        };
+
+        match (fix_needed, fix) {
+            (false, _) => Ok(crate::checkers::base::CheckResult::NoFixNeeded),
+            (true, false) => Ok(CheckResult::FixNeeded(action_message)),
+            (true, true) => {
+                if let Some(placeholder) = self.placeholder {
+                    self.file_check.conclude_check_with_new_doc(doc, fix);
+                    Ok(CheckResult::FixExecuted(action_message))
+                } else {
+                    Ok(CheckResult::FixNeeded(action_message))
+                }
+            }
         }
     }
 }
@@ -103,6 +125,7 @@ fn validate_key_value_regex(
     doc: &mut dyn Mapping,
     table_with_regex: &toml_edit::Table,
     key_path: String,
+    placeholder: Option<String>,
 ) -> Result<RegexValidateResult, CheckError> {
     for (key, value) in table_with_regex {
         match value {
@@ -124,6 +147,12 @@ fn validate_key_value_regex(
                         }
                     }
                     _ => {
+                        if let Some(placeholder) = placeholder {
+                            doc.insert(
+                                &key.to_string().into(),
+                                &toml_edit::Item::Value(placeholder.into()),
+                            );
+                        }
                         return Ok(RegexValidateResult::Invalid {
                             key: make_key_path(&key_path, key),
                             regex: raw_regex.value().to_owned(),
@@ -134,7 +163,12 @@ fn validate_key_value_regex(
             }
             toml_edit::Item::Table(t) => match doc.get_mapping(key, false) {
                 Ok(child_doc) => {
-                    return validate_key_value_regex(child_doc, t, make_key_path(&key_path, key));
+                    return validate_key_value_regex(
+                        child_doc,
+                        t,
+                        make_key_path(&key_path, key),
+                        placeholder,
+                    );
                 }
                 _ => {
                     return Ok(RegexValidateResult::Invalid {
@@ -164,7 +198,8 @@ mod tests {
         {
             let mut test_input = test_input;
             let result =
-                validate_key_value_regex(test_input.as_mut(), &checker, "".to_string()).unwrap();
+                validate_key_value_regex(test_input.as_mut(), &checker, "".to_string(), None)
+                    .unwrap();
 
             if test_expected_output.contains("true") {
                 assert_eq!(
