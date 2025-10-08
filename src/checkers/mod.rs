@@ -41,8 +41,8 @@ pub(crate) struct GenericChecker {
     pub(crate) file_with_checks: url::Url,
     // overridden file type
     pub(crate) tags: Vec<String>,
-    // fixable
-    pub(crate) fixable: bool,
+    // check_only
+    pub(crate) check_only: bool,
 }
 
 impl GenericChecker {
@@ -103,12 +103,13 @@ fn get_check_from_check_table(
 
     let tags = read_tags_from_table(&check_table)?;
 
-    let fixable = (get_option_boolean_from_check_table(&check_table, "fixable")?).unwrap_or(true);
+    let check_only =
+        (get_option_boolean_from_check_table(&check_table, "check_only")?).unwrap_or(false);
 
     let generic_check = GenericChecker {
         file_with_checks: file_with_checks.clone(),
         tags,
-        fixable,
+        check_only,
     };
     match check_type {
         "entry_absent" => Ok(Box::new(file::entry_absent::EntryAbsent::from_check_table(

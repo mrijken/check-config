@@ -10,8 +10,8 @@ source = "config:python-logo.svg"
 
 [[file_present]]
 file = "output/rust-logo.svg"
-fixable = false
+check_only = true
 
 [[file_present]]
 file = "output/python-logo.svg"
-fixable = false
+check_only = true

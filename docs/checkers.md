@@ -66,19 +66,19 @@ tags = ["linux"]
 lines = ".cache"
 ```
 
-### Fixable
+### Check-Only
 
 When `--fix` is given on the cli, `check-config` will try to fix the checkers. However,
 sometimes you do not want a fix a violation, but just check if a previous fix is
 performed correct. For example: you unzip a file in one checker and want to check
 whether a file is unpacked from the zip. In that case you do not want to create
 an empty file by the checker which checks for the unpacked file. To do so, add
-`fixable = false` to your checker, like:
+`check_only = true` to your checker, like:
 
 ```toml
 [[file_present]]
 file = "path/to/unpacked_file"
-fixable = false
+check_only = true
 ```
 
 ## File Absent
