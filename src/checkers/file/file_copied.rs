@@ -89,11 +89,7 @@ impl Checker for FileCopied {
         let destination_exists = self.destination.as_ref().exists();
 
         let source_and_destination_are_different =
-            if destination_exists && self.source.hash()? != self.destination.hash()? {
-                true
-            } else {
-                false
-            };
+            destination_exists && self.source.hash()? != self.destination.hash()?;
 
         let copy_file_needed = !destination_exists || source_and_destination_are_different;
 

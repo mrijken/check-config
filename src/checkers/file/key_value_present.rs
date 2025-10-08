@@ -106,7 +106,7 @@ mod tests {
 
             assert_eq!(
                 *test_expected_output,
-                test_input.to_string().unwrap(),
+                test_input.to_string(4).unwrap(),
                 "test_path {test_path} failed"
             );
         }

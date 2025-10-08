@@ -441,3 +441,11 @@ file = "test/present.toml"
 file_type = "json"
 key.key = 1
 ```
+
+The indentation can be changed by specifying the indentation per checker:
+
+```toml
+[[key_value_present]]
+...
+indent = 2
+```

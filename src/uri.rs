@@ -1,4 +1,3 @@
-use core::hash;
 use derive_more::{AsRef, Display, From};
 use dirs;
 use std::{

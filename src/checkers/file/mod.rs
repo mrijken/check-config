@@ -33,7 +33,10 @@ pub(crate) struct FileCheck {
     generic_check: GenericChecker,
     pub(crate) file_to_check: WritablePath,
     pub(crate) file_type_override: Option<String>,
+    pub(crate) indent: usize,
 }
+
+const DEFAULT_INDENT: usize = 4;
 
 impl FileCheck {
     fn from_check_table(
@@ -63,10 +66,29 @@ impl FileCheck {
             },
         }?;
 
+        let indent = match config_table.get("indent") {
+            None => Ok(DEFAULT_INDENT),
+            Some(number) => match number.as_integer() {
+                None => Err(CheckDefinitionError::InvalidDefinition(
+                    "indent is not a number".into(),
+                )),
+                Some(number) => {
+                    if number < 0 {
+                        Err(CheckDefinitionError::InvalidDefinition(
+                            "indent must be >= 0".into(),
+                        ))
+                    } else {
+                        Ok(number as usize)
+                    }
+                }
+            },
+        }?;
+
         Ok(Self {
             file_to_check,
             file_type_override,
             generic_check,
+            indent,
         })
     }
 
@@ -217,7 +239,7 @@ impl FileCheck {
         new_doc: Box<dyn Mapping>,
         fix: bool,
     ) -> Result<CheckResult, CheckError> {
-        self.conclude_check_new_contents(new_doc.to_string()?, fix)
+        self.conclude_check_new_contents(new_doc.to_string(self.indent)?, fix)
     }
 
     fn conclude_check_with_remove(&self, fix: bool) -> Result<CheckResult, CheckError> {

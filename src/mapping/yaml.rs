@@ -25,7 +25,7 @@ pub(crate) fn from_string(
 }
 
 impl Mapping for serde_yaml_ng::Mapping {
-    fn to_string(&self) -> Result<String, CheckError> {
+    fn to_string(&self, indent: usize) -> Result<String, CheckError> {
         if self.is_empty() {
             return Ok("".to_string());
         }
@@ -214,7 +214,7 @@ mod tests {
             mapping_to_check
                 .get_mapping("dict", false)
                 .expect("")
-                .to_string()
+                .to_string(4)
                 .unwrap(),
             "str: string\nint: 1\nfloat: 1.1\nbool: true\narray:\n- 1\n- 2\n".to_string()
         );
@@ -226,9 +226,9 @@ mod tests {
 
         let yaml_table = serde_yaml_ng::Value::from_toml_value(&table);
 
-        assert_eq!(serde_yaml_ng
-            ::to_string(&yaml_table).unwrap(), "str: string\nint: 1\nfloat: 1.1\nbool: true\narray:\n- 1\n- 2\ndict:\n  str: string\n  int: 1\n  float: 1.1\n  bool: true\n  array:\n  - 1\n  - 2\n"
-
+        assert_eq!(
+            serde_yaml_ng::to_string(&yaml_table).unwrap(),
+            "str: string\nint: 1\nfloat: 1.1\nbool: true\narray:\n- 1\n- 2\ndict:\n  str: string\n  int: 1\n  float: 1.1\n  bool: true\n  array:\n  - 1\n  - 2\n"
         );
     }
 }

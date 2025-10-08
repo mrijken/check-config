@@ -120,7 +120,7 @@ mod tests {
 
             assert_eq!(
                 *test_expected_output,
-                test_input.to_string().unwrap(),
+                test_input.to_string(4).unwrap(),
                 "test_path {test_path} failed"
             );
         }
@@ -145,6 +145,6 @@ list = [{key = "1"}, {key = "2"}]
             .unwrap();
         remove_entries(toml_doc.as_mut(), entries_to_remove);
 
-        assert_eq!(toml_new_contents, toml_doc.to_string().unwrap());
+        assert_eq!(toml_new_contents, toml_doc.to_string(4).unwrap());
     }
 }
