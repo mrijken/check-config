@@ -16,11 +16,11 @@ destination_dir = "output/unpack/tar.gz"
 
 [[file_present]]
 file = "output/unpack/zip/test/sample"
-fixable = false
+check_only = true
 
 [[file_present]]
 file = "output/unpack/tar.gz/test/sample"
-fixable = false
+check_only = true
 
 [[file_absent]]
 file = "temp/test.zip"

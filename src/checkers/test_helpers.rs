@@ -15,7 +15,7 @@ pub(crate) fn get_generic_check() -> GenericChecker {
         )
         .expect("valid path"),
         tags: Vec::new(),
-        fixable: true,
+        check_only: true,
     }
 }
 

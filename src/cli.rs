@@ -200,7 +200,7 @@ pub(crate) fn run_checks(checks: &Vec<Box<dyn Checker>>, fix: bool) -> ExitStatu
     let mut error_count = 0;
 
     for check in checks {
-        let fix = check.generic_checker().fixable && fix;
+        let fix = !check.generic_checker().check_only && fix;
         let result = check.check(fix);
         match result {
             crate::checkers::base::CheckResult::NoFixNeeded => no_fix_needed_count += 1,
