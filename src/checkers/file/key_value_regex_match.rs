@@ -3,9 +3,7 @@ use regex::Regex;
 use crate::{
     checkers::{
         base::{CheckDefinitionError, CheckResult},
-        file::{
-            FileCheck, get_option_string_value_from_checktable, key_value_present::set_key_value,
-        },
+        file::{FileCheck, get_option_string_value_from_checktable},
     },
     file_types::RegexValidateResult,
     mapping::generic::Mapping,
@@ -78,7 +76,7 @@ impl Checker for EntryRegexMatched {
         let mut doc = self.file_check.get_mapping()?;
 
         let fix_needed =
-            match validate_key_value_regex(doc.as_mut(), &self.key_regex, "".to_string()) {
+            match validate_key_value_regex(doc.as_mut(), &self.key_regex, "".to_string(), None) {
                 Ok(RegexValidateResult::Valid) => false,
                 Ok(RegexValidateResult::Invalid { key, regex, found }) => true,
                 Err(e) => return Err(CheckError::InvalidRegex(e.to_string())),
@@ -102,7 +100,7 @@ impl Checker for EntryRegexMatched {
             (false, _) => Ok(crate::checkers::base::CheckResult::NoFixNeeded),
             (true, false) => Ok(CheckResult::FixNeeded(action_message)),
             (true, true) => {
-                if let Some(placeholder) = self.placeholder {
+                if self.placeholder.is_some() {
                     self.file_check.conclude_check_with_new_doc(doc, fix);
                     Ok(CheckResult::FixExecuted(action_message))
                 } else {

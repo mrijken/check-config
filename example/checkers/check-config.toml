@@ -70,6 +70,21 @@ key.added.key = "value"
 file = "output/test.yaml"
 key.to_be_kept.key = "value"
 
+[[key_value_regex]]
+file = "output/test.json"
+key.regex = "m[a-z]tches"
+placeholder = "matches"
+
+[[key_value_regex]]
+file = "output/test.toml"
+key.regex = "m[a-z]tches"
+placeholder = "matches"
+
+[[key_value_regex]]
+file = "output/test.yaml"
+key.regex = "m[a-z]tches"
+placeholder = "matches"
+
 [[entry_absent]]
 file = "output/absent.json"
 entry.list2 = ["already_absent"]
