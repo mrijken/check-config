@@ -28,7 +28,7 @@ pub(crate) fn read_test_files(check_type: &str) -> TestFiles {
 
     for test in test_dir.read_dir().expect("read_dir call failed") {
         let test = test.unwrap().path();
-        let file_checker_content = fs::read_to_string(test.join("checker.toml")).unwrap();
+        let file_checker_content = fs::read_to_string(test.join("check-config.toml")).unwrap();
         let file_checker = toml_edit::DocumentMut::from_str(file_checker_content.as_str())
             .unwrap()
             .as_table()

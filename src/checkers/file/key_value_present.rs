@@ -11,7 +11,7 @@ use super::super::{
 #[derive(Debug)]
 pub(crate) struct KeyValuePresent {
     file_check: FileCheck,
-    value: toml_edit::Table,
+    key_value: toml_edit::Table,
 }
 
 // [[key_value_present]]
@@ -32,22 +32,19 @@ impl CheckConstructor for KeyValuePresent {
                     "`key` key is not present".into(),
                 ));
             }
-            Some(absent) => match absent.as_table() {
+            Some(key_value) => match key_value.as_table() {
                 None => {
                     return Err(CheckDefinitionError::InvalidDefinition(
                         "`key` is not a table".into(),
                     ));
                 }
-                Some(absent) => {
-                    // todo: check if there is an array in absent
-                    absent.clone()
-                }
+                Some(key_value) => key_value.clone(),
             },
         };
 
         Ok(Self {
             file_check,
-            value: key_value_present,
+            key_value: key_value_present,
         })
     }
 }
@@ -68,13 +65,13 @@ impl Checker for KeyValuePresent {
     fn check_(&self, fix: bool) -> Result<crate::checkers::base::CheckResult, CheckError> {
         let mut doc = self.file_check.get_mapping()?;
 
-        set_key_value(doc.as_mut(), &self.value);
+        set_key_value(doc.as_mut(), &self.key_value);
 
         self.file_check.conclude_check_with_new_doc(doc, fix)
     }
 }
 
-fn set_key_value(doc: &mut dyn Mapping, table_to_set: &dyn toml_edit::TableLike) {
+pub fn set_key_value(doc: &mut dyn Mapping, table_to_set: &dyn toml_edit::TableLike) {
     for (k, v) in table_to_set.iter() {
         if v.is_table_like() {
             set_key_value(

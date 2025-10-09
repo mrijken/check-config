@@ -25,7 +25,7 @@ pub(crate) fn from_string(
 }
 
 impl Mapping for serde_yaml_ng::Mapping {
-    fn to_string(&self, indent: usize) -> Result<String, CheckError> {
+    fn to_string(&self, _indent: usize) -> Result<String, CheckError> {
         if self.is_empty() {
             return Ok("".to_string());
         }
