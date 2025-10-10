@@ -182,6 +182,10 @@ impl WritablePath {
         let full_path = cwd.join(input);
         Ok(WritablePath(full_path))
     }
+
+    pub fn to_string(&self) -> String {
+        self.as_ref().to_string_lossy().to_string()
+    }
 }
 
 impl ReadPath for WritablePath {

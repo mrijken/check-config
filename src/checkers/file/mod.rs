@@ -16,6 +16,7 @@ use crate::{
 };
 
 pub(crate) mod dir_copied;
+pub(crate) mod dir_present;
 pub(crate) mod entry_absent;
 pub(crate) mod entry_present;
 pub(crate) mod file_absent;

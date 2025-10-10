@@ -6,6 +6,9 @@ include = [
   "unpack.toml",
 ]
 
+[[dir_present]]
+dir = "output/created_dir"
+
 [[file_absent]]
 file = "output/to_be_removed"
 
