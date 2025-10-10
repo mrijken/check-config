@@ -1,5 +1,9 @@
 # CHANGES
 
+## 0.9.1
+
+- Feat: add dir_present
+
 ## 0.9.0
 
 - BREAKING: refactor the check-config toml files. See documentation for new format.

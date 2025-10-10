@@ -9,7 +9,7 @@ There are several checker types (and more to come):
 | [file_present](#file-present)                       | the file must be present, indifferent the content                                           | yes     |
 | [key_absent](#key-absent)                           | a specified key must be absent in a toml / yaml / json file                                 | yes     |
 | [key_value_present](#key-value-present)             | a specified key with a specified value must be present in a toml / yaml / json file         | yes     |
-| [key_value_regex_matched](#key-value-regex-matched) | the value of a specified key must be match the specified regex in a toml / yaml / json file | no      |
+| [key_value_regex_matched](#key-value-regex-matched) | the value of a specified key must be match the specified regex in a toml / yaml / json file | no (unless placeholder is given)     |
 | [entry_absent](#entry-absent)                       | a specified entry must be absent in the array of a toml / yaml / json file                  | yes     |
 | [entry_present](#entry-present)                     | a specified entry must be present in the of a toml / yaml / json file                       | yes     |
 | [lines_absent](#lines-absent)                       | the specified lines must be absent                                                          | yes     |
@@ -17,6 +17,7 @@ There are several checker types (and more to come):
 | [file_unpacked](#file-unpacked)                     | the file must be unpacked                                                                   | yes     |
 | [file_copied](file-copied)                          | the file must be copied                                                                     | yes     |
 | [dir_copied](dir-copied)                            | the dir must be copied                                                                      | yes     |
+| [dir_present](dir-present)                            | the dir must be present                                                                      | yes     |
 | [git_fetched](#get-fetched)                         | the git repo must be present and fetched                                                    | yes     |
 
 ## check-config.toml
@@ -201,6 +202,17 @@ from the source to the`destination`.
 When`destination`is given,`destination_dir` is ignored.
 
 When the parent dir of the `destination` does not exists, the dir is created.
+
+## Dir Present
+
+`dir_present` will check if the dir including the parent directories is present.
+When `permissions` are given, it will also check the permissions.
+
+```toml
+[[dir_present]]
+dir = "path to dir"
+permissions = "755" # optional
+```
 
 ## File Unpacked
 
