@@ -307,13 +307,16 @@ This checker type can handle different kind of [mapping file types](#mapping-fil
 
 `key_value_regex_matched` will check that the keys specified are present and the value matches the specified regex.
 Of course, the regex can only match string values.
-Keys may be nested. Intermediate keys has to have mappings as values. When intermediate values
+
+This checker can only fix when a placeholder is present, otherwise it's check-only. Keys may be nested.
+Intermediate keys has to have mappings as values. When intermediate values
 are not present, they will be added.
 
 ```toml
 [[key_value_regex_matched]]
 file = "test/present.toml"
 key.key = 'v.*'
+placeholder = "v1.1"  # optional
 ```
 
 Note: specify the regex as a raw string (single quotes) to be prevent escaping.
