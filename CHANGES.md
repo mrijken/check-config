@@ -1,6 +1,6 @@
 # CHANGES
 
-## 0.9.0.alpha.1
+## 0.9.0
 
 - BREAKING: refactor the check-config toml files. See documentation for new format.
 
