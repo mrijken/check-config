@@ -75,12 +75,16 @@ impl Checker for EntryRegexMatched {
     fn check_(&self, fix: bool) -> Result<crate::checkers::base::CheckResult, CheckError> {
         let mut doc = self.file_check.get_mapping()?;
 
-        let fix_needed =
-            match validate_key_value_regex(doc.as_mut(), &self.key_regex, "".to_string(), None) {
-                Ok(RegexValidateResult::Valid) => false,
-                Ok(RegexValidateResult::Invalid { key, regex, found }) => true,
-                Err(e) => return Err(CheckError::InvalidRegex(e.to_string())),
-            };
+        let fix_needed = match validate_key_value_regex(
+            doc.as_mut(),
+            &self.key_regex,
+            "".to_string(),
+            self.placeholder.clone(),
+        ) {
+            Ok(RegexValidateResult::Valid) => false,
+            Ok(RegexValidateResult::Invalid { key, regex, found }) => true,
+            Err(e) => return Err(CheckError::InvalidRegex(e.to_string())),
+        };
 
         let action_message = match fix_needed {
             false => "".to_string(),

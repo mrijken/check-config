@@ -9,6 +9,7 @@
     "list2": [
         "already_present"
     ],
+    "placeholder_regex": "matches",
     "regex": "matches",
     "to_be_added": "value",
     "to_be_kept": {

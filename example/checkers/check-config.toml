@@ -70,19 +70,19 @@ key.added.key = "value"
 file = "output/test.yaml"
 key.to_be_kept.key = "value"
 
-[[key_value_regex]]
+[[key_value_regex_matched]]
 file = "output/test.json"
-key.regex = "m[a-z]tches"
+key.placeholder_regex = "m[a-z]tches"
 placeholder = "matches"
 
-[[key_value_regex]]
+[[key_value_regex_matched]]
 file = "output/test.toml"
-key.regex = "m[a-z]tches"
+key.placeholder_regex = "m[a-z]tches"
 placeholder = "matches"
 
-[[key_value_regex]]
+[[key_value_regex_matched]]
 file = "output/test.yaml"
-key.regex = "m[a-z]tches"
+key.placeholder_regex = "m[a-z]tches"
 placeholder = "matches"
 
 [[entry_absent]]
