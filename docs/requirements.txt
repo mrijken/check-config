@@ -3,3 +3,4 @@ mkdocstrings
 mkdocs-gen-files
 mkdocs-literate-nav
 mkdocs-material
+markdown-include
