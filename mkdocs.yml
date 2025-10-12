@@ -23,8 +23,6 @@ theme:
     - content.code.copy
 
 markdown_extensions:
-  - markdown_include.include:
-      base_path: docs
   - admonition
   - toc:
       permalink: true
