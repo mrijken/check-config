@@ -1,4 +1,4 @@
-use std::{env, str::FromStr};
+use std::{collections::HashMap, env, str::FromStr};
 
 use base::CheckConstructor;
 
@@ -43,6 +43,10 @@ pub(crate) struct GenericChecker {
     pub(crate) tags: Vec<String>,
     // check_only
     pub(crate) check_only: bool,
+    // variables which are present and can be used for templating
+    // this is a owned hashmap to make sure that only variables
+    // which are read before the definition of this checker are used
+    pub(crate) variables: HashMap<String, String>,
 }
 
 impl GenericChecker {
@@ -98,6 +102,7 @@ fn get_check_from_check_table(
     file_with_checks: &url::Url,
     check_type: &str,
     check_table: &toml_edit::Table,
+    variables: HashMap<String, String>,
 ) -> Result<Box<dyn Checker>, CheckDefinitionError> {
     let check_table = check_table.clone();
 
@@ -110,6 +115,7 @@ fn get_check_from_check_table(
         file_with_checks: file_with_checks.clone(),
         tags,
         check_only,
+        variables,
     };
     match check_type {
         "entry_absent" => Ok(Box::new(file::entry_absent::EntryAbsent::from_check_table(
@@ -187,6 +193,7 @@ fn get_check_from_check_table(
 pub(crate) fn read_checks_from_path(
     file_with_checks: &url::Url,
     top_level_keys: Vec<&str>,
+    variables: &mut HashMap<String, String>,
 ) -> Vec<Box<dyn Checker>> {
     let mut checks: Vec<Box<dyn Checker>> = vec![];
     let checks_toml_str = match uri::read_to_string(file_with_checks) {
@@ -234,8 +241,19 @@ pub(crate) fn read_checks_from_path(
                             std::process::exit(1);
                         }
                     };
-                    checks.extend(read_checks_from_path(&include_path, vec![]));
+                    checks.extend(read_checks_from_path(&include_path, vec![], variables));
                 }
+            }
+
+            continue;
+        }
+        if key == "variables" {
+            if let toml_edit::Item::Table(current_variables) = &value {
+                current_variables.iter().for_each(|(k, v)| {
+                    let v = v.as_str().expect("value is a string");
+                    // todo: fix error or convert when value is not a string
+                    variables.insert(k.to_string(), v.to_string());
+                });
             }
 
             continue;
@@ -249,6 +267,7 @@ pub(crate) fn read_checks_from_path(
                     file_with_checks,
                     check_type.as_str(),
                     &config_table,
+                    variables.clone(),
                 ));
             }
             toml_edit::Item::ArrayOfTables(array) => {
@@ -257,6 +276,7 @@ pub(crate) fn read_checks_from_path(
                         file_with_checks,
                         check_type.as_str(),
                         &config_table,
+                        variables.clone(),
                     ));
                 }
             }
@@ -334,9 +354,10 @@ entry.key = [1,2,3]
         )
         .expect("file is created");
 
+        let mut variables = HashMap::new();
         let path_with_checkers =
             url::Url::parse(&format!("file://{}", path_with_checkers.to_str().unwrap())).unwrap();
-        let checks = read_checks_from_path(&path_with_checkers, vec![]);
+        let checks = read_checks_from_path(&path_with_checkers, vec![], &mut variables);
 
         assert_eq!(checks.len(), 9);
     }
@@ -356,9 +377,11 @@ entry.key = [1,2,3]
         )
         .expect("write is succsful");
 
+        let mut variables = HashMap::new();
+
         let path_with_checkers =
             url::Url::parse(&format!("file://{}", path_with_checkers.to_str().unwrap())).unwrap();
-        let checks = read_checks_from_path(&path_with_checkers, vec![]);
+        let checks = read_checks_from_path(&path_with_checkers, vec![], &mut variables);
 
         assert_eq!(checks.len(), 0);
     }

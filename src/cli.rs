@@ -1,5 +1,5 @@
-use std::io::Write;
 use std::process::ExitCode;
+use std::{collections::HashMap, io::Write};
 
 use clap::Parser;
 
@@ -46,6 +46,10 @@ struct Cli {
     /// List all checks. Checks are not executed.
     #[arg(short, long, default_value = "false")]
     list_checkers: bool,
+
+    /// Use the env variables as variables for template
+    #[arg(long = "env", default_value = "false")]
+    use_env_variables: bool,
 
     /// Execute the checkers with one of the specified tags
     #[arg(long, value_delimiter = ',', env = "CHECK_CONFIG_ANY_TAGS")]
@@ -117,11 +121,17 @@ pub fn cli() -> ExitCode {
 
     log::info!("Starting check-config");
 
+    let mut variables: HashMap<String, String> = if cli.use_env_variables {
+        std::env::vars().collect()
+    } else {
+        HashMap::new()
+    };
+
     let mut checks = match cli.path {
         Some(path_str) => match parse_path_str_to_uri(path_str.as_str()) {
             Some(uri) => {
                 log::info!("Using checkers from {}", &uri.short_url_str());
-                read_checks_from_path(&uri, vec![])
+                read_checks_from_path(&uri, vec![], &mut variables)
             }
             None => {
                 log::error!(
@@ -136,7 +146,7 @@ pub fn cli() -> ExitCode {
             match std::path::Path::new(uri.path()).exists() {
                 true => {
                     log::info!("Using checkers from {}", &uri);
-                    read_checks_from_path(&uri, vec![])
+                    read_checks_from_path(&uri, vec![], &mut variables)
                 }
                 false => {
                     log::warn!("check-config.toml does not exists.");
@@ -145,7 +155,11 @@ pub fn cli() -> ExitCode {
                     match std::path::Path::new(uri.path()).exists() {
                         true => {
                             log::info!("Using checkers from {}", &uri);
-                            read_checks_from_path(&uri, vec!["tool", "check-config"])
+                            read_checks_from_path(
+                                &uri,
+                                vec!["tool", "check-config"],
+                                &mut variables,
+                            )
                         }
                         false => {
                             log::error!(

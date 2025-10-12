@@ -1,6 +1,8 @@
 use derive_more::{AsRef, Display, From};
 use dirs;
+use similar::DiffableStr;
 use std::{
+    ffi::os_str::Display,
     hash::{Hash, Hasher},
     io::Write,
     path::PathBuf,
@@ -183,13 +185,16 @@ impl WritablePath {
         Ok(WritablePath(full_path))
     }
 
-    pub fn to_string(&self) -> String {
-        self.as_ref().to_string_lossy().to_string()
-    }
-
     pub fn write_from_string(&self, content: &str) -> Result<(), Error> {
         dbg!(content);
         Ok(std::fs::write(self.as_ref(), content)?)
+    }
+}
+
+impl std::fmt::Display for WritablePath {
+    fn fmt(&self, fmt: &mut std::fmt::Formatter) -> fmt::Result {
+        fmt.write_str(self.as_ref().to_string_lossy().as_str());
+        Ok(())
     }
 }
 

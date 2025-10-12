@@ -1,5 +1,7 @@
 #[cfg(test)]
 mod tests {
+    use std::collections::HashMap;
+
     use crate::checkers;
     use crate::cli;
     use dircpy::*;
@@ -12,18 +14,22 @@ mod tests {
         CopyBuilder::new("example/input", "output").run().unwrap();
 
         let file_with_checks = cli::parse_path_str_to_uri("example/pyproject.toml").unwrap();
-        let checks =
-            checkers::read_checks_from_path(&file_with_checks, vec!["tool", "check-config"])
-                .into_iter()
-                .filter(|c| {
-                    cli::filter_checks(
-                        &c.generic_checker().tags,
-                        &[],
-                        &[],
-                        &["not_selected".to_string()],
-                    )
-                })
-                .collect();
+        let mut variables = HashMap::new();
+        let checks = checkers::read_checks_from_path(
+            &file_with_checks,
+            vec!["tool", "check-config"],
+            &mut variables,
+        )
+        .into_iter()
+        .filter(|c| {
+            cli::filter_checks(
+                &c.generic_checker().tags,
+                &[],
+                &[],
+                &["not_selected".to_string()],
+            )
+        })
+        .collect();
 
         assert_eq!(cli::run_checks(&checks, true), cli::ExitStatus::Success);
 

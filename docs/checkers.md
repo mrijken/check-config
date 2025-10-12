@@ -3,22 +3,22 @@
 `check-config` uses `checkers` which define the desired state of the configuration files.
 There are several checker types (and more to come):
 
-| checker type                                        | description                                                                                 | fixable |
-| --------------------------------------------------- | ------------------------------------------------------------------------------------------- | ------- |
-| [file_absent](#file-absent)                         | the file must be absent                                                                     | yes     |
-| [file_present](#file-present)                       | the file must be present, indifferent the content                                           | yes     |
-| [key_absent](#key-absent)                           | a specified key must be absent in a toml / yaml / json file                                 | yes     |
-| [key_value_present](#key-value-present)             | a specified key with a specified value must be present in a toml / yaml / json file         | yes     |
-| [key_value_regex_matched](#key-value-regex-matched) | the value of a specified key must be match the specified regex in a toml / yaml / json file | no (unless placeholder is given)     |
-| [entry_absent](#entry-absent)                       | a specified entry must be absent in the array of a toml / yaml / json file                  | yes     |
-| [entry_present](#entry-present)                     | a specified entry must be present in the of a toml / yaml / json file                       | yes     |
-| [lines_absent](#lines-absent)                       | the specified lines must be absent                                                          | yes     |
-| [lines_present](#lines-present)                     | the specified lines must be present                                                         | yes     |
-| [file_unpacked](#file-unpacked)                     | the file must be unpacked                                                                   | yes     |
-| [file_copied](file-copied)                          | the file must be copied                                                                     | yes     |
-| [dir_copied](dir-copied)                            | the dir must be copied                                                                      | yes     |
-| [dir_present](dir-present)                            | the dir must be present                                                                      | yes     |
-| [git_fetched](#get-fetched)                         | the git repo must be present and fetched                                                    | yes     |
+| checker type                                        | description                                                                                 | fixable |  templating |
+| --------------------------------------------------- | ------------------------------------------------------------------------------------------- | ------- |-------------|
+| [file_absent](#file-absent)                         | the file must be absent                                                                     | yes     | no |
+| [file_present](#file-present)                       | the file must be present, indifferent the content                                           | yes     | no |
+| [key_absent](#key-absent)                           | a specified key must be absent in a toml / yaml / json file                                 | yes     | no |
+| [key_value_present](#key-value-present)             | a specified key with a specified value must be present in a toml / yaml / json file         | yes     | no |
+| [key_value_regex_matched](#key-value-regex-matched) | the value of a specified key must be match the specified regex in a toml / yaml / json file | no (unless placeholder is given)     | no |
+| [entry_absent](#entry-absent)                       | a specified entry must be absent in the array of a toml / yaml / json file                  | yes     | no |
+| [entry_present](#entry-present)                     | a specified entry must be present in the of a toml / yaml / json file                       | yes     | no |
+| [lines_absent](#lines-absent)                       | the specified lines must be absent                                                          | yes     | yes |
+| [lines_present](#lines-present)                     | the specified lines must be present                                                         | yes     | yes |
+| [file_unpacked](#file-unpacked)                     | the file must be unpacked                                                                   | yes     | no |
+| [file_copied](file-copied)                          | the file must be copied                                                                     | yes     | yes |
+| [dir_copied](dir-copied)                            | the dir must be copied                                                                      | yes     | no |
+| [dir_present](dir-present)                            | the dir must be present                                                                      | yes     | no |
+| [git_fetched](#get-fetched)                         | the git repo must be present and fetched                                                    | yes     | no |
 
 ## check-config.toml
 
@@ -81,6 +81,36 @@ an empty file by the checker which checks for the unpacked file. To do so, add
 file = "path/to/unpacked_file"
 check_only = true
 ```
+
+### Templating
+
+Some checkers support templating. When a checker supports templating, variables
+are substitued by their values. Variables are defined in the top level variables
+key in the toml files.
+
+```toml
+[variables]
+date = "2025-10-10"
+```
+
+In your content, the variables within `${}` are replaced when `is_template` is set to true:
+
+```toml
+[[lines_present]]
+file = "test.txt"
+lines = "date: ${date}"
+is_template = true
+```
+
+You can escape variable substitution by adding a `\` ie `\${date}`. During execution
+the unescaped variant `${date}` will replace the escaped one.
+
+Notes:
+
+- order is important. If variables are inserted after the de definition of a
+  checker, they will not be available.
+- variables names are case sensitive.
+- the values of the variables must be strings.
 
 ## File Absent
 

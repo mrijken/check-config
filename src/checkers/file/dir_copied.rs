@@ -141,8 +141,6 @@ impl Checker for DirCopied {
 #[cfg(test)]
 mod tests {
 
-    use std::fs::write;
-
     use crate::checkers::{base::CheckResult, test_helpers};
 
     use super::*;
@@ -158,7 +156,7 @@ mod tests {
         let source = dir.path().join("source");
         let subdir = source.join("subdir");
         std::fs::create_dir_all(&subdir).unwrap();
-        std::fs::create_dir(&subdir);
+        let _ = std::fs::create_dir(&subdir);
         let file = subdir.join("file");
         std::fs::File::create(file).unwrap();
         let destination = dir.path().join("destination");

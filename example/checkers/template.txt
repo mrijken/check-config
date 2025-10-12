@@ -1,0 +1,2 @@
+This file will be copied.
+During copy a date will be substituted for \${date}: ${date}

@@ -2,14 +2,13 @@
 name = "check-config"
 version = "0.9.1"
 edition = "2024"
-license = "MIT"
-homepage = "https://pypi.org/project/check-config/"
-documentation = "https://check-config.readthedocs.io"
-repository = "https://github.com/mrijken/check-config"
-keywords = ["automation", "configuration"]
-authors = ["Marc Rijken <marc@rijken.org>"]
-readme = "README.md"
 description = "Check configuration files."
+documentation = "https://check-config.readthedocs.io"
+readme = "README.md"
+homepage = "https://pypi.org/project/check-config/"
+repository = "https://github.com/mrijken/check-config"
+license = "MIT"
+keywords = ["automation", "configuration"]
 exclude = [".github/*", "videos/*"]
 
 [package.metadata.cargo-machete]
@@ -53,7 +52,7 @@ thiserror = { version = "2.0.15", default-features = false }
 toml = { version = "0.9.5", default-features = false }
 toml_edit = "0.23.3"
 url = { version = "2.5.4", default-features = false }
-zip = "5.1.1"
+zip = "6.0.0"
 
 [profile.release]
 lto = "fat"

@@ -82,7 +82,11 @@ impl Checker for EntryRegexMatched {
             self.placeholder.clone(),
         ) {
             Ok(RegexValidateResult::Valid) => false,
-            Ok(RegexValidateResult::Invalid { key, regex, found }) => true,
+            Ok(RegexValidateResult::Invalid {
+                key: _,
+                regex: _,
+                found: _,
+            }) => true,
             Err(e) => return Err(CheckError::InvalidRegex(e.to_string())),
         };
 

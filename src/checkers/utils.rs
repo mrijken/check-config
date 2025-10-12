@@ -1,3 +1,7 @@
+use std::collections::HashMap;
+
+use regex::Regex;
+
 use crate::checkers::{base::CheckDefinitionError, file::get_option_string_value_from_checktable};
 
 pub(crate) fn get_marker_from_check_table(
@@ -93,4 +97,35 @@ pub(crate) fn append_str(contents: &str, lines: &str) -> String {
     }
     let contents = contents.trim_end();
     format!("{}\n\n{}", contents, lines)
+}
+
+/// replace ${<var>} with the value of var in `vars`
+/// backslash is used to escape the substitution and will replace \${<var>}  with ${<var>}
+pub(crate) fn replace_vars(template: &str, vars: &HashMap<String, String>) -> String {
+    // This regex matches escaped or normal placeholders
+    let re = Regex::new(r"\\(\$\{[^}]+\})|\$\{([^}]+)\}|\{([^}]+)\}").unwrap();
+
+    re.replace_all(template, |caps: &regex::Captures| {
+        if let Some(escaped) = caps.get(1) {
+            // Return the escaped placeholder without the backslash
+            escaped.as_str().to_string()
+        } else {
+            // Handle ${var} or {var}
+            let key = caps.get(2).or(caps.get(3)).unwrap().as_str();
+            vars.get(key)
+                .cloned()
+                .unwrap_or_else(|| caps[0].to_string())
+        }
+    })
+    .into_owned()
+}
+
+mod tests {
+    #[test]
+    fn test_replace_vars() {
+        let template = r#"Hello ${name} \${name}!"#;
+        let vars = std::collections::HashMap::from([("name".to_string(), "world".to_string())]);
+        let result = super::replace_vars(template, &vars);
+        assert_eq!(result, "Hello world ${name}!");
+    }
 }

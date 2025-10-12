@@ -1,8 +1,9 @@
 use crate::checkers::{
     file::FileCheck,
+    get_option_boolean_from_check_table,
     utils::{
         append_str, get_lines_from_check_table, get_marker_from_check_table,
-        replace_between_markers,
+        replace_between_markers, replace_vars,
     },
 };
 
@@ -33,7 +34,7 @@ pub(crate) fn get_replacement_regex_from_check_table(
             Some(s) => match Regex::new(s) {
                 Ok(r) => Ok(Some(r)),
                 Err(_) => Err(CheckDefinitionError::InvalidDefinition(format!(
-                    "__replacement_regex__ ({regex}) is not a valid regex"
+                    "replacement_regex ({regex}) is not a valid regex"
                 ))),
             },
         },
@@ -45,22 +46,31 @@ pub(crate) fn get_replacement_regex_from_check_table(
 // lines = "lines"
 // marker = "marker"       # marker or replacement_regex may be present. Both may be absent. Both may not be present
 // replacement_regex = "regex"
+// is_template = false  # optional, default to to false. true for replace ${var}
 impl CheckConstructor for LinesPresent {
     type Output = Self;
     fn from_check_table(
         generic_check: GenericChecker,
-        value: toml_edit::Table,
+        check_table: toml_edit::Table,
     ) -> Result<Self::Output, CheckDefinitionError> {
-        let file_check = FileCheck::from_check_table(generic_check, &value)?;
-        let lines = get_lines_from_check_table(&value, None)?;
-        let marker_lines = get_marker_from_check_table(&value)?;
-        let replacement_regex = get_replacement_regex_from_check_table(&value)?;
+        let lines = get_lines_from_check_table(&check_table, None)?;
+        let is_template =
+            get_option_boolean_from_check_table(&check_table, "is_template")?.unwrap_or(false);
+        let lines = if is_template {
+            replace_vars(lines.as_str(), &generic_check.variables)
+        } else {
+            lines
+        };
 
+        let marker_lines = get_marker_from_check_table(&check_table)?;
+        let replacement_regex = get_replacement_regex_from_check_table(&check_table)?;
         if replacement_regex.is_some() && marker_lines.is_some() {
             return Err(CheckDefinitionError::InvalidDefinition(
                 "Both `replacement_regex` and `marker` are defined; that is not allowed".into(),
             ));
         }
+
+        let file_check = FileCheck::from_check_table(generic_check, &check_table)?;
 
         Ok(Self {
             file_check,

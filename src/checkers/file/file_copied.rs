@@ -1,5 +1,5 @@
 use crate::{
-    checkers::{base::CheckResult, file::get_string_value_from_checktable},
+    checkers::{base::CheckResult, file::get_string_value_from_checktable, utils::replace_vars},
     uri::{ReadPath, ReadablePath, WritablePath},
 };
 
@@ -13,11 +13,13 @@ pub(crate) struct FileCopied {
     source: ReadablePath,
     destination: WritablePath,
     generic_check: GenericChecker,
+    is_template: bool,
 }
 
 //[[file_copied]]
 // source = "path or url of file to copy"
 // destination = "path (including filename) to copy to"
+// is_template = true # optional
 //
 // check if file is copied
 // if source is a relative path, it's relative to the check file, so the dir
@@ -58,10 +60,16 @@ impl CheckConstructor for FileCopied {
             WritablePath::new(destination_dir.as_ref().join(file_name))
         };
 
+        let is_template = match check_table.get("is_template") {
+            Some(is_template) => is_template.as_bool().unwrap_or(false),
+            None => false,
+        };
+
         Ok(Self {
             destination,
             source,
             generic_check,
+            is_template,
         })
     }
 }
@@ -106,9 +114,19 @@ impl Checker for FileCopied {
                     std::fs::create_dir_all(parent)?;
                 }
 
-                match self.source.copy(&self.destination) {
-                    Ok(_) => CheckResult::FixExecuted(action_message),
-                    Err(e) => return Err(CheckError::String(e.to_string())),
+                if self.is_template {
+                    let template = self.source.read_to_string()?;
+                    dbg!(&self.generic_check.variables);
+                    let content = replace_vars(template.as_str(), &self.generic_check.variables);
+                    match dbg!(self.destination.write_from_string(content.as_str())) {
+                        Ok(_) => CheckResult::FixExecuted(action_message),
+                        Err(e) => return Err(CheckError::String(e.to_string())),
+                    }
+                } else {
+                    match self.source.copy(&self.destination) {
+                        Ok(_) => CheckResult::FixExecuted(action_message),
+                        Err(e) => return Err(CheckError::String(e.to_string())),
+                    }
                 }
             }
         };

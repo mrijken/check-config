@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::{fs, path::PathBuf, str::FromStr};
 
 use crate::mapping::{generic::Mapping, json};
@@ -16,6 +17,7 @@ pub(crate) fn get_generic_check() -> GenericChecker {
         .expect("valid path"),
         tags: Vec::new(),
         check_only: true,
+        variables: HashMap::new(),
     }
 }
 

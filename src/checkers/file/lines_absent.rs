@@ -1,6 +1,10 @@
 use crate::checkers::{
     file::FileCheck,
-    utils::{get_lines_from_check_table, get_marker_from_check_table, remove_between_markers},
+    get_option_boolean_from_check_table,
+    utils::{
+        get_lines_from_check_table, get_marker_from_check_table, remove_between_markers,
+        replace_vars,
+    },
 };
 
 use super::super::base::CheckConstructor;
@@ -20,22 +24,26 @@ pub(crate) struct LinesAbsent {
 // file = "file"
 // lines = "lines"    # lines or marker must be given
 // marker = "marker"
+// is_template = false  # optional, default to to false. true for replace ${var}
 impl CheckConstructor for LinesAbsent {
     type Output = LinesAbsent;
     fn from_check_table(
         generic_check: GenericChecker,
         check_table: toml_edit::Table,
     ) -> Result<Self::Output, CheckDefinitionError> {
-        let file_check = FileCheck::from_check_table(generic_check, &check_table)?;
         let marker_lines = get_marker_from_check_table(&check_table)?;
-        let lines = get_lines_from_check_table(
-            &check_table,
-            if marker_lines.is_none() {
-                None
-            } else {
-                Some("".to_string())
-            },
-        )?;
+
+        let lines = get_lines_from_check_table(&check_table, None)?;
+        let is_template =
+            get_option_boolean_from_check_table(&check_table, "is_template")?.unwrap_or(false);
+        let lines = if is_template {
+            replace_vars(lines.as_str(), &generic_check.variables)
+        } else {
+            lines
+        };
+
+        let file_check = FileCheck::from_check_table(generic_check, &check_table)?;
+
         Ok(Self {
             file_check,
             lines,

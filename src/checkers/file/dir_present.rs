@@ -5,10 +5,7 @@ use std::os::unix::fs::PermissionsExt;
 use crate::{
     checkers::{
         base::CheckResult,
-        file::{
-            FileCheck, file_present::get_permissions_from_checktable,
-            get_option_string_value_from_checktable, get_string_value_from_checktable,
-        },
+        file::{file_present::get_permissions_from_checktable, get_string_value_from_checktable},
     },
     uri::WritablePath,
 };
@@ -125,8 +122,6 @@ impl Checker for DirPresent {
 
 #[cfg(test)]
 mod tests {
-
-    use std::fs::write;
 
     use crate::checkers::{base::CheckResult, test_helpers};
 

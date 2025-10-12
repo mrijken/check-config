@@ -173,7 +173,7 @@ mod tests {
 
     #[test]
     fn test_indent() {
-        let (result, dir) = get_file_check_with_result(12, Some(-2));
+        let (result, _dir) = get_file_check_with_result(12, Some(-2));
         assert_eq!(
             result.err().unwrap(),
             CheckDefinitionError::InvalidDefinition("indent must be >= 0".into())
