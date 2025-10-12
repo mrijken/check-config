@@ -93,6 +93,13 @@ key in the toml files.
 date = "2025-10-10"
 ```
 
+Beside adding the variables to the config, you can add all environment variables via the
+`--env` cli option:
+
+```shell
+check-config --env
+```
+
 In your content, the variables within `${}` are replaced when `is_template` is set to true:
 
 ```toml
@@ -213,6 +220,17 @@ from the source to the`destination`.
 When`destination`is given,`destination_dir` is ignored.
 
 When the parent dir of the `destination` does not exists, the dir is created.
+
+### Templating
+
+This checker supports templating.
+
+```toml
+[[file_copied]]
+source = "url or path to file"
+destination = "path (including filename) on local filesystem"
+is_template = true
+```
 
 ## Dir Copied
 
@@ -408,6 +426,17 @@ Bla
 Bla
 ```
 
+### Templating
+
+This checker supports templating.
+
+```toml
+[[lines_absent]]
+file = "test.txt"
+lines = "date: ${date}"
+is_template = true
+```
+
 ## Lines Present
 
 `lines_present` will check that the file does contain the lines as specified.
@@ -466,6 +495,17 @@ When one of the markers is not present, the markers and the lines will be append
 
 Note: because the checkers are executed in sequence, one can add markers in one checker, which are replaced by
 a next checker.
+
+### Templating
+
+This checker supports templating.
+
+```toml
+[[lines_present]]
+file = "test.txt"
+lines = "date: ${date}"
+is_template = true
+```
 
 ## Mapping File Types
 

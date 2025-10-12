@@ -1,5 +1,9 @@
 # CHANGES
 
+## 0.9.2
+
+- Feat: add variables and templating
+
 ## 0.9.1
 
 - Feat: add dir_present
