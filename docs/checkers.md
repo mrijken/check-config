@@ -15,10 +15,10 @@ There are several checker types (and more to come):
 | [lines_absent](#lines-absent)                       | the specified lines must be absent                                                          | yes     | yes |
 | [lines_present](#lines-present)                     | the specified lines must be present                                                         | yes     | yes |
 | [file_unpacked](#file-unpacked)                     | the file must be unpacked                                                                   | yes     | no |
-| [file_copied](file-copied)                          | the file must be copied                                                                     | yes     | yes |
-| [dir_copied](dir-copied)                            | the dir must be copied                                                                      | yes     | no |
-| [dir_present](dir-present)                            | the dir must be present                                                                      | yes     | no |
-| [git_fetched](#get-fetched)                         | the git repo must be present and fetched                                                    | yes     | no |
+| [file_copied](#file-copied)                          | the file must be copied                                                                     | yes     | yes |
+| [dir_copied](#dir-copied)                            | the dir must be copied                                                                      | yes     | no |
+| [dir_present](#dir-present)                            | the dir must be present                                                                      | yes     | no |
+| [git_fetched](#git-fetched)                         | the git repo must be present and fetched                                                    | yes     | no |
 
 ## check-config.toml
 
@@ -58,7 +58,7 @@ about the checker definitions.
 All checkers can have a `tags` key to make it possible to exclude or include
 this checker from the execution.
 
-See [cli tags options](usage#Tags) for more information about the usage.
+See [cli tags options](usage.md#tags) for more information about the usage.
 
 ```toml
 [[lines_present]]

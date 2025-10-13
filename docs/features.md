@@ -28,6 +28,6 @@ The file can be checked for:
 - [x] check key/value matches regex
 - [x] check lines present
 - [x] check lines absent
-- [ ] use templates with variables from environment or files (toml/yaml/...)
+- [x] use templates with variables
 - [ ] schema compliance
 - [ ] ...

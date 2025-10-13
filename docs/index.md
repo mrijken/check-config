@@ -93,5 +93,5 @@ check-config --fix
 
 ## Read on
 
-A large number of [file types](features/#file-types) and [checks](checkers) are supported or will
-be supported in the near [future](features).
+A large number of [file types](features.md/#file-types) and [checks](checkers.md#checkers) are supported or will
+be supported in the near [future](features.md#current-and-future-features).

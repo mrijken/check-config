@@ -4,3 +4,5 @@ target
 test
 lcov.info
 output
+.docs/html
+uv.lock
