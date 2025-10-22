@@ -168,3 +168,12 @@ entry.list3 = ["not added"]
 dir = "output/check-config"
 repo = "https://github.com/mrijken/check-config.git"
 branch = "main"
+
+[[package_present]]
+type = "python"
+package = "ruff"
+version = "0.9.0"
+
+[[package_absent]]
+type = "python"
+package = "ty"

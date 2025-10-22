@@ -14,11 +14,13 @@ pub(crate) struct FileCopied {
     destination: WritablePath,
     generic_check: GenericChecker,
     is_template: bool,
+    // TODO: add digest to validate the download
 }
 
 //[[file_copied]]
 // source = "path or url of file to copy"
 // destination = "path (including filename) to copy to"
+// destination_dir = "path (excluding filename) to copy to"
 // is_template = true # optional
 //
 // check if file is copied
@@ -85,7 +87,7 @@ impl Checker for FileCopied {
         self.source.as_ref().to_string()
     }
     fn check_(&self, fix: bool) -> Result<crate::checkers::base::CheckResult, CheckError> {
-        // todo check whether the file is changed
+        // TODO: check whether the file is changed
         let mut action_messages: Vec<String> = vec![];
 
         match self.source.exists() {
@@ -116,9 +118,8 @@ impl Checker for FileCopied {
 
                 if self.is_template {
                     let template = self.source.read_to_string()?;
-                    dbg!(&self.generic_check.variables);
                     let content = replace_vars(template.as_str(), &self.generic_check.variables);
-                    match dbg!(self.destination.write_from_string(content.as_str())) {
+                    match self.destination.write_from_string(content.as_str()) {
                         Ok(_) => CheckResult::FixExecuted(action_message),
                         Err(e) => return Err(CheckError::String(e.to_string())),
                     }

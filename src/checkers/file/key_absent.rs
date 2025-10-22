@@ -39,7 +39,7 @@ impl CheckConstructor for KeyAbsent {
                     ));
                 }
                 Some(absent) => {
-                    // todo: check if there is an array in absent
+                    // TODO: check if there is an array in absent
                     absent.clone()
                 }
             },

@@ -224,10 +224,10 @@ pub(crate) fn run_checks(checks: &Vec<Box<dyn Checker>>, fix: bool) -> ExitStatu
         };
     }
 
-    log::warn!("{checks} checks found", checks = checks.len());
+    log::warn!("⬜ {checks} checks found", checks = checks.len());
     if fix {
         log::warn!("✅ {fix_executed_count} checks fixed");
-        log::warn!("✅ {no_fix_needed_count} checks did not a fix");
+        log::warn!("✅ {no_fix_needed_count} checks did not need a fix");
     }
 
     match fix_needed_count {

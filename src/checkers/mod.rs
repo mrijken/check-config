@@ -8,8 +8,8 @@ use self::base::{CheckDefinitionError, Checker};
 
 pub(crate) mod base;
 pub(crate) mod file;
-// pub(crate) mod package;
 pub(crate) mod git;
+pub(crate) mod package;
 pub(crate) mod test_helpers;
 pub(crate) mod utils;
 
@@ -155,12 +155,12 @@ fn get_check_from_check_table(
         "lines_present" => Ok(Box::new(
             file::lines_present::LinesPresent::from_check_table(generic_check, check_table)?,
         )),
-        // "package_present" => Ok(Box::new(
-        //     package::package_present::PackagePresent::from_check_table(generic_check, check_table)?,
-        // )),
-        // "package_absent" => Ok(Box::new(
-        //     package::package_absent::PackageAbsent::from_check_table(generic_check, check_table)?,
-        // )),
+        "package_present" => Ok(Box::new(
+            package::package_present::PackagePresent::from_check_table(generic_check, check_table)?,
+        )),
+        "package_absent" => Ok(Box::new(
+            package::package_absent::PackageAbsent::from_check_table(generic_check, check_table)?,
+        )),
         "key_value_present" => Ok(Box::new(
             file::key_value_present::KeyValuePresent::from_check_table(
                 generic_check,
@@ -251,7 +251,7 @@ pub(crate) fn read_checks_from_path(
             if let toml_edit::Item::Table(current_variables) = &value {
                 current_variables.iter().for_each(|(k, v)| {
                     let v = v.as_str().expect("value is a string");
-                    // todo: fix error or convert when value is not a string
+                    // TODO: fix error or convert when value is not a string
                     variables.insert(k.to_string(), v.to_string());
                 });
             }

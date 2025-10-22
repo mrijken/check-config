@@ -109,7 +109,7 @@ impl Checker for EntryRegexMatched {
             (true, false) => Ok(CheckResult::FixNeeded(action_message)),
             (true, true) => {
                 if self.placeholder.is_some() {
-                    self.file_check.conclude_check_with_new_doc(doc, fix);
+                    self.file_check.conclude_check_with_new_doc(doc, fix)?;
                     Ok(CheckResult::FixExecuted(action_message))
                 } else {
                     Ok(CheckResult::FixNeeded(action_message))

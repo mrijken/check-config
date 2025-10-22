@@ -44,6 +44,8 @@ pub(crate) enum CheckError {
     FetchError(#[from] PathError),
     #[error("{0}")]
     String(String),
+    #[error("executing command failed")]
+    CommandFailed(String),
 }
 
 pub(crate) trait CheckConstructor {

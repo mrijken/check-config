@@ -1,53 +1,66 @@
-use crate::checkers::package::package_present::{
-    read_installer_from_check_table, read_package_from_check_table, Installer,
+use crate::checkers::{
+    base::{CheckResult, Checker},
+    package::{PackageType, read_package_from_check_table},
 };
 
 use super::super::{
-    base::{Action, Check, CheckConstructor, CheckDefinitionError, CheckError},
-    GenericCheck,
+    GenericChecker,
+    base::{CheckConstructor, CheckDefinitionError, CheckError},
 };
 
 #[derive(Debug)]
 pub(crate) struct PackageAbsent {
-    generic_check: GenericCheck,
-    installer: Installer,
-    package: String,
+    generic_check: GenericChecker,
+    package: PackageType,
 }
 
 impl CheckConstructor for PackageAbsent {
     type Output = Self;
 
     fn from_check_table(
-        generic_check: GenericCheck,
+        generic_check: GenericChecker,
         value: toml_edit::Table,
     ) -> Result<Self::Output, CheckDefinitionError> {
-        let installer = read_installer_from_check_table(&value)?;
-        let package = read_package_from_check_table(&value)?;
+        let package_type = read_package_from_check_table(&value)?;
         Ok(Self {
             generic_check,
-            installer,
-            package,
+            package: package_type,
         })
     }
 }
 
-impl Check for PackageAbsent {
-    fn check_type(&self) -> String {
+impl Checker for PackageAbsent {
+    fn checker_type(&self) -> String {
         "package_absent".to_string()
     }
 
-    fn generic_check(&self) -> &GenericCheck {
+    fn generic_checker(&self) -> &GenericChecker {
         &self.generic_check
     }
 
-    fn get_action(&self) -> Result<Action, CheckError> {
-        match self.generic_check().file_to_check().exists() {
-            false => Ok(Action::UninstallPackage {
-                installer: self.installer.clone(),
-                package: self.package.clone(),
-            }),
-            true => Ok(Action::None),
-        }
+    fn checker_object(&self) -> String {
+        format!("{}", self.package)
+    }
+
+    fn check_(&self, fix: bool) -> Result<crate::checkers::base::CheckResult, CheckError> {
+        let to_uninstall = self.package.is_installed()?;
+
+        let action_message = if to_uninstall {
+            format!("uninstall package {}", self.package)
+        } else {
+            "".to_string()
+        };
+
+        let check_result = match (to_uninstall, fix) {
+            (false, _) => CheckResult::NoFixNeeded,
+            (true, false) => CheckResult::FixNeeded(action_message),
+            (true, true) => {
+                self.package.uninstall()?;
+                CheckResult::FixExecuted(action_message)
+            }
+        };
+
+        Ok(check_result)
     }
 }
 
@@ -58,86 +71,4 @@ mod tests {
     use super::*;
 
     use tempfile::tempdir;
-
-    #[test]
-    fn test_file_absent() {
-        let dir = tempdir().unwrap();
-        let file_to_check = dir.path().join("file_to_check");
-        let file_with_checks =
-            url::Url::from_file_path(dir.path().join("file_with_checks")).unwrap();
-        let generic_check = GenericCheck {
-            file_with_checks,
-            tags: Vec::new(),
-        };
-
-        let file_present_check =
-            FilePresent::from_check_table(generic_check, toml_edit::Table::new()).unwrap();
-
-        assert_eq!(
-            file_present_check.check().unwrap(),
-            Action::SetContents("".to_string())
-        );
-    }
-
-    #[test]
-    fn test_file_present() {
-        let dir = tempdir().unwrap();
-        let file_to_check = dir.path().join("file_to_check");
-        File::create(&file_to_check).unwrap();
-        let file_with_checks =
-            url::Url::from_file_path(dir.path().join("file_with_checks")).unwrap();
-        let generic_check = GenericCheck {
-            file_with_checks,
-            tags: Vec::new(),
-        };
-
-        let file_present_check =
-            FilePresent::from_check_table(generic_check, toml_edit::Table::new()).unwrap();
-
-        assert_eq!(file_present_check.check().unwrap(), Action::None);
-    }
-
-    #[test]
-    fn test_file_absent_with_placeholder() {
-        let dir = tempdir().unwrap();
-        let file_to_check = dir.path().join("file_to_check");
-        let file_with_checks =
-            url::Url::from_file_path(dir.path().join("file_with_checks")).unwrap();
-        let generic_check = GenericCheck {
-            file_with_checks,
-            tags: Vec::new(),
-        };
-
-        let mut placeholder_table = toml_edit::Table::new();
-        placeholder_table.insert("__placeholder__", "placeholder".into());
-
-        let file_present_check =
-            FilePresent::from_check_table(generic_check, placeholder_table).unwrap();
-
-        assert_eq!(
-            file_present_check.check().unwrap(),
-            Action::SetContents("placeholder".to_string())
-        );
-    }
-
-    #[test]
-    fn test_file_present_with_placeholder() {
-        let dir = tempdir().unwrap();
-        let file_to_check = dir.path().join("file_to_check");
-        File::create(&file_to_check).unwrap();
-        let file_with_checks =
-            url::Url::from_file_path(dir.path().join("file_with_checks")).unwrap();
-        let generic_check = GenericCheck {
-            file_with_checks,
-            tags: Vec::new(),
-        };
-
-        let mut placeholder_table = toml_edit::Table::new();
-        placeholder_table.insert("__placeholder__", "placeholder".into());
-
-        let file_present_check =
-            FilePresent::from_check_table(generic_check, placeholder_table).unwrap();
-
-        assert_eq!(file_present_check.check().unwrap(), Action::None);
-    }
 }

@@ -106,7 +106,7 @@ impl Checker for DirCopied {
         self.source.as_ref().to_string_lossy().to_string()
     }
     fn check_(&self, fix: bool) -> Result<crate::checkers::base::CheckResult, CheckError> {
-        // todo check whether the file is changed
+        // TODO: check whether the file is changed
         let mut action_messages: Vec<String> = vec![];
 
         match self.source.exists() {
@@ -115,7 +115,7 @@ impl Checker for DirCopied {
             Err(e) => return Err(CheckError::String(e.to_string())),
         }
 
-        // todo: check also all subdirs and files
+        // TODO: check also all subdirs and files
         let copy_dir_needed = !self.destination.as_ref().exists();
 
         if copy_dir_needed {

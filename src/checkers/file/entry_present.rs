@@ -35,7 +35,7 @@ impl CheckConstructor for EntryPresent {
                     ));
                 }
                 Some(present) => {
-                    // todo: check if there is an array in present
+                    // TODO: check if there is an array in present
                     present.clone()
                 }
             },
@@ -142,7 +142,7 @@ mod tests {
                 file="{}"
                 entry.list = [ {} ]
                 {}"#,
-                path_to_check.to_string_lossy().to_string(),
+                path_to_check.to_string_lossy(),
                 entry,
                 indent
             )

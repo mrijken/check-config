@@ -105,7 +105,7 @@ impl ReadablePath {
 
 impl ReadPath for ReadablePath {
     fn copy(&self, dest: &WritablePath) -> Result<(), PathError> {
-        // todo: create parent dir if needed
+        // TODO: create parent dir if needed
 
         match self.as_ref().scheme() {
             "file" => {
@@ -183,13 +183,14 @@ impl WritablePath {
         Ok(WritablePath(full_path))
     }
 
-    pub fn to_string(&self) -> String {
-        self.as_ref().to_string_lossy().to_string()
-    }
-
     pub fn write_from_string(&self, content: &str) -> Result<(), Error> {
-        dbg!(content);
         Ok(std::fs::write(self.as_ref(), content)?)
+    }
+}
+
+impl std::fmt::Display for WritablePath {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.as_ref().to_string_lossy())
     }
 }
 

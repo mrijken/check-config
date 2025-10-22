@@ -19,6 +19,8 @@ There are several checker types (and more to come):
 | [dir_copied](#dir-copied)                            | the dir must be copied                                                                      | yes     | no |
 | [dir_present](#dir-present)                            | the dir must be present                                                                      | yes     | no |
 | [git_fetched](#git-fetched)                         | the git repo must be present and fetched                                                    | yes     | no |
+| [package_present](#package-present)            | the package is installed  |  yes  | no |
+| [package_absent](#package-absent)                 | the package is not installed  |  yes  | no |
 
 ## check-config.toml
 
@@ -495,6 +497,58 @@ When one of the markers is not present, the markers and the lines will be append
 
 Note: because the checkers are executed in sequence, one can add markers in one checker, which are replaced by
 a next checker.
+
+## Package Present
+
+You can check if a package is installed on your system and during fix the package can be installed.
+
+At the moment we support the next package types / installation methods:
+
+- Rust / Cargo: installation via `cargo install <package>=<version>`
+- Python / UV: installation via `uv tool install <package>=<version>`
+- Custom: a custom command to install
+
+At the moment you can only select the package type and not the installer, as there is only
+one installer per package type now.
+
+### Python / UV
+
+```toml
+[[package_present]]
+type = "python"
+package = "toml-cli"
+version = "0.9.0"
+```
+
+### Rust / Cargo
+
+```toml
+[[package_present]]
+type = "rust"
+package = "check-config"
+version = "0.9.0"
+```
+
+### Custom
+
+By specifying the commands for installing, uninstalling and get the current version,
+you can install almost any package.
+
+```toml
+[[package_present]]
+type = "custom"
+package = "uv"
+install_command = "curl -LsSf https://astral.sh/uv/0.9.5/install.sh | sh"
+uninstall_command = "rm ~/.local/bin/uv ~/.local/bin/uvx"
+version_command = "uv --version"
+version = "0.9.5"
+```
+
+Note:
+
+- The version key is optional. When absent, we check whether the package is installed; any version will do.
+  During fix, the latest version is installed.
+- The commands are executed as the current user. We do not elevate to a system / root user.
 
 ### Templating
 

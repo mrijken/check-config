@@ -1,5 +1,9 @@
 # CHANGES
 
+## 0.9.3
+
+- Feat: add package_present and package_absent
+
 ## 0.9.2
 
 - Feat: add variables and templating
