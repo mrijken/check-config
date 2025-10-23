@@ -1,6 +1,6 @@
 [package]
 name = "check-config"
-version = "0.9.2"
+version = "0.9.3"
 edition = "2024"
 description = "Check configuration files."
 documentation = "https://check-config.readthedocs.io"

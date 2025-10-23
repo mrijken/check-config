@@ -538,6 +538,49 @@ you can install almost any package.
 [[package_present]]
 type = "custom"
 package = "uv"
+install_command = "curl -LsSf https://astral.sh/uv/0.9.5/install.sh | sh"  # optional for package_absent
+uninstall_command = "rm ~/.local/bin/uv ~/.local/bin/uvx"  # optional for package_present
+version_command = "uv --version"
+version = "0.9.5"
+```
+
+Note:
+
+- The version key is optional. When absent, we check whether the package is installed; any version will do.
+  During fix, the latest version is installed.
+- The commands are executed as the current user. We do not elevate to a system / root user.
+
+## Package Absent
+
+You can check if a package is uninstalled from your system and during fix the package can be installed.
+
+See [Package Present](#package-present) for the configuration, with the difference that the version is not needed.
+
+### Python / UV
+
+```toml
+[[package_absent]]
+type = "python"
+package = "toml-cli"
+```
+
+### Rust / Cargo
+
+```toml
+[[package_present]]
+type = "rust"
+package = "check-config"
+```
+
+### Custom
+
+By specifying the commands for installing, uninstalling and get the current version,
+you can install almost any package.
+
+```toml
+[[package_present]]
+type = "custom"
+package = "uv"
 install_command = "curl -LsSf https://astral.sh/uv/0.9.5/install.sh | sh"
 uninstall_command = "rm ~/.local/bin/uv ~/.local/bin/uvx"
 version_command = "uv --version"
