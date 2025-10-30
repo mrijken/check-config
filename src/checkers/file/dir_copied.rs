@@ -1,6 +1,6 @@
 use crate::{
     checkers::{base::CheckResult, file::get_string_value_from_checktable},
-    uri::{ReadPath, WritablePath},
+    uri::WritablePath,
 };
 
 use super::super::{
@@ -109,10 +109,8 @@ impl Checker for DirCopied {
         // TODO: check whether the file is changed
         let mut action_messages: Vec<String> = vec![];
 
-        match self.source.exists() {
-            Ok(false) => return Err(CheckError::String("source dir does not exists".into())),
-            Ok(true) => (),
-            Err(e) => return Err(CheckError::String(e.to_string())),
+        if !self.source.exists() {
+            return Err(CheckError::String("source dir does not exists".into()));
         }
 
         // TODO: check also all subdirs and files

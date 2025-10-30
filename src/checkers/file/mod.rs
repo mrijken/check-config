@@ -12,7 +12,7 @@ use crate::{
     },
     file_types::{self, FileType},
     mapping::generic::Mapping,
-    uri::WritablePath,
+    uri::{ReadablePath, WritablePath},
 };
 
 pub(crate) mod dir_copied;
@@ -352,6 +352,25 @@ pub(crate) fn get_option_string_value_from_checktable(
             Some(value) => Ok(Some(value.to_string())),
         },
     }
+}
+
+pub(crate) fn get_readable_path_from_checktable(
+    check_table: &toml_edit::Table,
+    key: &str,
+    current_config_path: Option<&ReadablePath>,
+) -> Result<ReadablePath, CheckDefinitionError> {
+    let s = get_string_value_from_checktable(check_table, key)?;
+    Ok(ReadablePath::from_string(s.as_str(), current_config_path)
+        .map_err(|e| CheckDefinitionError::InvalidDefinition(e.to_string()))?)
+}
+
+pub(crate) fn get_writable_path_from_checktable(
+    check_table: &toml_edit::Table,
+    key: &str,
+) -> Result<WritablePath, CheckDefinitionError> {
+    let s = get_string_value_from_checktable(check_table, key)?;
+    Ok(WritablePath::from_string(s.as_str())
+        .map_err(|e| CheckDefinitionError::InvalidDefinition(e.to_string()))?)
 }
 
 pub(crate) fn get_string_value_from_checktable(

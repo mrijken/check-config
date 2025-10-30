@@ -2,7 +2,7 @@ use std::{collections::HashMap, env, str::FromStr};
 
 use base::CheckConstructor;
 
-use crate::uri::{self};
+use crate::uri::{ReadPath, ReadablePath};
 
 use self::base::{CheckDefinitionError, Checker};
 
@@ -17,7 +17,7 @@ pub(crate) trait RelativeUrl {
     fn short_url_str(&self) -> String;
 }
 
-impl RelativeUrl for url::Url {
+impl RelativeUrl for ReadablePath {
     fn short_url_str(&self) -> String {
         let cwd_url = url::Url::parse(&format!(
             "file://{}",
@@ -28,9 +28,9 @@ impl RelativeUrl for url::Url {
                 .unwrap()
         ))
         .unwrap();
-        match cwd_url.make_relative(self) {
+        match cwd_url.make_relative(self.as_ref()) {
             Some(relative_url) => relative_url,
-            None => self.as_str().to_owned(),
+            None => self.as_ref().as_str().to_owned(),
         }
     }
 }
@@ -38,7 +38,7 @@ impl RelativeUrl for url::Url {
 #[derive(Debug, Clone)]
 pub(crate) struct GenericChecker {
     // path to the file where the checkers are defined
-    pub(crate) file_with_checks: url::Url,
+    pub(crate) file_with_checks: ReadablePath,
     // overridden file type
     pub(crate) tags: Vec<String>,
     // check_only
@@ -50,7 +50,7 @@ pub(crate) struct GenericChecker {
 }
 
 impl GenericChecker {
-    fn file_with_checks(&self) -> &url::Url {
+    fn file_with_checks(&self) -> &ReadablePath {
         &self.file_with_checks
     }
 }
@@ -99,7 +99,7 @@ fn get_option_boolean_from_check_table(
 }
 
 fn get_check_from_check_table(
-    file_with_checks: &url::Url,
+    file_with_checks: &ReadablePath,
     check_type: &str,
     check_table: &toml_edit::Table,
     variables: HashMap<String, String>,
@@ -191,12 +191,12 @@ fn get_check_from_check_table(
 }
 
 pub(crate) fn read_checks_from_path(
-    file_with_checks: &url::Url,
+    file_with_checks: &ReadablePath,
     top_level_keys: Vec<&str>,
     variables: &mut HashMap<String, String>,
 ) -> Vec<Box<dyn Checker>> {
     let mut checks: Vec<Box<dyn Checker>> = vec![];
-    let checks_toml_str = match uri::read_to_string(file_with_checks) {
+    let checks_toml_str = match file_with_checks.read_to_string() {
         Ok(checks_toml) => checks_toml,
         Err(_) => {
             log::error!("⚠ {file_with_checks} could not be read");
@@ -231,7 +231,7 @@ pub(crate) fn read_checks_from_path(
         if key == "include" {
             if let toml_edit::Item::Value(toml_edit::Value::Array(include_uris)) = value {
                 for include_uri in include_uris {
-                    let include_path = match uri::parse_uri(
+                    let include_path = match ReadablePath::from_string(
                         include_uri.as_str().expect("uri is a string"),
                         Some(file_with_checks),
                     ) {
@@ -355,8 +355,11 @@ entry.key = [1,2,3]
         .expect("file is created");
 
         let mut variables = HashMap::new();
-        let path_with_checkers =
-            url::Url::parse(&format!("file://{}", path_with_checkers.to_str().unwrap())).unwrap();
+        let path_with_checkers = ReadablePath::from_string(
+            &format!("file://{}", path_with_checkers.to_str().unwrap()),
+            None,
+        )
+        .unwrap();
         let checks = read_checks_from_path(&path_with_checkers, vec![], &mut variables);
 
         assert_eq!(checks.len(), 9);
@@ -379,8 +382,11 @@ entry.key = [1,2,3]
 
         let mut variables = HashMap::new();
 
-        let path_with_checkers =
-            url::Url::parse(&format!("file://{}", path_with_checkers.to_str().unwrap())).unwrap();
+        let path_with_checkers = ReadablePath::from_string(
+            &format!("file://{}", path_with_checkers.to_str().unwrap()),
+            None,
+        )
+        .unwrap();
         let checks = read_checks_from_path(&path_with_checkers, vec![], &mut variables);
 
         assert_eq!(checks.len(), 0);

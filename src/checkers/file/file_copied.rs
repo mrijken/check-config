@@ -35,7 +35,7 @@ impl CheckConstructor for FileCopied {
     ) -> Result<Self::Output, CheckDefinitionError> {
         let source = ReadablePath::from_string(
             get_string_value_from_checktable(&check_table, "source")?.as_str(),
-            &generic_check.file_with_checks,
+            Some(&generic_check.file_with_checks),
         )
         .map_err(|_| CheckDefinitionError::InvalidDefinition("invalid source url".into()))?;
 
