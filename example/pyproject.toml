@@ -3,7 +3,7 @@ name = "example"
 version = "0.1.0"
 
 [tool.check-config]
-include = ["checkers/check-config.toml"]
+include = ["config:checkers/check-config.toml"]
 
 [tool.ruff]
 target-version = "py312"

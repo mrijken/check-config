@@ -1,7 +1,4 @@
-include = [
-        "relative_local_file.toml"
-]
-
+include = ["config:relative_local_file.toml"]
 
 [[entry_present]]
 file = "output/test.yaml"

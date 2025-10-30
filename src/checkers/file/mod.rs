@@ -15,6 +15,7 @@ use crate::{
     uri::{ReadablePath, WritablePath},
 };
 
+pub(crate) mod dir_absent;
 pub(crate) mod dir_copied;
 pub(crate) mod dir_present;
 pub(crate) mod entry_absent;

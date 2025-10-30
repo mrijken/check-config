@@ -145,6 +145,10 @@ fn get_check_from_check_table(
             generic_check,
             check_table,
         )?)),
+        "dir_absent" => Ok(Box::new(file::dir_absent::DirAbsent::from_check_table(
+            generic_check,
+            check_table,
+        )?)),
         "file_unpacked" => Ok(Box::new(
             file::file_unpacked::FileUnpacked::from_check_table(generic_check, check_table)?,
         )),

@@ -1,17 +1,17 @@
 include = [
   # "https://raw.githubusercontent.com/mrijken/check-config/refs/heads/main/example/checkers/http_check_config.toml",
-  "vars.toml",
-  "http_check_config.toml",
-  "folder/local_file.toml",
-  "copy.toml",
-  "unpack.toml",
+  "config:vars.toml",
+  "config:http_check_config.toml",
+  "config:folder/local_file.toml",
+  "config:copy.toml",
+  "config:unpack.toml",
 ]
 
 [[dir_present]]
 dir = "output/created_dir"
 
-[[file_absent]]
-file = "output/to_be_removed"
+[[file_present]]
+file = "output/created_dir/.gitkeep"
 
 [[file_present]]
 file = "output/.bashrc"
@@ -27,6 +27,9 @@ placeholder = """
 [[file_present]]
 file = "output/.bashrc"
 regex = "export KEY=.*"
+
+[[file_absent]]
+file = "output/to_be_removed"
 
 [[lines_present]]
 file = "output/.bashrc"
@@ -168,6 +171,9 @@ entry.list3 = ["not added"]
 dir = "output/check-config"
 repo = "https://github.com/mrijken/check-config.git"
 branch = "main"
+
+[[dir_absent]]
+dir = "output/check-config"
 
 [[package_present]]
 type = "python"

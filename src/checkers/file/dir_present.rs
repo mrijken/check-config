@@ -61,7 +61,7 @@ impl Checker for DirPresent {
     fn check_(&self, fix: bool) -> Result<crate::checkers::base::CheckResult, CheckError> {
         let mut action_messages: Vec<String> = vec![];
 
-        let create_dir = !self.dir.as_ref().exists();
+        let create_dir = !self.dir.exists();
 
         if create_dir {
             action_messages.push("create dir".into());
