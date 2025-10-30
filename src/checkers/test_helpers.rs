@@ -6,13 +6,15 @@ use crate::mapping::{generic::Mapping, json};
 type TestFiles = Vec<(String, Box<dyn Mapping>, String, toml_edit::Table)>;
 
 use crate::checkers::GenericChecker;
+use crate::uri::ReadablePath;
 
 #[allow(dead_code)]
 pub(crate) fn get_generic_check() -> GenericChecker {
     let file = tempfile::NamedTempFile::new().expect("temp file is created");
     GenericChecker {
-        file_with_checks: url::Url::parse(
+        file_with_checks: ReadablePath::from_string(
             format!("file://{}", file.path().to_string_lossy()).as_str(),
+            None,
         )
         .expect("valid path"),
         tags: Vec::new(),

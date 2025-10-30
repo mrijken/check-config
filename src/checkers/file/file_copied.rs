@@ -35,7 +35,7 @@ impl CheckConstructor for FileCopied {
     ) -> Result<Self::Output, CheckDefinitionError> {
         let source = ReadablePath::from_string(
             get_string_value_from_checktable(&check_table, "source")?.as_str(),
-            &generic_check.file_with_checks,
+            Some(&generic_check.file_with_checks),
         )
         .map_err(|_| CheckDefinitionError::InvalidDefinition("invalid source url".into()))?;
 
@@ -96,7 +96,7 @@ impl Checker for FileCopied {
             Err(e) => return Err(CheckError::String(e.to_string())),
         }
 
-        let destination_exists = self.destination.as_ref().exists();
+        let destination_exists = self.destination.exists();
 
         let source_and_destination_are_different =
             destination_exists && self.source.hash()? != self.destination.hash()?;

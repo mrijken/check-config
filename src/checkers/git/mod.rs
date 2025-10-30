@@ -5,9 +5,12 @@ use git2::{BranchType, Error, FetchOptions, Oid, RemoteCallbacks, Repository, Re
 use crate::{
     checkers::{
         base::CheckResult,
-        file::{get_option_string_value_from_checktable, get_string_value_from_checktable},
+        file::{
+            get_option_string_value_from_checktable, get_string_value_from_checktable,
+            get_writable_path_from_checktable,
+        },
     },
-    uri::parse_uri,
+    uri::WritablePath,
 };
 
 use super::{
@@ -18,7 +21,7 @@ use super::{
 #[derive(Debug)]
 pub(crate) struct GitFetched {
     generic_check: GenericChecker,
-    destination_dir: PathBuf,
+    destination_dir: WritablePath,
     repo: String,
     branch: Option<String>,
     tag: Option<String>,
@@ -51,17 +54,13 @@ impl CheckConstructor for GitFetched {
             ));
         }
 
-        let dir = get_string_value_from_checktable(&check_table, "dir")?;
-        let dir = parse_uri(dir.as_str(), Some(generic_check.file_with_checks()))
-            .map_err(|e| CheckDefinitionError::InvalidDefinition(e.to_string()))?
-            .to_file_path()
-            .map_err(|_| CheckDefinitionError::InvalidDefinition("invalid path".into()))?;
+        let destination_dir = get_writable_path_from_checktable(&check_table, "dir")?;
         Ok(Self {
             repo,
             branch,
             commit_hash,
             tag,
-            destination_dir: dir,
+            destination_dir,
             generic_check,
         })
     }
@@ -88,7 +87,7 @@ impl Checker for GitFetched {
         }
 
         // error when dir is not a git dir
-        let not_a_git_dir = !git_clone && !self.destination_dir.join(".git").is_dir();
+        let not_a_git_dir = !git_clone && !self.destination_dir.as_ref().join(".git").is_dir();
 
         if not_a_git_dir {
             action_messages.push("delete dir, because it is not a git dir".into());
@@ -99,7 +98,7 @@ impl Checker for GitFetched {
             false
         } else {
             !is_in_sync(
-                &self.destination_dir,
+                self.destination_dir.as_ref(),
                 self.branch.as_deref(),
                 self.commit_hash.as_deref(),
                 self.tag.as_deref(),
@@ -118,13 +117,16 @@ impl Checker for GitFetched {
         let check_result = match (fix, fix_needed) {
             (true, true) => {
                 if git_clone {
-                    git2::Repository::clone(self.repo.as_str(), self.destination_dir.clone())
-                        .map_err(|e| CheckError::GitError(e.to_string()))?;
+                    git2::Repository::clone(
+                        self.repo.as_str(),
+                        self.destination_dir.as_ref().clone(),
+                    )
+                    .map_err(|e| CheckError::GitError(e.to_string()))?;
                 }
 
                 if sync_repo || git_clone {
                     sync_with_remote(
-                        &self.destination_dir,
+                        self.destination_dir.as_ref(),
                         self.branch.as_deref(),
                         self.commit_hash.as_deref(),
                         self.tag.as_deref(),

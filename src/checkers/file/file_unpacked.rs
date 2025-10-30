@@ -5,7 +5,7 @@ use crate::{
         base::CheckResult,
         file::{get_option_string_value_from_checktable, get_string_value_from_checktable},
     },
-    uri::{ReadPath, WritablePath},
+    uri::WritablePath,
 };
 
 use super::super::{
@@ -103,13 +103,11 @@ impl Checker for FileUnpacked {
     fn check_(&self, fix: bool) -> Result<crate::checkers::base::CheckResult, CheckError> {
         let mut action_messages: Vec<String> = vec![];
 
-        match self.source.exists() {
-            Ok(false) => return Err(CheckError::String("source file does not exists".into())),
-            Ok(true) => (),
-            Err(e) => return Err(CheckError::String(e.to_string())),
+        if !self.source.exists() {
+            return Err(CheckError::String("source file does not exists".into()));
         };
 
-        let file_unpack = !self.destination_dir.as_ref().exists();
+        let file_unpack = !self.destination_dir.exists();
 
         if file_unpack {
             action_messages.push("unpack file".into());

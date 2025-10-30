@@ -18,6 +18,7 @@ There are several checker types (and more to come):
 | [file_copied](#file-copied)                          | the file must be copied                                                                     | yes     | yes |
 | [dir_copied](#dir-copied)                            | the dir must be copied                                                                      | yes     | no |
 | [dir_present](#dir-present)                            | the dir must be present                                                                      | yes     | no |
+| [dir_absent](#dir-absent)                            | the dir must be absent                                                                      | yes     | no |
 | [git_fetched](#git-fetched)                         | the git repo must be present and fetched                                                    | yes     | no |
 | [package_present](#package-present)            | the package is installed  |  yes  | no |
 | [package_absent](#package-absent)                 | the package is not installed  |  yes  | no |
@@ -262,6 +263,15 @@ When `permissions` are given, it will also check the permissions.
 [[dir_present]]
 dir = "path to dir"
 permissions = "755" # optional
+```
+
+## Dir Absent
+
+`dir_absent` will check if the dir including the contents is absent.
+
+```toml
+[[dir_absent]]
+dir = "path to dir"
 ```
 
 ## File Unpacked

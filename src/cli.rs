@@ -4,6 +4,7 @@ use std::{collections::HashMap, io::Write};
 use clap::Parser;
 
 use crate::checkers::{RelativeUrl, base::Checker};
+use crate::uri::ReadablePath;
 
 use super::checkers::read_checks_from_path;
 
@@ -97,21 +98,6 @@ pub(crate) fn filter_checks(
     true
 }
 
-pub(crate) fn parse_path_str_to_uri(path: &str) -> Option<url::Url> {
-    if path.starts_with("/") {
-        super::uri::parse_uri(format!("file://{path}").as_str(), None).ok()
-    } else {
-        let cwd = super::uri::parse_uri(
-            &format!(
-                "file://{}/",
-                std::env::current_dir().unwrap().as_path().to_str().unwrap()
-            ),
-            None,
-        )
-        .unwrap();
-        super::uri::parse_uri(path, Some(&cwd)).ok()
-    }
-}
 pub fn cli() -> ExitCode {
     let cli = Cli::parse();
     env_logger::Builder::new()
@@ -128,12 +114,12 @@ pub fn cli() -> ExitCode {
     };
 
     let mut checks = match cli.path {
-        Some(path_str) => match parse_path_str_to_uri(path_str.as_str()) {
-            Some(uri) => {
+        Some(path_str) => match ReadablePath::from_string(path_str.as_str(), None) {
+            Ok(uri) => {
                 log::info!("Using checkers from {}", &uri.short_url_str());
                 read_checks_from_path(&uri, vec![], &mut variables)
             }
-            None => {
+            Err(_) => {
                 log::error!(
                     "Unable to load checkers. Path ({path_str}) specified is not a valid path.",
                 );
@@ -142,21 +128,22 @@ pub fn cli() -> ExitCode {
         },
         None => {
             log::warn!("⚠️ No path specified. Trying check-config.toml");
-            let uri = parse_path_str_to_uri("check-config.toml").expect("valid path");
-            match std::path::Path::new(uri.path()).exists() {
+            let path = ReadablePath::from_string("check-config.toml", None).expect("valid path");
+            match std::path::Path::new(path.as_ref().path()).exists() {
                 true => {
-                    log::info!("Using checkers from {}", &uri);
-                    read_checks_from_path(&uri, vec![], &mut variables)
+                    log::info!("Using checkers from {}", &path);
+                    read_checks_from_path(&path, vec![], &mut variables)
                 }
                 false => {
                     log::warn!("check-config.toml does not exists.");
                     log::warn!("Trying pyproject.toml.");
-                    let uri = parse_path_str_to_uri("pyproject.toml").expect("valid path");
-                    match std::path::Path::new(uri.path()).exists() {
+                    let path =
+                        ReadablePath::from_string("pyproject.toml", None).expect("valid path");
+                    match std::path::Path::new(path.as_ref().path()).exists() {
                         true => {
-                            log::info!("Using checkers from {}", &uri);
+                            log::info!("Using checkers from {}", &path);
                             read_checks_from_path(
-                                &uri,
+                                &path,
                                 vec!["tool", "check-config"],
                                 &mut variables,
                             )

@@ -21,16 +21,6 @@ pub enum Error {
 }
 impl std::error::Error for Error {}
 
-pub(crate) fn read_to_string(url: &Url) -> Result<String, Error> {
-    if url.scheme() == "file" {
-        Ok(std::fs::read_to_string(url.path())?)
-    } else if url.scheme().starts_with("http") {
-        Ok(reqwest::blocking::get(url.clone())?.text()?)
-    } else {
-        Err(Error::UnknownUrlScheme)
-    }
-}
-
 /// parse uri of files to read to or write from
 /// readable:
 /// - http(s) uri
@@ -60,7 +50,7 @@ pub enum PathError {
     UrlParse(#[from] url::ParseError),
 }
 
-#[derive(AsRef, Clone, Debug)]
+#[derive(AsRef, Clone, Debug, Display)]
 pub struct ReadablePath(Url);
 
 pub trait ReadPath {
@@ -79,23 +69,40 @@ pub trait ReadPath {
 }
 
 impl ReadablePath {
-    pub fn from_string(input: &str, config_base: &Url) -> Result<ReadablePath, Error> {
-        if input.starts_with("config:") {
+    /// get a readable path
+    /// - config:<path>  - relative to current_config_path
+    /// - https://<path> - uri
+    /// - file://<path>  - absolute path
+    /// - py://<package>/<path>
+    /// - ~/<path>       - relative to home dir
+    /// - <path>         - relative to cwd
+    /// - /<path>        - absolute path
+    pub fn from_string(
+        input: &str,
+        current_config_path: Option<&ReadablePath>,
+    ) -> Result<ReadablePath, Error> {
+        // Case: config:<path>
+        if let Some(config_file_path) = current_config_path
+            && input.starts_with("config:")
+        {
             let input = input.replacen("config:", "", 1);
             return Ok(ReadablePath(
-                config_base
+                config_file_path
+                    .as_ref()
                     .join(input.as_str())
                     .map_err(|_e| Error::InvalidUrl)?,
             ));
         }
 
+        // Case file / http(s) / py
         if let Ok(url) = Url::parse(input) {
             if url.scheme() == "py" {
-                return Ok(ReadablePath(py_url_to_url(url)?));
+                return py_url_to_url(url).map(ReadablePath);
             }
             return Ok(ReadablePath(url));
         }
 
+        // case: absolute dir or relative to cwd /home dir
         Ok(ReadablePath(
             Url::from_file_path(WritablePath::from_string(input)?.as_ref())
                 .map_err(|_| Error::InvalidUrl)?,
@@ -164,6 +171,7 @@ impl WritablePath {
     }
 
     pub fn from_string(input: &str) -> Result<WritablePath, Error> {
+        // case: relative to home dir
         if input.starts_with("~") {
             if let Some(home) = dirs::home_dir() {
                 let expanded = input.replacen("~", home.to_str().unwrap(), 1);
@@ -172,10 +180,12 @@ impl WritablePath {
             return Err(Error::InvalidUrl);
         }
 
+        // case: absolute
         if input.starts_with("/") {
             return Ok(WritablePath(PathBuf::from(input)));
         }
 
+        // case: relative to cwd
         let cwd = std::env::current_dir()
             .map_err(|e| e.to_string())
             .map_err(|_| Error::InvalidUrl)?;
@@ -185,6 +195,10 @@ impl WritablePath {
 
     pub fn write_from_string(&self, content: &str) -> Result<(), Error> {
         Ok(std::fs::write(self.as_ref(), content)?)
+    }
+
+    pub fn exists(&self) -> bool {
+        self.as_ref().exists()
     }
 }
 
@@ -207,42 +221,6 @@ impl ReadPath for WritablePath {
         std::fs::copy(self.as_ref(), dest.as_ref())?;
         Ok(())
     }
-}
-
-pub(crate) fn parse_uri(input: &str, base: Option<&Url>) -> Result<Url, Error> {
-    // Case 1: Try parsing directly as a URL
-    if let Ok(url) = Url::parse(input) {
-        if url.scheme() == "py" {
-            return py_url_to_url(url);
-        }
-        return Ok(url);
-    }
-
-    // Case 2: Handle "~" expansion
-    if input.starts_with("~") {
-        if let Some(home) = dirs::home_dir() {
-            let expanded = input.replacen("~", home.to_str().unwrap(), 1);
-            return Url::from_file_path(PathBuf::from(expanded)).map_err(|_| Error::InvalidUrl);
-        }
-        return Err(Error::InvalidUrl);
-    }
-
-    // Case 3: absolute
-    if input.starts_with("/") {
-        return Url::from_file_path(PathBuf::from(input)).map_err(|_| Error::InvalidUrl);
-    }
-
-    // Case 4: relative with given base
-    if let Some(base) = base {
-        return Ok(base.join(input)?);
-    }
-
-    // Case 5: relative without given base, so use cwd
-    let cwd = std::env::current_dir()
-        .map_err(|e| e.to_string())
-        .map_err(|_| Error::InvalidUrl)?;
-    let full_path = cwd.join(input);
-    Url::from_file_path(&full_path).map_err(|_| Error::InvalidUrl)
 }
 
 #[cfg(test)]
@@ -301,6 +279,44 @@ mod test {
     use super::*;
 
     #[test]
+    fn test_config_readable_path() {
+        let path = ReadablePath::from_string(
+            "config:test.toml",
+            Some(&ReadablePath(
+                Url::from_file_path("/some/base/dir/config.toml").unwrap(),
+            )),
+        )
+        .expect("path is ok");
+
+        assert_eq!(path.as_ref().path(), "/some/base/dir/test.toml");
+    }
+
+    #[test]
+    fn test_config_readable_path_with_url_base() {
+        let path = ReadablePath::from_string(
+            "config:test.toml",
+            Some(
+                &ReadablePath::from_string("https://test.nl/some/base/dir/config.toml", None)
+                    .unwrap(),
+            ),
+        )
+        .expect("path is ok");
+
+        assert_eq!(path.as_ref().path(), "/some/base/dir/test.toml");
+
+        let path = ReadablePath::from_string(
+            "config:sub/test.toml",
+            Some(
+                &ReadablePath::from_string("https://test.nl/some/base/dir/config.toml", None)
+                    .unwrap(),
+            ),
+        )
+        .expect("path is ok");
+
+        assert_eq!(path.as_ref().path(), "/some/base/dir/sub/test.toml");
+    }
+
+    #[test]
     fn test_paths_copy_and_read() {
         let dir = tempdir().unwrap();
         let destination = dir.path().join("destination");
@@ -308,7 +324,9 @@ mod test {
 
         let source = ReadablePath::from_string(
             "https://rust-lang.org/static/images/rust-logo-blk.svg",
-            &Url::from_file_path(dir.path()).expect("valid path"),
+            Some(&ReadablePath(
+                Url::from_file_path(dir.path()).expect("valid path"),
+            )),
         )
         .expect("valid url");
 
@@ -326,7 +344,9 @@ mod test {
         assert!(
             ReadablePath::from_string(
                 "https://rust-lang.org/static/images/rust-logo-blk.svg",
-                &Url::from_file_path(dir.path()).expect("valid path"),
+                Some(&ReadablePath(
+                    Url::from_file_path(dir.path()).expect("valid path")
+                )),
             )
             .unwrap()
             .exists()
@@ -336,7 +356,9 @@ mod test {
         assert!(
             !ReadablePath::from_string(
                 "https://rust-lang.org/non_existing",
-                &Url::from_file_path(dir.path()).expect("valid path"),
+                Some(&ReadablePath(
+                    Url::from_file_path(dir.path()).expect("valid path")
+                )),
             )
             .unwrap()
             .exists()
@@ -345,64 +367,80 @@ mod test {
 
         let tmp_path = dir.path().join("tmp_file");
 
-        assert!(!WritablePath(tmp_path.clone()).exists().unwrap());
+        assert!(!WritablePath(tmp_path.clone()).exists());
 
         std::fs::File::create(&tmp_path).unwrap();
 
-        assert!(WritablePath(tmp_path).exists().unwrap());
+        assert!(WritablePath(tmp_path).exists());
     }
 
     #[test]
     fn test_uris() {
         assert_eq!(
-            parse_uri("file:///path/to/test", None).unwrap().path(),
+            ReadablePath::from_string("file:///path/to/test", None)
+                .unwrap()
+                .as_ref()
+                .path(),
             "/path/to/test"
         );
         assert_eq!(
-            parse_uri("https://path/to/test", None).unwrap().path(),
+            ReadablePath::from_string("https://path/to/test", None)
+                .unwrap()
+                .as_ref()
+                .path(),
             "/to/test"
         );
         assert_eq!(
-            parse_uri("py://pathlib/to/test", None).unwrap().path(),
+            ReadablePath::from_string("py://pathlib/to/test", None)
+                .unwrap()
+                .as_ref()
+                .path(),
             "/path/to/python/lib/site-packages/to/test"
         );
         assert!(
-            parse_uri("pathlib", None)
+            ReadablePath::from_string("pathlib", None)
                 .unwrap()
+                .as_ref()
                 .path()
                 .ends_with("check-config/pathlib")
         );
         assert_eq!(
-            parse_uri("/path/to/test", None).unwrap().path(),
+            ReadablePath::from_string("/path/to/test", None)
+                .unwrap()
+                .as_ref()
+                .path(),
             "/path/to/test"
         );
 
         assert_eq!(
-            parse_uri(
-                "https://path/to/test",
-                Some(&parse_uri("https://some/other/path", None).unwrap())
+            ReadablePath::from_string(
+                "https://domain/to/test",
+                Some(&ReadablePath::from_string("https://domain/other/path", None).unwrap())
             )
             .unwrap()
+            .as_ref()
             .path(),
             "/to/test"
         );
 
         assert_eq!(
-            parse_uri(
-                "test",
-                Some(&parse_uri("https://some/other/path", None).unwrap())
+            ReadablePath::from_string(
+                "config:test",
+                Some(&ReadablePath::from_string("https://domain/other/path", None).unwrap())
             )
             .unwrap()
+            .as_ref()
             .path(),
             "/other/test"
         );
 
         assert_eq!(
-            parse_uri(
-                "test",
-                Some(&parse_uri("https://some/other/path/", None).unwrap())
+            ReadablePath::from_string(
+                "config:test",
+                Some(&ReadablePath::from_string("https://domain/other/path/", None).unwrap())
             )
             .unwrap()
+            .as_ref()
             .path(),
             "/other/path/test"
         );

@@ -1,5 +1,10 @@
 # CHANGES
 
+## 0.9.4
+
+- Feat: add dir_absent
+- Fix: make paths handling consistent
+
 ## 0.9.3
 
 - Feat: add package_present and package_absent

@@ -4,6 +4,7 @@ mod tests {
 
     use crate::checkers;
     use crate::cli;
+    use crate::uri;
     use dircpy::*;
 
     #[test]
@@ -13,7 +14,8 @@ mod tests {
 
         CopyBuilder::new("example/input", "output").run().unwrap();
 
-        let file_with_checks = cli::parse_path_str_to_uri("example/pyproject.toml").unwrap();
+        let file_with_checks =
+            uri::ReadablePath::from_string("example/pyproject.toml", None).unwrap();
         let mut variables = HashMap::new();
         let checks = checkers::read_checks_from_path(
             &file_with_checks,
