@@ -114,7 +114,7 @@ impl Checker for DirCopied {
         }
 
         // TODO: check also all subdirs and files
-        let copy_dir_needed = !self.destination.as_ref().exists();
+        let copy_dir_needed = !self.destination.exists();
 
         if copy_dir_needed {
             action_messages.push("copy dir".into());

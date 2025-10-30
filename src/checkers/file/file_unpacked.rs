@@ -107,7 +107,7 @@ impl Checker for FileUnpacked {
             return Err(CheckError::String("source file does not exists".into()));
         };
 
-        let file_unpack = !self.destination_dir.as_ref().exists();
+        let file_unpack = !self.destination_dir.exists();
 
         if file_unpack {
             action_messages.push("unpack file".into());

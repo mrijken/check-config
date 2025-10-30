@@ -126,7 +126,7 @@ impl FileCheck {
     ) -> Result<CheckResult, CheckError> {
         let mut action_messages: Vec<String> = vec![];
 
-        let create_file = !self.file_to_check.as_ref().exists();
+        let create_file = !self.file_to_check.exists();
 
         if create_file {
             action_messages.push("create file".into());
@@ -247,7 +247,7 @@ impl FileCheck {
     fn conclude_check_with_remove(&self, fix: bool) -> Result<CheckResult, CheckError> {
         let action_message = "remove file".to_string();
 
-        let check_result = match (self.file_to_check.as_ref().exists(), fix) {
+        let check_result = match (self.file_to_check.exists(), fix) {
             (false, _) => CheckResult::NoFixNeeded,
             (true, false) => CheckResult::FixNeeded(action_message),
             (true, true) => {
@@ -361,8 +361,8 @@ pub(crate) fn get_readable_path_from_checktable(
     current_config_path: Option<&ReadablePath>,
 ) -> Result<ReadablePath, CheckDefinitionError> {
     let s = get_string_value_from_checktable(check_table, key)?;
-    Ok(ReadablePath::from_string(s.as_str(), current_config_path)
-        .map_err(|e| CheckDefinitionError::InvalidDefinition(e.to_string()))?)
+    ReadablePath::from_string(s.as_str(), current_config_path)
+        .map_err(|e| CheckDefinitionError::InvalidDefinition(e.to_string()))
 }
 
 pub(crate) fn get_writable_path_from_checktable(
@@ -370,8 +370,8 @@ pub(crate) fn get_writable_path_from_checktable(
     key: &str,
 ) -> Result<WritablePath, CheckDefinitionError> {
     let s = get_string_value_from_checktable(check_table, key)?;
-    Ok(WritablePath::from_string(s.as_str())
-        .map_err(|e| CheckDefinitionError::InvalidDefinition(e.to_string()))?)
+    WritablePath::from_string(s.as_str())
+        .map_err(|e| CheckDefinitionError::InvalidDefinition(e.to_string()))
 }
 
 pub(crate) fn get_string_value_from_checktable(

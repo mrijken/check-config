@@ -96,7 +96,7 @@ impl Checker for FileCopied {
             Err(e) => return Err(CheckError::String(e.to_string())),
         }
 
-        let destination_exists = self.destination.as_ref().exists();
+        let destination_exists = self.destination.exists();
 
         let source_and_destination_are_different =
             destination_exists && self.source.hash()? != self.destination.hash()?;
