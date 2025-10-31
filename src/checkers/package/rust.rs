@@ -11,7 +11,7 @@ pub(crate) struct Cargo;
 impl Installer for Cargo {
     fn install(package: &Package) -> Result<(), CheckError> {
         let package_specifier = if let Some(version) = &package.version {
-            format!("{package}=={version}", package = &package.name)
+            format!("{package}@{version}", package = &package.name)
         } else {
             package.name.to_owned()
         };
