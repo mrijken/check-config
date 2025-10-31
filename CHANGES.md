@@ -1,5 +1,10 @@
 # CHANGES
 
+
+## 0.9.5
+
+- Fix: fix using the version when instaling a package via Cargo
+
 ## 0.9.4
 
 - Feat: add dir_absent
