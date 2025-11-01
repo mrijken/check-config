@@ -26,6 +26,10 @@ impl Installer for Cargo {
         run_command_stream("cargo", vec!["uninstall", package.name.as_str()].as_ref())
     }
 
+    fn is_upgradable(package: &Package) -> Result<bool, CheckError> {
+        Ok(package.version.is_none())
+    }
+
     fn is_installed(package: &Package) -> Result<bool, CheckError> {
         let stdout =
             run_command_stream_capture_stdout("cargo", vec!["install", "--list"].as_ref())?;

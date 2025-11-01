@@ -41,6 +41,8 @@ pub(crate) enum PackageType {
 impl PackageType {
     // TODO: add installer to Package to differentiate between installer (ie uv or pipx for
     // PythonPackage)
+
+    // Install a package
     pub(crate) fn install(&self) -> Result<(), CheckError> {
         match self {
             PackageType::Python(package) => python::UV::install(package),
@@ -60,11 +62,25 @@ impl PackageType {
         }
     }
 
+    // is the package installed with the given version.
+    // if no version is given, return true if the package is installed
     pub(crate) fn is_installed(&self) -> Result<bool, CheckError> {
         match self {
             PackageType::Python(package) => python::UV::is_installed(package),
             PackageType::Rust(package) => rust::Cargo::is_installed(package),
             PackageType::Custom(package) => custom::is_installed(package),
+            _ => todo!(),
+        }
+    }
+    // if no version is specified, we will upgrade the package to the latest version.
+    // return True when there is possible or certain a newer version available
+    // Note: possible is the case when the package manager can not report a newer version without
+    // installing it
+    pub(crate) fn is_upgradable(&self) -> Result<bool, CheckError> {
+        match self {
+            PackageType::Python(package) => python::UV::is_upgradable(package),
+            PackageType::Rust(package) => rust::Cargo::is_upgradable(package),
+            PackageType::Custom(package) => custom::is_upgradable(package),
             _ => todo!(),
         }
     }
@@ -84,6 +100,7 @@ pub(crate) trait Installer {
     fn install(package: &Package) -> Result<(), CheckError>;
     fn uninstall(package: &Package) -> Result<(), CheckError>;
     fn is_installed(package: &Package) -> Result<bool, CheckError>;
+    fn is_upgradable(package: &Package) -> Result<bool, CheckError>;
 }
 
 pub(crate) fn read_package_from_check_table(

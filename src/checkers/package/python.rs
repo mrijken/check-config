@@ -10,16 +10,21 @@ pub(crate) struct UV;
 
 impl Installer for UV {
     fn install(package: &Package) -> Result<(), CheckError> {
+        let mut options = vec!["tool", "install"];
+
         let package_specifier = if let Some(version) = &package.version {
             format!("{package}=={version}", package = &package.name)
         } else {
             package.name.to_owned()
         };
 
-        run_command_stream(
-            "uv",
-            vec!["tool", "install", package_specifier.as_str()].as_ref(),
-        )
+        options.push(&package_specifier);
+
+        if package.version.is_some() {
+            options.push("-U");
+        }
+
+        run_command_stream("uv", &options)
     }
 
     fn uninstall(package: &Package) -> Result<(), CheckError> {
@@ -29,11 +34,12 @@ impl Installer for UV {
         )
     }
 
+    fn is_upgradable(package: &Package) -> Result<bool, CheckError> {
+        Ok(package.version.is_none())
+    }
+
     fn is_installed(package: &Package) -> Result<bool, CheckError> {
-        let stdout = run_command_stream_capture_stdout(
-            "uv",
-            vec!["tool", "uninstall", package.name.as_str()].as_ref(),
-        )?;
+        let stdout = run_command_stream_capture_stdout("uv", vec!["tool", "list"].as_ref())?;
 
         let packages: Vec<&str> = stdout
             .lines()

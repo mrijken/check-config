@@ -40,9 +40,12 @@ impl Checker for PackagePresent {
 
     fn check_(&self, fix: bool) -> Result<crate::checkers::base::CheckResult, CheckError> {
         let to_install = !self.package.is_installed()?;
+        let try_to_upgrade = self.package.is_upgradable()?;
 
         let action_message = if to_install {
-            format!("install package {}", self.package,)
+            format!("install package {}", self.package)
+        } else if try_to_upgrade {
+            format!("try to upgrade package {} to latest", self.package,)
         } else {
             "".to_string()
         };

@@ -1,9 +1,9 @@
 # CHANGES
 
-
 ## 0.9.5
 
-- Fix: fix using the version when instaling a package via Cargo
+- Fix: fix using the version when installing a package via Cargo
+- Fix: fix upgrade to latest version when version is not given
 
 ## 0.9.4
 
