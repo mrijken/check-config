@@ -213,7 +213,7 @@ pub(crate) fn read_checks_from_path(
                     return checks;
                 }
             };
-            file_with_checks = ReadablePath::from_uri(uri);
+            file_with_checks = ReadablePath::from_url(uri);
             match file_with_checks.read_to_string() {
                 Ok(checks_toml) => checks_toml,
                 Err(_) => {

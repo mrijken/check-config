@@ -1,5 +1,9 @@
 # CHANGES
 
+## 0.9.7
+
+- Feat: show difference when source and destination are different for file_copied
+
 ## 0.9.6
 
 - Feat: add check_config.toml to path when path is a directory

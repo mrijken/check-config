@@ -107,10 +107,6 @@ impl FileCheck {
             "Set file contents to: \n{}",
             TextDiff::from_lines(
                 old_contents,
-                // self.generic_check()
-                //     .get_file_contents(DefaultContent::EmptyString)
-                //     .unwrap_or("".to_string())
-                //     .as_str(),
                 new_contents
             )
             .unified_diff()

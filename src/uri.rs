@@ -48,6 +48,9 @@ pub enum PathError {
 
     #[error("url parsing error: {0}")]
     UrlParse(#[from] url::ParseError),
+
+    #[error("content is not a string")]
+    ContentIsNoString,
 }
 
 #[derive(AsRef, Clone, Debug, Display)]
@@ -56,22 +59,34 @@ pub struct ReadablePath(Url);
 pub trait ReadPath {
     fn exists(&self) -> Result<bool, PathError>;
 
-    fn read_to_string(&self) -> Result<String, PathError>;
+    fn read_to_string(&self) -> Result<String, PathError> {
+        let bytes = self.read_to_bytes()?;
+        String::from_utf8(bytes).map_err(|_| PathError::ContentIsNoString)
+    }
+
+    fn is_utf8(&self) -> Result<bool, PathError> {
+        match self.read_to_string() {
+            Err(PathError::ContentIsNoString) => Ok(false),
+            Ok(_) => Ok(true),
+            Err(e) => Err(e),
+        }
+    }
+
+    fn read_to_bytes(&self) -> Result<Vec<u8>, PathError>;
 
     fn copy(&self, dest: &WritablePath) -> Result<(), PathError>;
 
     fn hash(&self) -> Result<u64, PathError> {
         let mut hasher = std::hash::DefaultHasher::new();
-        let content = self.read_to_string()?;
+        let content = self.read_to_bytes()?;
         content.hash(&mut hasher);
         Ok(hasher.finish())
     }
 }
 
 impl ReadablePath {
-
-    pub fn from_uri(uri: Url) -> ReadablePath {
-        ReadablePath(uri)
+    pub fn from_url(url: Url) -> ReadablePath {
+        ReadablePath(url)
     }
     /// get a readable path
     /// - config:<path>  - relative to current_config_path
@@ -90,7 +105,7 @@ impl ReadablePath {
             && input.starts_with("config:")
         {
             let input = input.replacen("config:", "", 1);
-            return Ok(ReadablePath(
+            return Ok(ReadablePath::from_url(
                 config_file_path
                     .as_ref()
                     .join(input.as_str())
@@ -101,20 +116,20 @@ impl ReadablePath {
         // Case file / http(s) / py
         if let Ok(url) = Url::parse(input) {
             if url.scheme() == "py" {
-                return py_url_to_url(url).map(ReadablePath);
+                return py_url_to_url(url).map(ReadablePath::from_url);
             }
-            return Ok(ReadablePath(url));
+            return Ok(ReadablePath::from_url(url));
         }
 
         // case: absolute dir or relative to cwd /home dir
-        Ok(ReadablePath(
+        Ok(ReadablePath::from_url(
             Url::from_file_path(WritablePath::from_string(input)?.as_ref())
                 .map_err(|_| Error::InvalidUrl)?,
         ))
     }
 
     pub fn join(&self, file: &str) -> ReadablePath {
-        ReadablePath(self.as_ref().join(file).unwrap())
+        ReadablePath::from_url(self.as_ref().join(file).unwrap())
     }
 }
 
@@ -142,14 +157,16 @@ impl ReadPath for ReadablePath {
         }
     }
 
-    fn read_to_string(&self) -> Result<String, PathError> {
+    fn read_to_bytes(&self) -> Result<Vec<u8>, PathError> {
         match self.as_ref().scheme() {
-            "file" => Ok(std::fs::read_to_string(
+            "file" => Ok(std::fs::read(
                 self.as_ref()
                     .to_file_path()
                     .expect("an url with a file scheme is a valid file path"),
             )?),
-            "http" | "https" => Ok(reqwest::blocking::get(self.as_ref().clone())?.text()?),
+            "http" | "https" => Ok(reqwest::blocking::get(self.as_ref().clone())?
+                .bytes()?
+                .into()),
             other => Err(PathError::UnsupportedScheme(other.into())),
         }
     }
@@ -183,14 +200,14 @@ impl WritablePath {
         if input.starts_with("~") {
             if let Some(home) = dirs::home_dir() {
                 let expanded = input.replacen("~", home.to_str().unwrap(), 1);
-                return Ok(WritablePath(PathBuf::from(expanded)));
+                return Ok(WritablePath::new(PathBuf::from(expanded)));
             }
             return Err(Error::InvalidUrl);
         }
 
         // case: absolute
         if input.starts_with("/") {
-            return Ok(WritablePath(PathBuf::from(input)));
+            return Ok(WritablePath::new(PathBuf::from(input)));
         }
 
         // case: relative to cwd
@@ -198,7 +215,7 @@ impl WritablePath {
             .map_err(|e| e.to_string())
             .map_err(|_| Error::InvalidUrl)?;
         let full_path = cwd.join(input);
-        Ok(WritablePath(full_path))
+        Ok(WritablePath::new(full_path))
     }
 
     pub fn write_from_string(&self, content: &str) -> Result<(), Error> {
@@ -217,8 +234,8 @@ impl std::fmt::Display for WritablePath {
 }
 
 impl ReadPath for WritablePath {
-    fn read_to_string(&self) -> Result<String, PathError> {
-        Ok(std::fs::read_to_string(self.as_ref())?)
+    fn read_to_bytes(&self) -> Result<Vec<u8>, PathError> {
+        Ok(std::fs::read(self.as_ref())?)
     }
 
     fn exists(&self) -> Result<bool, PathError> {
@@ -290,7 +307,7 @@ mod test {
     fn test_config_readable_path() {
         let path = ReadablePath::from_string(
             "config:test.toml",
-            Some(&ReadablePath(
+            Some(&ReadablePath::from_url(
                 Url::from_file_path("/some/base/dir/config.toml").unwrap(),
             )),
         )
@@ -328,11 +345,11 @@ mod test {
     fn test_paths_copy_and_read() {
         let dir = tempdir().unwrap();
         let destination = dir.path().join("destination");
-        let destination = WritablePath(destination);
+        let destination = WritablePath::new(destination);
 
         let source = ReadablePath::from_string(
             "https://rust-lang.org/static/images/rust-logo-blk.svg",
-            Some(&ReadablePath(
+            Some(&ReadablePath::from_url(
                 Url::from_file_path(dir.path()).expect("valid path"),
             )),
         )
@@ -352,7 +369,7 @@ mod test {
         assert!(
             ReadablePath::from_string(
                 "https://rust-lang.org/static/images/rust-logo-blk.svg",
-                Some(&ReadablePath(
+                Some(&ReadablePath::from_url(
                     Url::from_file_path(dir.path()).expect("valid path")
                 )),
             )
@@ -364,7 +381,7 @@ mod test {
         assert!(
             !ReadablePath::from_string(
                 "https://rust-lang.org/non_existing",
-                Some(&ReadablePath(
+                Some(&ReadablePath::from_url(
                     Url::from_file_path(dir.path()).expect("valid path")
                 )),
             )
@@ -375,11 +392,11 @@ mod test {
 
         let tmp_path = dir.path().join("tmp_file");
 
-        assert!(!WritablePath(tmp_path.clone()).exists());
+        assert!(!WritablePath::new(tmp_path.clone()).exists());
 
         std::fs::File::create(&tmp_path).unwrap();
 
-        assert!(WritablePath(tmp_path).exists());
+        assert!(WritablePath::new(tmp_path).exists());
     }
 
     #[test]

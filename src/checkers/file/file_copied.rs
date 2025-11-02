@@ -1,3 +1,5 @@
+use similar::TextDiff;
+
 use crate::{
     checkers::{base::CheckResult, file::get_string_value_from_checktable, utils::replace_vars},
     uri::{ReadPath, ReadablePath, WritablePath},
@@ -87,7 +89,6 @@ impl Checker for FileCopied {
         self.source.as_ref().to_string()
     }
     fn check_(&self, fix: bool) -> Result<crate::checkers::base::CheckResult, CheckError> {
-        // TODO: check whether the file is changed
         let mut action_messages: Vec<String> = vec![];
 
         match self.source.exists() {
@@ -103,9 +104,21 @@ impl Checker for FileCopied {
 
         let copy_file_needed = !destination_exists || source_and_destination_are_different;
 
-        if copy_file_needed {
+        if !destination_exists {
             action_messages.push("copy file".into());
         }
+        if source_and_destination_are_different {
+            action_messages.push("copy file, because source and destination are different".into());
+            if self.source.is_utf8()? && self.destination.is_utf8()? {
+                let old_contents = self.destination.read_to_string()?;
+                let new_contents = self.source.read_to_string()?;
+                action_messages.push(format!(
+                    "Set file contents to: \n{}",
+                    TextDiff::from_lines(old_contents.as_str(), new_contents.as_str()).unified_diff()
+                ));
+            }
+        }
+
         let action_message = action_messages.join("\n");
 
         let check_result = match (copy_file_needed, fix) {
@@ -215,6 +228,24 @@ mod tests {
         assert_eq!(
             std::fs::read_to_string(file_copied_check.destination.as_ref()).unwrap(),
             "bla"
-        )
+        );
+
+        let _ = write(&file_to_copy, "blabla");
+
+        assert_eq!(
+            file_copied_check.check_(true).unwrap(),
+            CheckResult::FixExecuted(
+                "copy file, because source and destination are different\nSet file contents to: \n@@ -1 +1 @@\n-bla\n\\ No newline at end of file\n+blabla\n\\ No newline at end of file\n".into()
+            )
+        );
+        assert_eq!(
+            file_copied_check.check_(false).unwrap(),
+            CheckResult::NoFixNeeded
+        );
+
+        assert_eq!(
+            std::fs::read_to_string(file_copied_check.destination.as_ref()).unwrap(),
+            "blabla"
+        );
     }
 }
