@@ -19,7 +19,6 @@ mod tests {
         let mut variables = HashMap::new();
         let checks = checkers::read_checks_from_path(
             &file_with_checks,
-            vec!["tool", "check-config"],
             &mut variables,
         )
         .into_iter()

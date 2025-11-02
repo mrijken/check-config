@@ -1,3 +1,5 @@
+
+
 # Effortless Configuration Management with check-config
 
 **Keep your development environment consistent, shareable, and version-controlled**

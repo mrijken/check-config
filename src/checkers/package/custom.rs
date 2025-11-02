@@ -43,6 +43,6 @@ pub fn is_installed(package: &CustomInstaller) -> Result<bool, CheckError> {
     Ok(stdout.contains(package.version.as_str()))
 }
 
-pub fn is_upgradable(package: &CustomInstaller) -> Result<bool, CheckError> {
+pub fn is_upgradable(_package: &CustomInstaller) -> Result<bool, CheckError> {
     Ok(true)
 }

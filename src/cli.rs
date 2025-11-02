@@ -113,52 +113,18 @@ pub fn cli() -> ExitCode {
         HashMap::new()
     };
 
-    let mut checks = match cli.path {
-        Some(path_str) => match ReadablePath::from_string(path_str.as_str(), None) {
-            Ok(uri) => {
-                log::info!("Using checkers from {}", &uri.short_url_str());
-                read_checks_from_path(&uri, vec![], &mut variables)
-            }
+    let path_str = if let Some(path) = cli.path { path } else { "check_config.toml".to_string()};
+    let path = match ReadablePath::from_string(path_str.as_str(), None) {
+        Ok(path) => path,
             Err(_) => {
                 log::error!(
                     "Unable to load checkers. Path ({path_str}) specified is not a valid path.",
                 );
                 return ExitCode::from(ExitStatus::Error);
-            }
-        },
-        None => {
-            log::warn!("⚠️ No path specified. Trying check-config.toml");
-            let path = ReadablePath::from_string("check-config.toml", None).expect("valid path");
-            match std::path::Path::new(path.as_ref().path()).exists() {
-                true => {
-                    log::info!("Using checkers from {}", &path);
-                    read_checks_from_path(&path, vec![], &mut variables)
-                }
-                false => {
-                    log::warn!("check-config.toml does not exists.");
-                    log::warn!("Trying pyproject.toml.");
-                    let path =
-                        ReadablePath::from_string("pyproject.toml", None).expect("valid path");
-                    match std::path::Path::new(path.as_ref().path()).exists() {
-                        true => {
-                            log::info!("Using checkers from {}", &path);
-                            read_checks_from_path(
-                                &path,
-                                vec!["tool", "check-config"],
-                                &mut variables,
-                            )
-                        }
-                        false => {
-                            log::error!(
-                                "⚠️ No path specified and default paths are not found, so we ran out of options to load the config"
-                            );
-                            return ExitCode::from(ExitStatus::Error);
-                        }
-                    }
-                }
-            }
-        }
+            } 
     };
+
+    let mut checks = read_checks_from_path(&path,  &mut variables);
 
     log::info!("Fix: {}", &cli.fix);
 
@@ -219,7 +185,6 @@ pub(crate) fn run_checks(checks: &Vec<Box<dyn Checker>>, fix: bool) -> ExitStatu
 
     match fix_needed_count {
         0 => log::error!("🥇 No violations found."),
-
         1 => log::error!("🪛 There is 1 violation to fix.",),
         _ => log::error!("🪛 There are {fix_needed_count} violations to fix.",),
     }

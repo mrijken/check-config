@@ -1,5 +1,10 @@
 # CHANGES
 
+## 0.9.6
+
+- Feat: add check_config.toml to path when path is a directory
+- Feat: use Cargo.toml (just like pyproject.toml) as possible source for the path
+
 ## 0.9.5
 
 - Fix: fix using the version when installing a package via Cargo

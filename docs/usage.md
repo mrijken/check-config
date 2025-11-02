@@ -75,14 +75,24 @@ Fix: false
 🪛  There is 1 violation to fix.
 ```
 
-Check Config will use the checkers as defined in `check-config.toml`. When that file is not present,
-it will use `pyproject.toml` if it is present.
+Check Config will use the checkers as defined in `check-config.toml`.
 
 Optionally you can specify another path to a toml file with checkers:
 
 ```shell
 check-config -p <path>  # or --path <path>
 ```
+
+When the path is a file, that file is used. When the path is a directory, it will use the
+`check-config.toml` file in that directory.
+
+Note: it is also possible to re-use configuration files of other platforms
+to reduce the number of config files:
+
+| file | top level |
+|---|----|
+| `pyproject.toml` | `[tool.check-config]` |
+| `Cargo.toml` | `[package.metadata.check-confg]` |
 
 You can submit the path also via an environment variable:
 
@@ -124,12 +134,13 @@ tags.
 check-config --any-tags tag1,tag2 --all-tags tag3,tag4 --skip-tags tag5,tag6
 ```
 
-This invocation call checkers which has one of [tag1, tag2], all of [tag3, tag4] and not one of [tag5, tag6]
-specified in their `__tags__` key.
+This invocation call checkers which has one of [tag1, tag2], all of
+[tag3, tag4] and not one of [tag5, tag6] specified in their `__tags__` key.
 
 ## Environment variables
 
-You can use your environment variables in templates of the checkers via the `--env` option:
+You can use your environment variables in templates of the checkers via the
+`--env` option:
 
 ```shell
 check-config --env
@@ -137,8 +148,8 @@ check-config --env
 
 ## Pre-commit
 
-[pre-commit](https://pre-commit.com/) helps checking your code before committing git, so you can catch errors
-before the build pipeline does.
+[pre-commit](https://pre-commit.com/) helps checking your code before
+committing git, so you can catch errors before the build pipeline does.
 
 Add the next repo to the `.pre-commit-config.yaml` in your repository with the id of the hook
 you want to use:
@@ -146,7 +157,7 @@ you want to use:
 ```yaml
 repos:
   - repo: https://github.com/mrijken/check-config
-    rev: v0.9.5
+    rev: v0.9.6
     hooks:
       # Install via Cargo and execute `check-config --fix`
       - id: check_config_fix_install_via_rust

@@ -69,6 +69,10 @@ pub trait ReadPath {
 }
 
 impl ReadablePath {
+
+    pub fn from_uri(uri: Url) -> ReadablePath {
+        ReadablePath(uri)
+    }
     /// get a readable path
     /// - config:<path>  - relative to current_config_path
     /// - https://<path> - uri
@@ -107,6 +111,10 @@ impl ReadablePath {
             Url::from_file_path(WritablePath::from_string(input)?.as_ref())
                 .map_err(|_| Error::InvalidUrl)?,
         ))
+    }
+
+    pub fn join(&self, file: &str) -> ReadablePath {
+        ReadablePath(self.as_ref().join(file).unwrap())
     }
 }
 

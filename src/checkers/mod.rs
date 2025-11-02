@@ -1,6 +1,7 @@
 use std::{collections::HashMap, env, str::FromStr};
 
 use base::CheckConstructor;
+use url::Url;
 
 use crate::uri::{ReadPath, ReadablePath};
 
@@ -196,17 +197,33 @@ fn get_check_from_check_table(
 
 pub(crate) fn read_checks_from_path(
     file_with_checks: &ReadablePath,
-    top_level_keys: Vec<&str>,
     variables: &mut HashMap<String, String>,
 ) -> Vec<Box<dyn Checker>> {
     let mut checks: Vec<Box<dyn Checker>> = vec![];
+    let mut file_with_checks = file_with_checks.clone();
     let checks_toml_str = match file_with_checks.read_to_string() {
         Ok(checks_toml) => checks_toml,
         Err(_) => {
-            log::error!("⚠ {file_with_checks} could not be read");
-            return checks;
+            let uri = match Url::parse(
+                format!("{}/check-config.toml", file_with_checks.as_ref()).as_str(),
+            ) {
+                Ok(uri) => uri,
+                Err(_) => {
+                    log::error!("⚠ {file_with_checks} could not be read");
+                    return checks;
+                }
+            };
+            file_with_checks = ReadablePath::from_uri(uri);
+            match file_with_checks.read_to_string() {
+                Ok(checks_toml) => checks_toml,
+                Err(_) => {
+                    log::error!("⚠ {file_with_checks} could not be read");
+                    return checks;
+                }
+            }
         }
     };
+
     let mut checks_toml: toml_edit::Table =
         match toml_edit::DocumentMut::from_str(checks_toml_str.as_str()) {
             Ok(checks_toml) => checks_toml.as_table().to_owned(),
@@ -215,6 +232,15 @@ pub(crate) fn read_checks_from_path(
                 return checks;
             }
         };
+
+    let top_level_keys = if file_with_checks.as_ref().path().ends_with("pyproject.toml") {
+        vec!["tool", "check-config"]
+    } else if file_with_checks.as_ref().path().ends_with("Cargo.toml") {
+        vec!["package", "metadata", "check-config"]
+    } else {
+        vec![]
+    };
+
     for key in top_level_keys {
         checks_toml = match checks_toml.get(key) {
             Some(toml) => match toml.as_table() {
@@ -237,7 +263,7 @@ pub(crate) fn read_checks_from_path(
                 for include_uri in include_uris {
                     let include_path = match ReadablePath::from_string(
                         include_uri.as_str().expect("uri is a string"),
-                        Some(file_with_checks),
+                        Some(&file_with_checks),
                     ) {
                         Ok(include_path) => include_path,
                         Err(_) => {
@@ -245,7 +271,7 @@ pub(crate) fn read_checks_from_path(
                             std::process::exit(1);
                         }
                     };
-                    checks.extend(read_checks_from_path(&include_path, vec![], variables));
+                    checks.extend(read_checks_from_path(&include_path, variables));
                 }
             }
 
@@ -268,7 +294,7 @@ pub(crate) fn read_checks_from_path(
         match value {
             toml_edit::Item::Table(config_table) => {
                 checks_to_add.push(get_check_from_check_table(
-                    file_with_checks,
+                    &file_with_checks,
                     check_type.as_str(),
                     &config_table,
                     variables.clone(),
@@ -277,7 +303,7 @@ pub(crate) fn read_checks_from_path(
             toml_edit::Item::ArrayOfTables(array) => {
                 for config_table in array {
                     checks_to_add.push(get_check_from_check_table(
-                        file_with_checks,
+                        &file_with_checks,
                         check_type.as_str(),
                         &config_table,
                         variables.clone(),
@@ -364,7 +390,7 @@ entry.key = [1,2,3]
             None,
         )
         .unwrap();
-        let checks = read_checks_from_path(&path_with_checkers, vec![], &mut variables);
+        let checks = read_checks_from_path(&path_with_checkers, &mut variables);
 
         assert_eq!(checks.len(), 9);
     }
@@ -391,7 +417,7 @@ entry.key = [1,2,3]
             None,
         )
         .unwrap();
-        let checks = read_checks_from_path(&path_with_checkers, vec![], &mut variables);
+        let checks = read_checks_from_path(&path_with_checkers, &mut variables);
 
         assert_eq!(checks.len(), 0);
     }
