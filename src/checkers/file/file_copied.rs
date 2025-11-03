@@ -111,10 +111,15 @@ impl Checker for FileCopied {
             action_messages.push("copy file, because source and destination are different".into());
             if self.source.is_utf8()? && self.destination.is_utf8()? {
                 let old_contents = self.destination.read_to_string()?;
-                let new_contents = self.source.read_to_string()?;
+                let mut new_contents = self.source.read_to_string()?;
+                if self.is_template {
+                    new_contents =
+                        replace_vars(new_contents.as_str(), &self.generic_check.variables)
+                }
                 action_messages.push(format!(
                     "Set file contents to: \n{}",
-                    TextDiff::from_lines(old_contents.as_str(), new_contents.as_str()).unified_diff()
+                    TextDiff::from_lines(old_contents.as_str(), new_contents.as_str())
+                        .unified_diff()
                 ));
             }
         }

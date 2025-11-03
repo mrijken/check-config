@@ -157,7 +157,7 @@ you want to use:
 ```yaml
 repos:
   - repo: https://github.com/mrijken/check-config
-    rev: v0.9.7
+    rev: v0.9.8
     hooks:
       # Install via Cargo and execute `check-config --fix`
       - id: check_config_fix_install_via_rust

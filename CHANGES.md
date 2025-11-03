@@ -1,5 +1,9 @@
 # CHANGES
 
+## 0.9.8
+
+- Fix: replace variables in diff of file_copied
+
 ## 0.9.7
 
 - Feat: show difference when source and destination are different for file_copied
