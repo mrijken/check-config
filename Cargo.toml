@@ -33,6 +33,7 @@ dircpy = { version = "0.3.19", default-features = false }
 dirs = "6.0.0"
 env_logger = { version = "0.11.8", default-features = false }
 flate2 = "1.1.2"
+kdl = "6.5.0"
 git2 = "0.20.2"
 log = "0.4.27"
 openssl = { version = "0.10.73", features = ["vendored"] }

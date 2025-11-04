@@ -1,8 +1,9 @@
 pub mod json;
-
-use crate::{checkers::base::CheckError, mapping::generic::Mapping};
+pub mod kdl;
 pub mod toml;
 pub mod yaml;
+
+use crate::{checkers::base::CheckError, mapping::generic::Mapping};
 
 #[derive(PartialEq, Clone, Debug)]
 pub enum RegexValidateResult {
@@ -16,4 +17,12 @@ pub enum RegexValidateResult {
 
 pub(crate) trait FileType {
     fn to_mapping(&self, contents: &str) -> Result<Box<dyn Mapping>, CheckError>;
+    // fn from_mapping(&self, mapping: impl Mapping, indent: usize) -> Result<String, CheckError>;
+    fn from_mapping(
+        &self,
+        mapping: impl crate::mapping::generic::Mapping,
+        indent: usize,
+    ) -> Result<String, CheckError> {
+        mapping.to_string(indent)
+    }
 }

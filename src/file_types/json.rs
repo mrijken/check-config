@@ -17,4 +17,8 @@ impl FileType for Json {
     ) -> Result<Box<dyn crate::mapping::generic::Mapping>, CheckError> {
         crate::mapping::json::from_string(contents)
     }
+
+    fn from_mapping(&self, mapping: impl crate::mapping::generic::Mapping, indent: usize) -> Result<String, CheckError> {
+        mapping.to_string(indent)
+    }
 }

@@ -158,6 +158,10 @@ file = "output/test.yaml"
 entry.list = ["to_be_added", "to_be_kept"]
 
 [[entry_present]]
+file = "output/test.kdl"
+entry.list = ["to_be_added", "to_be_kept"]
+
+[[entry_present]]
 file = "output/test.yaml"
 tags = ["selected"]
 entry.list2 = ["already_present"]

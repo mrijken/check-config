@@ -7,8 +7,7 @@ use similar::{DiffableStr, TextDiff};
 
 use crate::{
     checkers::{
-        GenericChecker,
-        base::{CheckDefinitionError, CheckError, CheckResult},
+        base::{CheckDefinitionError, CheckError, CheckResult}, file, GenericChecker
     },
     file_types::{self, FileType},
     mapping::generic::Mapping,
@@ -331,6 +330,8 @@ impl FileCheck {
             return file_types::json::Json::new().to_mapping(&contents);
         } else if extension == "yaml" || extension == "yml" {
             return file_types::yaml::Yaml::new().to_mapping(&contents);
+        } else if extension == "kdl" {
+            return file_types::kdl::Kdl::new().to_mapping(&contents);
         }
         Err(CheckError::UnknownFileType(extension))
     }
