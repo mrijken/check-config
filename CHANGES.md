@@ -1,5 +1,9 @@
 # CHANGES
 
+## 0.9.10
+
+- Fix: fix checking the version for rust packages in package_present
+
 ## 0.9.9
 
 - Feat: add source option to lines_present, so the lines can be loaded from a file

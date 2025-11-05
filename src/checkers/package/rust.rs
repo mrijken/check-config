@@ -48,7 +48,7 @@ impl Installer for Cargo {
                 .split_once(" ")
                 .expect("space is present")
                 .1
-                == version
+                .contains(version)
         } else {
             true
         })

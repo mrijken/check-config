@@ -1,6 +1,6 @@
 [project]
 name = "check-config"
-version = "0.9.9"
+version = "0.9.10"
 description = "Check configuration files."
 readme = "README.md"
 requires-python = ">=3.10"
