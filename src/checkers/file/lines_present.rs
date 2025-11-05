@@ -1,10 +1,13 @@
-use crate::checkers::{
-    file::FileCheck,
-    get_option_boolean_from_check_table,
-    utils::{
-        append_str, get_lines_from_check_table, get_marker_from_check_table,
-        replace_between_markers, replace_vars,
+use crate::{
+    checkers::{
+        file::{FileCheck, get_readable_path_from_checktable},
+        get_option_boolean_from_check_table,
+        utils::{
+            append_str, get_lines_from_check_table, get_marker_from_check_table,
+            replace_between_markers, replace_vars,
+        },
     },
+    uri::ReadPath,
 };
 
 use super::super::base::CheckConstructor;
@@ -45,6 +48,7 @@ pub(crate) fn get_replacement_regex_from_check_table(
 // file = "file"
 // lines = "lines"
 // marker = "marker"       # marker or replacement_regex may be present. Both may be absent. Both may not be present
+// source = "file path"    # optional path to file with the lines
 // replacement_regex = "regex"
 // is_template = false  # optional, default to to false. true for replace ${var}
 impl CheckConstructor for LinesPresent {
@@ -53,7 +57,16 @@ impl CheckConstructor for LinesPresent {
         generic_check: GenericChecker,
         check_table: toml_edit::Table,
     ) -> Result<Self::Output, CheckDefinitionError> {
-        let lines = get_lines_from_check_table(&check_table, None)?;
+        let lines = match get_readable_path_from_checktable(
+            &check_table,
+            "source",
+            Some(&generic_check.file_with_checks),
+        ) {
+            Ok(path) => path
+                .read_to_string()
+                .map_err(|e| CheckDefinitionError::InvalidDefinition(e.to_string()))?,
+            Err(_) => get_lines_from_check_table(&check_table, None)?,
+        };
         let is_template =
             get_option_boolean_from_check_table(&check_table, "is_template")?.unwrap_or(false);
         let lines = if is_template {

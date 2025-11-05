@@ -1,5 +1,9 @@
 # CHANGES
 
+## 0.9.9
+
+- Feat: add source option to lines_present, so the lines can be loaded from a file
+
 ## 0.9.8
 
 - Fix: replace variables in diff of file_copied

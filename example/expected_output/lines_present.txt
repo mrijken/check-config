@@ -1,0 +1,3 @@
+# text from file config:lines_present.txt (check-config start)
+These lines will be added to lines_present.txt together with a marker
+# text from file config:lines_present.txt (check-config end)

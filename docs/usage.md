@@ -89,10 +89,10 @@ When the path is a file, that file is used. When the path is a directory, it wil
 Note: it is also possible to re-use configuration files of other platforms
 to reduce the number of config files:
 
-| file | top level |
-|---|----|
-| `pyproject.toml` | `[tool.check-config]` |
-| `Cargo.toml` | `[package.metadata.check-confg]` |
+| file             | top level                        |
+| ---------------- | -------------------------------- |
+| `pyproject.toml` | `[tool.check-config]`            |
+| `Cargo.toml`     | `[package.metadata.check-confg]` |
 
 You can submit the path also via an environment variable:
 
@@ -157,7 +157,7 @@ you want to use:
 ```yaml
 repos:
   - repo: https://github.com/mrijken/check-config
-    rev: v0.9.8
+    rev: v0.9.9
     hooks:
       # Install via Cargo and execute `check-config --fix`
       - id: check_config_fix_install_via_rust

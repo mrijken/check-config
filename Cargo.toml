@@ -1,6 +1,6 @@
 [package]
 name = "check-config"
-version = "0.9.8"
+version = "0.9.9"
 edition = "2024"
 description = "Check configuration files."
 documentation = "https://check-config.readthedocs.io"
@@ -13,7 +13,7 @@ exclude = [".github/*", "videos/*"]
 
 [package.metadata.cargo-machete]
 ignored = [
-  "openssl",  # needed for https connections
+    "openssl", # needed for https connections
 ]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
@@ -24,9 +24,9 @@ name = "check-config"
 clap = { version = "4.5.45", features = ["env"] }
 clap-verbosity-flag = "3.0.3"
 derive_more = { version = "2.0.1", default-features = false, features = [
-  "as_ref",
-  "display",
-  "from",
+    "as_ref",
+    "display",
+    "from",
 ] }
 dir-diff = "0.3.3"
 dircpy = { version = "0.3.19", default-features = false }
@@ -38,8 +38,8 @@ log = "0.4.27"
 openssl = { version = "0.10.73", features = ["vendored"] }
 regex = "1.11.1"
 reqwest = { version = "0.12.23", default-features = false, features = [
-  "default-tls",
-  "blocking",
+    "default-tls",
+    "blocking",
 ] }
 serde = { version = "1.0", default-features = false }
 serde_json = "1.0.142"

@@ -1,10 +1,10 @@
 include = [
-  # "https://raw.githubusercontent.com/mrijken/check-config/refs/heads/main/example/checkers/http_check_config.toml",
-  "config:vars.toml",
-  "config:http_check_config.toml",
-  "config:folder/local_file.toml",
-  "config:copy.toml",
-  "config:unpack.toml",
+    # "https://raw.githubusercontent.com/mrijken/check-config/refs/heads/main/example/checkers/http_check_config.toml",
+    "config:vars.toml",
+    "config:http_check_config.toml",
+    "config:folder/local_file.toml",
+    "config:copy.toml",
+    "config:unpack.toml",
 ]
 
 [[dir_present]]
@@ -46,15 +46,15 @@ lines = "alias to_be_removed='ls'"
 
 [[key_absent]]
 file = "output/test.json"
-key.to_be_removed = {  }
+key.to_be_removed = {}
 
 [[key_absent]]
 file = "output/test.toml"
-key.to_be_removed = {  }
+key.to_be_removed = {}
 
 [[key_absent]]
 file = "output/test.yaml"
-key.to_be_removed = {  }
+key.to_be_removed = {}
 
 [[key_value_present]]
 file = "output/test.json"
@@ -183,3 +183,8 @@ version = "0.9.0"
 [[package_absent]]
 type = "python"
 package = "ty"
+
+[[lines_present]]
+file = "output/lines_present.txt"
+marker = "# text from file config:lines_present.txt"
+source = "config:lines_present.txt"

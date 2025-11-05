@@ -2,6 +2,7 @@
 
 # Effortless Configuration Management with check-config
 
+
 **Keep your development environment consistent, shareable, and version-controlled**
 
 check-config is a fast, lightweight, declarative configuration management tool that ensures your configuration files

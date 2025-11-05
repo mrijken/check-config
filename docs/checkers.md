@@ -3,25 +3,25 @@
 `check-config` uses `checkers` which define the desired state of the configuration files.
 There are several checker types (and more to come):
 
-| checker type                                        | description                                                                                 | fixable |  templating |
-| --------------------------------------------------- | ------------------------------------------------------------------------------------------- | ------- |-------------|
-| [file_absent](#file-absent)                         | the file must be absent                                                                     | yes     | no |
-| [file_present](#file-present)                       | the file must be present, indifferent the content                                           | yes     | no |
-| [key_absent](#key-absent)                           | a specified key must be absent in a toml / yaml / json file                                 | yes     | no |
-| [key_value_present](#key-value-present)             | a specified key with a specified value must be present in a toml / yaml / json file         | yes     | no |
-| [key_value_regex_matched](#key-value-regex-matched) | the value of a specified key must be match the specified regex in a toml / yaml / json file | no (unless placeholder is given)     | no |
-| [entry_absent](#entry-absent)                       | a specified entry must be absent in the array of a toml / yaml / json file                  | yes     | no |
-| [entry_present](#entry-present)                     | a specified entry must be present in the of a toml / yaml / json file                       | yes     | no |
-| [lines_absent](#lines-absent)                       | the specified lines must be absent                                                          | yes     | yes |
-| [lines_present](#lines-present)                     | the specified lines must be present                                                         | yes     | yes |
-| [file_unpacked](#file-unpacked)                     | the file must be unpacked                                                                   | yes     | no |
-| [file_copied](#file-copied)                          | the file must be copied                                                                     | yes     | yes |
-| [dir_copied](#dir-copied)                            | the dir must be copied                                                                      | yes     | no |
-| [dir_present](#dir-present)                            | the dir must be present                                                                      | yes     | no |
-| [dir_absent](#dir-absent)                            | the dir must be absent                                                                      | yes     | no |
-| [git_fetched](#git-fetched)                         | the git repo must be present and fetched                                                    | yes     | no |
-| [package_present](#package-present)            | the package is installed  |  yes  | no |
-| [package_absent](#package-absent)                 | the package is not installed  |  yes  | no |
+| checker type                                        | description                                                                                 | fixable                          | templating |
+| --------------------------------------------------- | ------------------------------------------------------------------------------------------- | -------------------------------- | ---------- |
+| [file_absent](#file-absent)                         | the file must be absent                                                                     | yes                              | no         |
+| [file_present](#file-present)                       | the file must be present, indifferent the content                                           | yes                              | no         |
+| [key_absent](#key-absent)                           | a specified key must be absent in a toml / yaml / json file                                 | yes                              | no         |
+| [key_value_present](#key-value-present)             | a specified key with a specified value must be present in a toml / yaml / json file         | yes                              | no         |
+| [key_value_regex_matched](#key-value-regex-matched) | the value of a specified key must be match the specified regex in a toml / yaml / json file | no (unless placeholder is given) | no         |
+| [entry_absent](#entry-absent)                       | a specified entry must be absent in the array of a toml / yaml / json file                  | yes                              | no         |
+| [entry_present](#entry-present)                     | a specified entry must be present in the of a toml / yaml / json file                       | yes                              | no         |
+| [lines_absent](#lines-absent)                       | the specified lines must be absent                                                          | yes                              | yes        |
+| [lines_present](#lines-present)                     | the specified lines must be present                                                         | yes                              | yes        |
+| [file_unpacked](#file-unpacked)                     | the file must be unpacked                                                                   | yes                              | no         |
+| [file_copied](#file-copied)                         | the file must be copied                                                                     | yes                              | yes        |
+| [dir_copied](#dir-copied)                           | the dir must be copied                                                                      | yes                              | no         |
+| [dir_present](#dir-present)                         | the dir must be present                                                                     | yes                              | no         |
+| [dir_absent](#dir-absent)                           | the dir must be absent                                                                      | yes                              | no         |
+| [git_fetched](#git-fetched)                         | the git repo must be present and fetched                                                    | yes                              | no         |
+| [package_present](#package-present)                 | the package is installed                                                                    | yes                              | no         |
+| [package_absent](#package-absent)                   | the package is not installed                                                                | yes                              | no         |
 
 ## check-config.toml
 
@@ -465,6 +465,15 @@ line"""
 ["test/present.txt".lines_present]
 file = "test/present.txt"
 lines = """single line"""
+```
+
+When you want to use large files or do want to use linters for the content of the lines,
+you can also get the lines from a file:
+
+```toml
+["test/present.txt".lines_present]
+file = "test/present.txt"
+source = "config:file_with_the_lines_to_be_present"
 ```
 
 Optionally it can replace strings by regex, i.e. if you want to replace an export with a new value:
