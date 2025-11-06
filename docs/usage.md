@@ -135,7 +135,7 @@ check-config --any-tags tag1,tag2 --all-tags tag3,tag4 --skip-tags tag5,tag6
 ```
 
 This invocation call checkers which has one of [tag1, tag2], all of
-[tag3, tag4] and not one of [tag5, tag6] specified in their `__tags__` key.
+[tag3, tag4] and not one of [tag5, tag6] specified in their `tags` key.
 
 ## Environment variables
 

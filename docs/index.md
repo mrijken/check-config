@@ -12,14 +12,16 @@ Define your configuration requirements in simple TOML files, then let check-conf
 
 ```toml
 # Set your preferred editor
-["~/.bashrc".lines_present]
-__lines__ = "export EDITOR=hx"
+[[lines_present]]
+file = "~/.bashrc"
+lines = "export EDITOR=hx"
 ```
 
 ```toml
 # Ensure git signing is configured
-["~/.gitconfig".lines_present]
-__lines__ = """
+[[lines_present]]
+file = "~/.gitconfig"
+lines = """
 [gpg]
         format = ssh
 [commit]
@@ -77,8 +79,9 @@ Make a `check-config.toml` according your needs:
 
 ```toml
 # Set your preferred editor
-["~/.bashrc".lines_present]
-__lines__ = "export EDITOR=hx"
+[[lines_present]]
+file = "~/.bashrc"
+lines = "export EDITOR=hx"
 ```
 
 And use it:
