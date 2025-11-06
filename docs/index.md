@@ -98,4 +98,4 @@ be supported in the near [future](features.md#current-and-future-features).
 
 ## Alternatives
 
-When `check-config` is not suitable for your, may be some [alternatives.md](docs/alternatives.md) are.
+When `check-config` is not suitable for your, may be some [alternatives.md](alternatives.md) are.

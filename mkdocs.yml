@@ -1,4 +1,5 @@
 site_name: check-config
+repo_url: https://github.com/mrijken/check-config
 
 nav:
   - "index.md"
