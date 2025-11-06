@@ -47,7 +47,7 @@ Ensure consistent development environments across your team:
 # In CI: Verify configurations are up-to-date
 check-config
 
-# For developers: Apply required configurations  
+# For developers: Apply required configurations
 check-config --fix
 ```
 
@@ -58,7 +58,7 @@ Perfect for ensuring tools like Ruff, Black, and ESLint use consistent settings 
 Combine multiple configuration files to build your complete setup:
 
 - Base configurations for your team
-- Personal tweaks and preferences  
+- Personal tweaks and preferences
 - Project-specific requirements
 - Environment-specific overrides
 
@@ -95,3 +95,7 @@ check-config --fix
 
 A large number of [file types](features.md/#file-types) and [checks](checkers.md#checkers) are supported or will
 be supported in the near [future](features.md#current-and-future-features).
+
+## Alternatives
+
+When `check-config` is not suitable for your, may be some [alternatives.md](docs/alternatives.md) are.
