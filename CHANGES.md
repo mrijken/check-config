@@ -1,5 +1,9 @@
 # CHANGES
 
+## 0.9.11
+
+- Fix: fix typo in default filename
+
 ## 0.9.10
 
 - Fix: fix checking the version for rust packages in package_present

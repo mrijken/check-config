@@ -3,18 +3,18 @@ use std::{collections::HashMap, io::Write};
 
 use clap::Parser;
 
-use crate::checkers::{RelativeUrl, base::Checker};
+use crate::checkers::base::Checker;
 use crate::uri::ReadablePath;
 
 use super::checkers::read_checks_from_path;
 
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub enum ExitStatus {
-    /// Reading checks was succesful and there are no checks to fix
+    /// Reading checks was successful and there are no checks to fix
     Success,
-    /// Reading checks was succesul and there are checks to fix
+    /// Reading checks was successful and there are checks to fix
     Failure,
-    /// Reading checks was faild or executing fixes was failed
+    /// Reading checks was failed or executing fixes was failed
     Error,
 }
 
@@ -113,18 +113,22 @@ pub fn cli() -> ExitCode {
         HashMap::new()
     };
 
-    let path_str = if let Some(path) = cli.path { path } else { "check_config.toml".to_string()};
+    let path_str = if let Some(path) = cli.path {
+        path
+    } else {
+        "check-config.toml".to_string()
+    };
     let path = match ReadablePath::from_string(path_str.as_str(), None) {
         Ok(path) => path,
-            Err(_) => {
-                log::error!(
-                    "Unable to load checkers. Path ({path_str}) specified is not a valid path.",
-                );
-                return ExitCode::from(ExitStatus::Error);
-            } 
+        Err(_) => {
+            log::error!(
+                "Unable to load checkers. Path ({path_str}) specified is not a valid path.",
+            );
+            return ExitCode::from(ExitStatus::Error);
+        }
     };
 
-    let mut checks = read_checks_from_path(&path,  &mut variables);
+    let mut checks = read_checks_from_path(&path, &mut variables);
 
     log::info!("Fix: {}", &cli.fix);
 
