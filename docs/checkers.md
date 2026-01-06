@@ -244,7 +244,7 @@ is_template = true
 source = "path to dir"
 destination_dir = "dir on local filesystem in which the contents are copied"
 destination = "dir on local filesystem in which the source directory is copied"
-
+always_copy_on_fix = false # optional, defaults to false
 ```
 
 Only on `destination` and `destination_dir`` needs to be specified.
@@ -253,6 +253,10 @@ from the source to the`destination`.
 When`destination`is given,`destination_dir` is ignored.
 
 When the parent dir of the `destination` does not exists, the dir is created.
+
+When the destination exists, the directory will not be copied. This is overridable
+with `always_copy_on_fix`. When that key is true, the directory will be copied
+regardless whether it exists or not.
 
 ## Dir Present
 

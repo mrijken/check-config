@@ -1,5 +1,8 @@
 use crate::{
-    checkers::{base::CheckResult, file::get_string_value_from_checktable},
+    checkers::{
+        base::CheckResult, file::get_string_value_from_checktable,
+        get_option_boolean_from_check_table,
+    },
     uri::WritablePath,
 };
 
@@ -13,6 +16,7 @@ pub(crate) struct DirCopied {
     source: WritablePath,
     destination: WritablePath,
     generic_check: GenericChecker,
+    always_copy_on_fix: bool,
 }
 
 //[[dir_copied]]
@@ -62,10 +66,15 @@ impl CheckConstructor for DirCopied {
             WritablePath::new(destination_dir.as_ref().join(file_name))
         };
 
+        let always_copy_on_fix =
+            get_option_boolean_from_check_table(&check_table, "always_copy_on_fix")?
+                .unwrap_or(false);
+
         Ok(Self {
             destination,
             source,
             generic_check,
+            always_copy_on_fix,
         })
     }
 }
@@ -114,7 +123,8 @@ impl Checker for DirCopied {
         }
 
         // TODO: check also all subdirs and files
-        let copy_dir_needed = !self.destination.exists();
+        let copy_dir_needed = !self.destination.exists()
+            || self.always_copy_on_fix;
 
         if copy_dir_needed {
             action_messages.push("copy dir".into());

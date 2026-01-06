@@ -1,5 +1,9 @@
 # CHANGES
 
+## 0.9.12
+
+- Feat: add `always_copy_on_fix` flag to dir_copied
+
 ## 0.9.11
 
 - Fix: fix typo in default filename
