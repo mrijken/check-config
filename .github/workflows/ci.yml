@@ -42,8 +42,6 @@ jobs:
           files: lcov.info
           fail_ci_if_error: false
   linux:
-    # Use Ubuntu 20.04 here, because latest (22.04) uses OpenSSL v3.
-    # Currently, OpenSSL v3 causes compile issues with openssl-sys
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -53,61 +51,10 @@ jobs:
       - name: Build wheels
         uses: PyO3/maturin-action@v1
         with:
-          sccache: false
-          maturin-version: v1.15.0
           target: ${{ matrix.target }}
-          # Generally, we try to build in a target docker container. In this case however, a
-          # 32-bit compiler runs out of memory (4GB memory limit for 32-bit), so we cross compile
-          # from 64-bit version of the container, breaking the pattern from other builds.
-          container: quay.io/pypa/manylinux2014
-          manylinux: 2_17
-          docker-options: -e CARGO -e AWS_LC_SYS_USE_SYSTEM
-          args: --release --locked --out dist --features self-update --compatibility pypi
-          before-script-linux: |
-            # Install the 32-bit cross target on 64-bit (noop if we're already on 64-bit)
-            rustup target add ${{ matrix.target }}
-            # If we're running on rhel centos, install needed packages.
-            if command -v yum &> /dev/null; then
-                yum update -y && yum install -y pkgconfig libatomic openssl openssl-devel
-
-                # Install cross build requirements
-                if [[ "${{ matrix.target }}" == "i686-unknown-linux-gnu" ]]; then
-                  yum install -y glibc-devel.i686 libstdc++-devel.i686 libatomic.i686
-                fi
-
-                # Symlink libatomic so the linker can find it with -latomic.
-                if [[ -f "/usr/lib/libatomic.so.1" && ! -f "/usr/lib/libatomic.so" ]]; then
-                    ln -s /usr/lib/libatomic.so.1 /usr/lib/libatomic.so
-                fi
-            else
-                # If we're running on debian-based system.
-                apt update -y && apt-get install -y pkg-config libssl-dev openssl
-            fi
-            # Install cargo extensions as a static musl binary so it runs in any container.
-            scripts/install-cargo-extensions.sh
-
-
-            # Keep package/version/file information in diagnostics without embedding
-            # the build machine's Cargo home and registry index directory in every path.
-            # TODO: Use Cargo's profile-level `trim-paths` once it is stable.
-            cargo fetch --locked --target "${{ matrix.target }}"
-            for registry in "${CARGO_HOME:-$HOME/.cargo}"/registry/src/*; do
-                [[ -d "$registry" ]] || continue
-                export RUSTFLAGS="${RUSTFLAGS:+${RUSTFLAGS} }--remap-path-prefix=$registry/=registry/"
-            done
-
-            if [[ "${{ matrix.target }}" == "x86_64-unknown-linux-gnu" ]]; then
-                rustup component add llvm-tools-preview
-                python${{ env.PYTHON_VERSION }} scripts/build_uv_pgo.py \
-                    --target "${{ matrix.target }}" \
-                    --target-dir "$PWD/target/uv-pgo" \
-                    --train-only
-
-                export RUSTFLAGS="${RUSTFLAGS:+${RUSTFLAGS} }-Cprofile-use=$PWD/target/uv-pgo/uv.profdata"
-            fi
-        env:
-          CC: ${{ matrix.cc }}
-          CARGO: ${{ github.workspace }}/scripts/cargo.sh
+          args: --release --out dist
+          sccache: false
+          manylinux: auto
       - name: Upload wheels
         uses: actions/upload-artifact@v7.0.2
         with:
