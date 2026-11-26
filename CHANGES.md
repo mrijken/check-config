@@ -1,5 +1,9 @@
 # CHANGES
 
+## 0.9.14
+
+- Fix: upgrade dependencies
+
 ## 0.9.13
 
 - Feat: add brew support
