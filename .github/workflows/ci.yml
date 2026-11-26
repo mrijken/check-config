@@ -42,7 +42,9 @@ jobs:
           files: lcov.info
           fail_ci_if_error: false
   linux:
-    runs-on: ubuntu-latest
+    # The manylinux2014 i686 container can't resolve vault.centos.org on
+    # ubuntu-26.04. See https://github.com/PyO3/maturin-action/issues/484
+    runs-on: ubuntu-24.04
     strategy:
       matrix:
         target: [x86_64, x86, aarch64, armv7]
