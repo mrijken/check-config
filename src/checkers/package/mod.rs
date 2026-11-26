@@ -5,6 +5,7 @@ use crate::checkers::{
     file::{get_option_string_value_from_checktable, get_string_value_from_checktable},
 };
 
+pub(crate) mod brew;
 mod command;
 pub(crate) mod custom;
 pub(crate) mod package_absent;
@@ -34,6 +35,8 @@ pub(crate) enum PackageType {
     GithubRelease(Package),
     #[display("gitlab: {name}", name=_0.name)]
     GitlabRelease(Package),
+    #[display("brew: {name}", name=_0.name)]
+    Brew(Package),
     #[display("command: {name}", name=_0.name)]
     Custom(CustomInstaller),
 }
@@ -47,6 +50,7 @@ impl PackageType {
         match self {
             PackageType::Python(package) => python::UV::install(package),
             PackageType::Rust(package) => rust::Cargo::install(package),
+            PackageType::Brew(package) => brew::Brew::install(package),
             PackageType::Custom(package) => custom::install(package),
 
             _ => todo!(),
@@ -57,6 +61,7 @@ impl PackageType {
         match self {
             PackageType::Python(package) => python::UV::uninstall(package),
             PackageType::Rust(package) => rust::Cargo::uninstall(package),
+            PackageType::Brew(package) => brew::Brew::uninstall(package),
             PackageType::Custom(package) => custom::uninstall(package),
             _ => todo!(),
         }
@@ -68,6 +73,7 @@ impl PackageType {
         match self {
             PackageType::Python(package) => python::UV::is_installed(package),
             PackageType::Rust(package) => rust::Cargo::is_installed(package),
+            PackageType::Brew(package) => brew::Brew::is_installed(package),
             PackageType::Custom(package) => custom::is_installed(package),
             _ => todo!(),
         }
@@ -80,6 +86,7 @@ impl PackageType {
         match self {
             PackageType::Python(package) => python::UV::is_upgradable(package),
             PackageType::Rust(package) => rust::Cargo::is_upgradable(package),
+            PackageType::Brew(package) => brew::Brew::is_upgradable(package),
             PackageType::Custom(package) => custom::is_upgradable(package),
             _ => todo!(),
         }
@@ -141,6 +148,7 @@ pub(crate) fn read_package_from_check_table(
     match package_type.to_lowercase().as_str() {
         "python" => Ok(PackageType::Python(package)),
         "rust" => Ok(PackageType::Rust(package)),
+        "brew" => Ok(PackageType::Brew(package)),
         _ => Err(CheckDefinitionError::InvalidDefinition(format!(
             "unknown package_type {package_type}"
         ))),

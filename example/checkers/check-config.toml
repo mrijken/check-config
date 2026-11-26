@@ -180,9 +180,18 @@ type = "python"
 package = "ruff"
 version = "0.9.0"
 
+[[package_present]]
+type = "brew"
+package = "ruff"
+version = "0.9.0"
+
 [[package_absent]]
 type = "python"
 package = "ty"
+
+[[package_absent]]
+type = "brew"
+package = "uv"
 
 [[lines_present]]
 file = "output/lines_present.txt"

@@ -552,6 +552,15 @@ package = "check-config"
 version = "0.9.0"
 ```
 
+### Brew
+
+```toml
+[[package_present]]
+type = "brew"
+package = "check-config"
+version = "0.9.0"
+```
+
 ### Custom
 
 By specifying the commands for installing, uninstalling and get the current version,
@@ -592,6 +601,12 @@ package = "toml-cli"
 ```toml
 [[package_present]]
 type = "rust"
+package = "check-config"
+```
+
+```toml
+[[package_present]]
+type = "brew"
 package = "check-config"
 ```
 
