@@ -1,5 +1,9 @@
 # CHANGES
 
+## 0.9.13
+
+- Feat: add brew support
+
 ## 0.9.12
 
 - Feat: add `always_copy_on_fix` flag to dir_copied
@@ -86,7 +90,7 @@
 ## 0.8.0
 
 - Add \_\_replacements_regex in lines_present
-- BREAKING: use [__config__] in stead of [check-config] as config table
+- BREAKING: use [**config**] in stead of [check-config] as config table
 - BREAKING: use `check-config.toml` as default name
 - preserve formatting of toml files, including comments
 - fix several small bugs and command output
