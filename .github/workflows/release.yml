@@ -84,11 +84,11 @@ jobs:
       contents: read # Checkout only. Uploading the artifact does not use this token.
     steps:
       - name: Checkout
-        uses: actions/checkout@7.0.1
+        uses: actions/checkout@v7.0.1
         with:
           persist-credentials: false
       - name: Build executable
-        uses: houseabsolute/actions-rust-cross@1.0.8
+        uses: houseabsolute/actions-rust-cross@v1.0.8
         with:
           target: ${{ matrix.platform.target }}
           args: "--locked --release"
@@ -108,11 +108,11 @@ jobs:
       contents: write # Creating the release writes to this repository.
     steps:
       - name: Checkout
-        uses: actions/checkout@7.0.1
+        uses: actions/checkout@v7.0.1
         with:
           persist-credentials: false
       - name: Publish release
-        uses: houseabsolute/actions-rust-release/publish@1.0.1
+        uses: houseabsolute/actions-rust-release/publish@v1.0.1
         with:
           executable-name: check-config
 
