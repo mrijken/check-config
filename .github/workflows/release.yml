@@ -71,6 +71,7 @@ jobs:
         uses: houseabsolute/actions-rust-release@v1.0.1
         with:
           executable-name: check-config
+          changes-file: CHANGES.md
           target: ${{ matrix.platform.target }}
 
   publish:
