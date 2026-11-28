@@ -1,0 +1,135 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v[0-9]*"
+  workflow_dispatch:
+
+# Individual jobs ask for more where they need it.
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  # Never cancel a release that is part way through creating one.
+  cancel-in-progress: false
+
+jobs:
+  package:
+    name: Package - ${{ matrix.platform.os-name }}
+    strategy:
+      matrix:
+        platform:
+          - os-name: FreeBSD-x86_64
+            runs-on: ubuntu-24.04
+            target: x86_64-unknown-freebsd
+            skip-tests: true
+          - os-name: Linux-x86_64
+            runs-on: ubuntu-24.04
+            target: x86_64-unknown-linux-musl
+          - os-name: Linux-aarch64
+            runs-on: ubuntu-24.04
+            target: aarch64-unknown-linux-musl
+          - os-name: Linux-arm
+            runs-on: ubuntu-24.04
+            target: arm-unknown-linux-musleabi
+          - os-name: Linux-i686
+            runs-on: ubuntu-24.04
+            target: i686-unknown-linux-musl
+            skip-tests: true
+          - os-name: Linux-powerpc
+            runs-on: ubuntu-24.04
+            target: powerpc-unknown-linux-gnu
+            skip-tests: true
+          - os-name: Linux-powerpc64
+            runs-on: ubuntu-24.04
+            target: powerpc64-unknown-linux-gnu
+            skip-tests: true
+          - os-name: Linux-powerpc64le
+            runs-on: ubuntu-24.04
+            target: powerpc64le-unknown-linux-gnu
+            skip-tests: true
+          - os-name: Linux-riscv64
+            runs-on: ubuntu-24.04
+            target: riscv64gc-unknown-linux-gnu
+          - os-name: Linux-s390x
+            runs-on: ubuntu-24.04
+            target: s390x-unknown-linux-gnu
+            skip-tests: true
+          - os-name: NetBSD-x86_64
+            runs-on: ubuntu-24.04
+            target: x86_64-unknown-netbsd
+            skip-tests: true
+          - os-name: Windows-aarch64
+            runs-on: windows-latest
+            target: aarch64-pc-windows-msvc
+            skip-tests: true
+          - os-name: Windows-i686
+            runs-on: windows-latest
+            target: i686-pc-windows-msvc
+            skip-tests: true
+          - os-name: Windows-x86_64
+            runs-on: windows-latest
+            target: x86_64-pc-windows-msvc
+          - os-name: macOS-x86_64
+            runs-on: macOS-latest
+            target: x86_64-apple-darwin
+          - os-name: macOS-aarch64
+            runs-on: macOS-latest
+            target: aarch64-apple-darwin
+
+    runs-on: ${{ matrix.platform.runs-on }}
+    permissions:
+      contents: read # Checkout only. Uploading the artifact does not use this token.
+    steps:
+      - name: Checkout
+        uses: actions/checkout@7
+        with:
+          persist-credentials: false
+      - name: Build executable
+        uses: houseabsolute/actions-rust-cross@1
+        with:
+          target: ${{ matrix.platform.target }}
+          args: "--locked --release"
+          strip: true
+      - name: Package artifacts
+        uses: houseabsolute/actions-rust-release@<commit sha> # <version>
+        with:
+          executable-name: check-config
+          target: ${{ matrix.platform.target }}
+
+  publish:
+    name: Publish GitHub release
+    needs: package
+    runs-on: ubuntu-24.04
+    permissions:
+      actions: read # The publish action lists this run's artifacts.
+      contents: write # Creating the release writes to this repository.
+    steps:
+      - name: Checkout
+        uses: actions/checkout@7.0.1
+        with:
+          persist-credentials: false
+      - name: Publish release
+        uses: houseabsolute/actions-rust-release/publish@1.0.1
+        with:
+          executable-name: check-config
+
+  crates_release:
+    name: Crates Release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v7.0.1
+
+      - name: Install stable toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          override: true
+
+      - run: cargo publish --token ${CRATES_TOKEN}
+        env:
+          CRATES_TOKEN: ${{ secrets.CRATES_API_TOKEN }}
