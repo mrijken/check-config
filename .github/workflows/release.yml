@@ -90,6 +90,7 @@ jobs:
         uses: houseabsolute/actions-rust-release/publish@v1.0.1
         with:
           executable-name: check-config
+          changes-file: CHANGES.md
 
   crates_release:
     name: Crates Release
